@@ -44,6 +44,33 @@ jobs:
       - name: Unit tests
         run: ./Tests/run.sh
 
+      - name: Import signing certificate
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          printf '%s' "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | grep -m1 'Developer ID Application' | sed -E 's/.*"(.*)"/\1/')"
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::No Developer ID Application identity in MACOS_CERT_P12"
+            exit 1
+          fi
+          TEAM_ID="$(printf '%s' "$IDENTITY" | sed -E 's/.*\(([A-Z0-9]{10})\)$/\1/')"
+          echo "Signing as $IDENTITY"
+          echo "SIGNING_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          echo "SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+          echo "TEAM_ID=$TEAM_ID" >> "$GITHUB_ENV"
+
       - name: Build
         run: |
           set -o pipefail
@@ -59,19 +86,60 @@ jobs:
             ONLY_ACTIVE_ARCH=NO \
             MARKETING_VERSION="$VERSION" \
             CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
+            OTHER_CODE_SIGN_FLAGS="--timestamp --keychain $SIGNING_KEYCHAIN" \
             build
 
-      - name: Sign and package
+      - name: Verify signature
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp -R "$DERIVED_DATA/Build/Products/Release/AgentUI.app" dist/
+          ditto "$DERIVED_DATA/Build/Products/Release/AgentUI.app" dist/AgentUI.app
           cd dist
-          codesign --force --deep --sign - AgentUI.app
           codesign --verify --deep --strict --verbose=2 AgentUI.app
+          codesign -dv --verbose=4 AgentUI.app 2>&1 | grep -E 'Identifier|Authority|flags|TeamIdentifier'
           lipo -info AgentUI.app/Contents/MacOS/AgentUI
           /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' AgentUI.app/Contents/Info.plist
+
+      - name: Notarize
+        env:
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/notary.p8"
+          case "$NOTARY_KEY_P8" in
+            -----BEGIN*) printf '%s\n' "$NOTARY_KEY_P8" > "$KEY" ;;
+            *) printf '%s' "$NOTARY_KEY_P8" | base64 --decode > "$KEY" ;;
+          esac
+          cd dist
+          ditto -c -k --sequesterRsrc --keepParent AgentUI.app notarize.zip
+          xcrun notarytool submit notarize.zip \
+            --key "$KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" \
+            --wait --timeout 30m --output-format json > notary.json || true
+          cat notary.json
+          STATUS="$(plutil -extract status raw -o - notary.json 2>/dev/null || echo unknown)"
+          if [ "$STATUS" != "Accepted" ]; then
+            SUBMISSION="$(plutil -extract id raw -o - notary.json 2>/dev/null || true)"
+            if [ -n "$SUBMISSION" ]; then
+              xcrun notarytool log "$SUBMISSION" --key "$KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" || true
+            fi
+            echo "::error::Notarization status: $STATUS"
+            exit 1
+          fi
+          rm notarize.zip "$KEY"
+          xcrun stapler staple AgentUI.app
+          xcrun stapler validate AgentUI.app
+          spctl --assess --type execute --verbose=4 AgentUI.app
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          cd dist
           ditto -c -k --sequesterRsrc --keepParent AgentUI.app AgentUI.zip
           shasum -a 256 AgentUI.zip > AgentUI.zip.sha256
           cat AgentUI.zip.sha256
@@ -85,19 +153,12 @@ jobs:
           - Universal build: runs natively on Apple silicon and Intel Macs
           - Optional: [`gh`](https://cli.github.com) installed and authenticated (`gh auth login`) for GitHub data in the inspector
 
-          ## First launch
-
-          This build is ad-hoc signed and not notarized, so macOS blocks it the first time:
+          ## Install
 
           1. Download and unzip `AgentUI.zip`.
-          2. Move `AgentUI.app` to `/Applications`.
-          3. Open it once, then go to **System Settings › Privacy & Security** and click **Open Anyway**.
+          2. Move `AgentUI.app` to `/Applications` and open it.
 
-          Alternatively, remove the quarantine attribute from Terminal:
-
-          ```sh
-          xattr -dr com.apple.quarantine /Applications/AgentUI.app
-          ```
+          The app is signed with a Developer ID and notarized by Apple, so it opens like any other Mac app.
 
           `AgentUI.zip.sha256` contains the SHA-256 checksum of the archive (`shasum -a 256 -c AgentUI.zip.sha256`).
           EOF
@@ -116,4 +177,11 @@ jobs:
               --notes-file notes.md \
               --generate-notes \
               --latest
+          fi
+
+      - name: Remove signing keychain
+        if: always()
+        run: |
+          if [ -n "${SIGNING_KEYCHAIN:-}" ]; then
+            security delete-keychain "$SIGNING_KEYCHAIN" || true
           fi
