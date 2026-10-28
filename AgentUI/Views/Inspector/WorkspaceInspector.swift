@@ -1,0 +1,240 @@
+import AppKit
+import SwiftUI
+
+struct WorkspaceInspector: View {
+    @Bindable var store: WorkspaceStore
+    @AppStorage("inspectorTab") private var tab: InspectorTab = .files
+
+    var body: some View {
+        Group {
+            if let context = store.context(for: store.selection) {
+                InspectorContents(store: store, context: context, tab: tab)
+                    .id(context.worktree.id)
+            } else {
+                ContentUnavailableView("Aucun terminal sélectionné", systemImage: tab.symbol,
+                                       description: Text("Ouvre un terminal pour explorer son projet."))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .safeAreaInset(edge: .top,) {
+            Picker("Vue du panneau de droite", selection: $tab) {
+                ForEach(InspectorTab.allCases) { item in
+                    Label(item.title, systemImage: item.symbol)
+                        .labelStyle(.iconOnly)
+                        .help(item.title)
+                        .accessibilityLabel(item.title)
+                        .tag(item)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+        }
+    }
+}
+
+private struct InspectorContents: View {
+    @Bindable var store: WorkspaceStore
+    let context: TerminalContext
+    let tab: InspectorTab
+    @State private var model = InspectorStore()
+    @State private var refresh = 0
+    @State private var preview: TextPreview?
+    @State private var previewError: String?
+    @State private var loadingPreview = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(tab.title).font(.headline)
+                    Text(context.worktree.isPrimary ? context.project.name : context.worktree.name)
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(1).help(context.worktree.path)
+                }
+                Spacer()
+                if model.loading || loadingPreview { ProgressView().controlSize(.small) }
+                Button { refresh += 1 } label: { Image(systemName: "arrow.clockwise") }
+                    .buttonStyle(.borderless).help("Actualiser").accessibilityLabel("Actualiser \(tab.title)")
+            }.padding(12)
+            Divider()
+            switch tab {
+            case .files:
+                List {
+                    ExplorerDirectory(url: URL(fileURLWithPath: context.worktree.path), open: openFile)
+                }.listStyle(.plain).id(refresh)
+            case .agents: agents
+            case .git, .checks:
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 16) {
+                        if let local = model.local {
+                            if tab == .git { git(local) } else { checks(local) }
+                        } else if let error = model.localError {
+                            InspectorNotice(title: "Git indisponible", message: error, symbol: "folder.badge.questionmark")
+                        } else {
+                            Text("Lecture du dépôt…").foregroundStyle(.secondary)
+                        }
+                    }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .task(id: "\(tab.rawValue)-\(refresh)") {
+            guard tab == .git || tab == .checks else { return }
+            await model.monitor(path: context.worktree.path, forceRemote: refresh > 0)
+        }
+        .sheet(item: $preview) { TextPreviewSheet(preview: $0) }
+        .alert("Aperçu indisponible", isPresented: Binding(get: { previewError != nil }, set: { if !$0 { previewError = nil } })) {
+            Button("OK") { previewError = nil }
+        } message: { Text(previewError ?? "") }
+    }
+
+    private var agents: some View {
+        List {
+            ForEach(context.project.worktrees) { worktree in
+                Section {
+                    ForEach(worktree.terminals) { terminal in
+                        Button { store.selection = terminal.id } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "terminal")
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(terminal.name).lineLimit(1)
+                                    Text(sessionState(terminal.id)).font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 2)
+                                if store.selection == terminal.id { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+                            }.contentShape(Rectangle())
+                        }.buttonStyle(.plain).padding(.vertical, 3)
+                    }
+                    Button("Nouveau terminal", systemImage: "plus") {
+                        do { _ = try store.addTerminal(projectID: context.project.id, worktreeID: worktree.id) }
+                        catch { store.errorMessage = error.localizedDescription }
+                    }.buttonStyle(.borderless)
+                } header: { Text(worktree.isPrimary ? "Principal" : worktree.name).textCase(nil) }
+            }
+        }.listStyle(.plain)
+    }
+
+    private func sessionState(_ id: UUID) -> String {
+        guard let session = store.sessions.session(id) else { return "À ouvrir" }
+        return session.hasExited ? "Terminé" : "Ouvert"
+    }
+
+    @ViewBuilder private func git(_ local: LocalGitSnapshot) -> some View {
+        if let branch = local.branch { BranchBadge(branch: branch) }
+        LazyVStack(alignment: .leading, spacing: 8) {
+            Text("Modifications · \(local.changes.count)").font(.subheadline.weight(.semibold))
+            if local.changes.isEmpty {
+                Label("Aucune modification locale", systemImage: "checkmark.circle").foregroundStyle(.secondary).font(.callout)
+            }
+            ForEach(local.changes) { change in
+                Button {
+                    loadPreview(title: change.path, url: nil) { try await InspectorService.diff(change, at: local.root) }
+                } label: {
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(change.status).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).frame(width: 22)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(change.path).font(.callout).lineLimit(2).truncationMode(.middle)
+                            Text(change.description).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }.padding(.vertical, 3).contentShape(Rectangle())
+                }.buttonStyle(.plain).help("Afficher le diff de \(change.path)")
+            }
+        }
+        Divider()
+        githubSummary
+    }
+
+    @ViewBuilder private var githubSummary: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("GitHub").font(.subheadline.weight(.semibold))
+            if let github = model.github {
+                if let url = URL(string: github.repository.url) { Link(github.repository.nameWithOwner, destination: url).lineLimit(2) }
+                if let pr = github.pullRequest {
+                    if let url = URL(string: pr.url) { Link("#\(pr.number) · \(pr.title)", destination: url).font(.callout) }
+                    Text("\(pr.isDraft ? "Brouillon" : pr.state) · \(pr.headRefName) → \(pr.baseRefName)")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else if let error = github.pullRequestError {
+                    InspectorNotice(title: "Pull request indisponible", message: error)
+                } else { Text("Aucune pull request pour cette branche.").font(.callout).foregroundStyle(.secondary) }
+            } else if let error = model.githubError {
+                InspectorNotice(title: "Connexion GitHub indisponible", message: error)
+            } else { Text("Chargement via gh…").font(.callout).foregroundStyle(.secondary) }
+        }
+    }
+
+    @ViewBuilder private func checks(_ local: LocalGitSnapshot) -> some View {
+        githubSummary
+        if let github = model.github {
+            if let pr = github.pullRequest, let checks = pr.statusCheckRollup, !checks.isEmpty {
+                Divider()
+                Text("Checks de la pull request").font(.subheadline.weight(.semibold))
+                if pr.headRefOid != local.headSHA {
+                    Label("Ces checks concernent le commit distant de la PR, différent du HEAD local.", systemImage: "info.circle")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                ForEach(checks) { check in CheckRow(title: check.title, result: check.result, url: check.url) }
+            }
+            Divider()
+            Text("Actions · HEAD local").font(.subheadline.weight(.semibold))
+            if let sha = local.headSHA { Text(String(sha.prefix(8))).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
+            if let error = github.checksError {
+                InspectorNotice(title: "Actions indisponibles", message: error)
+            } else if github.runs.isEmpty {
+                Text(local.headSHA == nil ? "Aucun commit dans ce dépôt." : "Aucune exécution GitHub Actions pour ce commit.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            ForEach(github.runs) { run in CheckRow(title: run.workflowName.isEmpty ? run.displayTitle : run.workflowName, result: run.result, url: run.url) }
+        }
+    }
+
+    private func openFile(_ url: URL) {
+        loadPreview(title: url.lastPathComponent, url: url) { try await InspectorService.textFile(url) }
+    }
+
+    private func loadPreview(title: String, url: URL?, load: @escaping () async throws -> String) {
+        guard !loadingPreview else { return }
+        loadingPreview = true
+        Task { @MainActor in
+            defer { loadingPreview = false }
+            do { preview = try TextPreview(title: title, text: await load(), url: url) }
+            catch { previewError = error.localizedDescription }
+        }
+    }
+}
+
+struct InspectorNotice: View {
+    let title: String
+    let message: String
+    var symbol = "exclamationmark.circle"
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(title, systemImage: symbol).font(.callout.weight(.medium))
+            Text(message).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+        }
+    }
+}
+
+private struct CheckRow: View {
+    let title: String
+    let result: String
+    let url: String?
+    private var status: (symbol: String, color: Color, title: String) {
+        switch result.uppercased() {
+        case "SUCCESS": ("checkmark.circle.fill", .green, "Réussi")
+        case "FAILURE", "ERROR", "TIMED_OUT", "ACTION_REQUIRED": ("xmark.circle.fill", .red, "Échec")
+        case "CANCELLED": ("slash.circle", .secondary, "Annulé")
+        case "SKIPPED", "NEUTRAL": ("minus.circle", .secondary, "Ignoré")
+        default: ("clock", .orange, "En attente / en cours")
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: status.symbol).foregroundStyle(status.color)
+            VStack(alignment: .leading, spacing: 3) {
+                if let url, let destination = URL(string: url) { Link(title, destination: destination) }
+                else { Text(title) }
+                Text(status.title).font(.caption).foregroundStyle(.secondary)
+            }.font(.callout)
+        }.padding(.vertical, 2)
+    }
+}

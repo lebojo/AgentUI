@@ -1,0 +1,376 @@
+import AppKit
+import Observation
+
+@MainActor @Observable final class WorkspaceStore {
+    private(set) var folders: [ProjectFolder] = []
+    private(set) var projects: [Project] = []
+    private var collapsed: Set<UUID> = []
+    var selection: UUID? {
+        didSet { if oldValue != selection { save() } }
+    }
+    var state: Workspace { Workspace(folders: folders, projects: projects, selection: selection, collapsed: collapsed) }
+    private(set) var persistenceError: String?
+    private(set) var hasUnsavedChanges = false
+    @ObservationIgnored private var revision: UInt64 = 0
+    @ObservationIgnored private var persistedRevision: UInt64 = 0
+    @ObservationIgnored private var failedRevision: UInt64 = 0
+    @ObservationIgnored private var pendingSave: Task<Void, Never>?
+    @ObservationIgnored private var restoring = false
+    private let writer: WorkspaceWriter
+    var errorMessage: String?
+    var busyProjects: Set<UUID> = []
+    private(set) var isImporting = false
+    let sessions = TerminalSessions()
+    private let fileURL: URL
+    private var canSave = true
+
+    init(fileURL: URL = WorkspaceDisk.applicationDirectory.appendingPathComponent("workspace.json")) {
+        self.fileURL = fileURL
+        writer = WorkspaceWriter(fileURL: fileURL)
+        do { restore(try WorkspaceDisk.load(from: fileURL)) }
+        catch {
+            canSave = false
+            errorMessage = "Impossible de lire l’organisation. Le fichier original a été préservé : \(fileURL.path)\n\(error.localizedDescription)"
+        }
+    }
+
+    var isReadOnly: Bool { !canSave }
+
+    func retryLoading() {
+        guard isReadOnly else { return }
+        do {
+            restore(try WorkspaceDisk.load(from: fileURL))
+            canSave = true
+            errorMessage = nil
+        } catch { errorMessage = "L’organisation reste illisible. Le fichier original est conservé : \(fileURL.path)\n\(error.localizedDescription)" }
+    }
+
+    var terminalCount: Int { projects.flatMap(\.worktrees).flatMap(\.terminals).count }
+
+    func context(for terminalID: UUID?) -> TerminalContext? {
+        for project in projects {
+            for worktree in project.worktrees {
+                if let terminal = worktree.terminals.first(where: { $0.id == terminalID }) {
+                    return TerminalContext(project: project, worktree: worktree, terminal: terminal)
+                }
+            }
+        }
+        return nil
+    }
+
+    subscript(expanded id: UUID) -> Bool {
+        get { isExpanded(id) }
+        set { setExpanded(id, newValue) }
+    }
+
+    func isExpanded(_ id: UUID) -> Bool { !collapsed.contains(id) }
+    func setExpanded(_ id: UUID, _ expanded: Bool) {
+        if expanded { collapsed.remove(id) } else { collapsed.insert(id) }
+        save()
+    }
+
+    @discardableResult func addFolder(_ name: String) -> UUID {
+        let folder = ProjectFolder(name: name.trimmingCharacters(in: .whitespacesAndNewlines))
+        folders.append(folder)
+        save()
+        return folder.id
+    }
+
+    @discardableResult func addProject(_ url: URL, folderID: UUID? = nil) throws -> Project {
+        let canonical = URL(fileURLWithPath: WorkspaceDisk.canonicalPath(url))
+        var directory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: canonical.path, isDirectory: &directory), directory.boolValue else {
+            throw WorkspaceError(message: "Ce dossier n’est plus accessible : \(canonical.path)")
+        }
+        if let index = projects.firstIndex(where: { $0.path == canonical.path }) {
+            if let folderID { projects[index].folderID = folderID }
+            save()
+            return projects[index]
+        }
+        let project = Project(url: canonical, folderID: folderID)
+        projects.append(project)
+        if selection == nil { selection = project.worktrees.first?.terminals.first?.id }
+        save()
+        Task { await refreshWorktrees(project.id) }
+        return project
+    }
+
+    func chooseProjects(in folderID: UUID? = nil) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.prompt = "Ajouter"
+        panel.message = "Choisis un dépôt Git ou un dossier contenant plusieurs dépôts. Ils seront regroupés automatiquement."
+        panel.begin { [weak self] response in
+            guard response == .OK else { return }
+            Task { @MainActor in
+                do { for url in panel.urls { try await self?.addLocation(url, folderID: folderID) } }
+                catch { self?.errorMessage = error.localizedDescription }
+            }
+        }
+    }
+
+    func chooseFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.prompt = "Importer"
+        panel.message = "Les dépôts Git de ce dossier seront ajoutés comme projets sous un dossier virtuel. Les fichiers restent à leur emplacement."
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            Task { @MainActor in await self?.importFolder(url) }
+        }
+    }
+
+    /// The normal Add action also recognizes a container of repositories.
+    func addLocation(_ url: URL, folderID: UUID? = nil) async throws {
+        guard !isReadOnly, !isImporting else { return }
+        isImporting = true
+        defer { isImporting = false }
+        let discovery = try await Task.detached(priority: .userInitiated) {
+            try RepositoryDiscovery.scan(in: url)
+        }.value
+        let repositories = discovery.repositories
+        if repositories.isEmpty, let warning = discovery.warning {
+            throw WorkspaceError(message: warning)
+        }
+        isImporting = false
+        if repositories.isEmpty || (repositories.count == 1 && repositories[0].path == WorkspaceDisk.canonicalPath(url)) {
+            _ = try addProject(url, folderID: folderID)
+        } else {
+            await importFolder(url, discovery: discovery, into: folderID)
+        }
+    }
+
+    func importFolder(_ url: URL, discovery discovered: RepositoryDiscoveryResult? = nil, into targetFolderID: UUID? = nil) async {
+        guard !isReadOnly, !isImporting else { return }
+        isImporting = true
+        defer { isImporting = false }
+        do {
+            let discovery: RepositoryDiscoveryResult
+            if let discovered { discovery = discovered }
+            else {
+                discovery = try await Task.detached(priority: .userInitiated) {
+                    try RepositoryDiscovery.scan(in: url)
+                }.value
+            }
+            let repositories = discovery.repositories
+            guard !repositories.isEmpty else {
+                throw WorkspaceError(message: discovery.warning ?? "Aucun dépôt Git trouvé dans ce dossier. Choisis le dossier qui contient tes dépôts, ou utilise Ajouter un projet pour un dossier sans Git.")
+            }
+            let sourcePath = WorkspaceDisk.canonicalPath(url)
+            let folderID: UUID
+            if let targetFolderID, folders.contains(where: { $0.id == targetFolderID }) {
+                folderID = targetFolderID
+            } else if let folder = folders.first(where: { $0.sourcePath == sourcePath }) {
+                folderID = folder.id
+            } else {
+                let folder = ProjectFolder(name: url.lastPathComponent, sourcePath: sourcePath)
+                folderID = folder.id
+                folders.append(folder)
+            }
+            // Batch the import: preserve existing IDs, terminal sessions and custom names,
+            // and write the organization just once, even for a large set of repositories.
+            var addedIDs: [UUID] = []
+            for repository in repositories {
+                let path = WorkspaceDisk.canonicalPath(repository)
+                if let index = projects.firstIndex(where: { $0.path == path }) {
+                    projects[index].folderID = folderID
+                } else {
+                    let project = Project(url: repository, folderID: folderID)
+                    projects.append(project)
+                    addedIDs.append(project.id)
+                }
+            }
+            collapsed.remove(folderID)
+            if selection == nil {
+                selection = projects.first(where: { $0.folderID == folderID })?.worktrees.first?.terminals.first?.id
+            }
+            save()
+            // Discover associated worktrees sequentially, avoiding a burst of Git processes.
+            for id in addedIDs { await refreshWorktrees(id) }
+            if let warning = discovery.warning {
+                errorMessage = "Les dépôts accessibles ont été ajoutés.\n\n" + warning
+            }
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func moveProject(_ id: UUID, to folderID: UUID?) {
+        guard let index = projects.firstIndex(where: { $0.id == id }) else { return }
+        projects[index].folderID = folderID
+        if let folderID { collapsed.remove(folderID) }
+        save()
+    }
+
+    func rename(_ id: UUID, to name: String) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        if let index = folders.firstIndex(where: { $0.id == id }) { folders[index].name = name }
+        for p in projects.indices {
+            if projects[p].id == id { projects[p].name = name }
+            for w in projects[p].worktrees.indices {
+                for t in projects[p].worktrees[w].terminals.indices where projects[p].worktrees[w].terminals[t].id == id {
+                    projects[p].worktrees[w].terminals[t].name = name
+                }
+            }
+        }
+        save()
+    }
+
+    func removeFolder(_ id: UUID) {
+        folders.removeAll { $0.id == id }
+        for index in projects.indices where projects[index].folderID == id { projects[index].folderID = nil }
+        collapsed.remove(id)
+        save()
+    }
+
+    func removeProject(_ id: UUID) {
+        guard !busyProjects.contains(id), let project = projects.first(where: { $0.id == id }) else { return }
+        for terminal in project.worktrees.flatMap(\.terminals) { sessions.close(terminal.id) }
+        projects.removeAll { $0.id == id }
+        repairSelection()
+        save()
+    }
+
+    @discardableResult func addTerminal(projectID: UUID, worktreeID: UUID, name: String = "Terminal", command: [String] = [], select: Bool = true) throws -> TerminalContext {
+        guard let p = projects.firstIndex(where: { $0.id == projectID }),
+              let w = projects[p].worktrees.firstIndex(where: { $0.id == worktreeID }) else {
+            throw WorkspaceError(message: "Projet ou worktree introuvable.")
+        }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let terminal = TerminalRecord(name: trimmed.isEmpty ? "Terminal" : trimmed)
+        projects[p].worktrees[w].terminals.append(terminal)
+        reveal(projectID: projectID, worktreeID: worktreeID)
+        if select { selection = terminal.id }
+        save()
+        let context = context(for: terminal.id)!
+        // Start immediately, including agent-created terminals that do not steal selection.
+        sessions.start(context, command: command)
+        return context
+    }
+
+    func closeTerminal(_ id: UUID) {
+        let previous = context(for: id)
+        sessions.close(id)
+        for p in projects.indices {
+            for w in projects[p].worktrees.indices {
+                projects[p].worktrees[w].terminals.removeAll { $0.id == id }
+            }
+        }
+        if selection == id {
+            let project = projects.first { $0.id == previous?.project.id }
+            selection = project?.worktrees.first(where: { $0.id == previous?.worktree.id })?.terminals.first?.id
+                ?? project?.worktrees.flatMap(\.terminals).first?.id
+        }
+        save()
+    }
+
+    func wakeProject(_ id: UUID) {
+        guard !isReadOnly, let project = projects.first(where: { $0.id == id }),
+              project.worktrees.allSatisfy({ $0.terminals.isEmpty }),
+              let worktree = project.worktrees.first(where: \.isPrimary) ?? project.worktrees.first else { return }
+        do { _ = try addTerminal(projectID: id, worktreeID: worktree.id) }
+        catch { errorMessage = error.localizedDescription }
+    }
+
+    @discardableResult func createWorktree(projectID: UUID, branch: String, command: [String] = [], select: Bool = true) async throws -> TerminalContext {
+        guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: "Une opération Git est déjà en cours sur ce projet.") }
+        guard let project = projects.first(where: { $0.id == projectID }) else { throw WorkspaceError(message: "Projet introuvable.") }
+        busyProjects.insert(projectID)
+        defer { busyProjects.remove(projectID) }
+        let worktree: Worktree
+        do { worktree = try await GitService.createWorktree(project: project, branch: branch) }
+        catch let error as WorktreeCreationError {
+            // Recovery runs outside the cancelled task and does not delete anything.
+            let recovered = await Task.detached {
+                try? await GitService.existingWorktrees(project: project)
+            }.value
+            if let index = projects.firstIndex(where: { $0.id == projectID }),
+               var partial = recovered?.first(where: { $0.path == error.path }),
+               !projects[index].worktrees.contains(where: { $0.path == partial.path }) {
+                partial.terminals = []
+                projects[index].worktrees.append(partial)
+                reveal(projectID: projectID, worktreeID: partial.id)
+                save()
+            }
+            throw error
+        }
+        guard let index = projects.firstIndex(where: { $0.id == projectID }) else { throw WorkspaceError(message: "Le projet a été retiré.") }
+        projects[index].worktrees.append(worktree)
+        reveal(projectID: projectID, worktreeID: worktree.id)
+        let terminal = worktree.terminals[0]
+        if select { selection = terminal.id }
+        save()
+        let context = context(for: terminal.id)!
+        sessions.start(context, command: command)
+        return context
+    }
+
+    func refreshWorktrees(_ id: UUID) async {
+        guard !busyProjects.contains(id), let project = projects.first(where: { $0.id == id }) else { return }
+        // Ordinary non-Git folders remain valid projects.
+        guard let discovered = try? await GitService.existingWorktrees(project: project),
+              !busyProjects.contains(id),
+              let index = projects.firstIndex(where: { $0.id == id }) else { return }
+        for worktree in discovered where !projects[index].worktrees.contains(where: { $0.path == worktree.path }) {
+            projects[index].worktrees.append(worktree)
+        }
+        save()
+    }
+
+    private func reveal(projectID: UUID, worktreeID: UUID) {
+        collapsed.remove(projectID)
+        collapsed.remove(worktreeID)
+        if let folder = projects.first(where: { $0.id == projectID })?.folderID { collapsed.remove(folder) }
+    }
+
+    private func repairSelection() {
+        if context(for: selection) == nil { selection = projects.flatMap(\.worktrees).flatMap(\.terminals).first?.id }
+    }
+
+    private func restore(_ snapshot: Workspace) {
+        restoring = true
+        folders = snapshot.folders
+        projects = snapshot.projects
+        collapsed = snapshot.collapsed
+        selection = snapshot.selection
+        restoring = false
+    }
+
+    private func save() {
+        guard canSave, !restoring else { return }
+        revision += 1
+        hasUnsavedChanges = true
+        pendingSave?.cancel()
+        pendingSave = Task { [weak self] in
+            do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+            try? await self?.persistSnapshot()
+        }
+    }
+
+    /// Call before acknowledging a CLI mutation or quitting; never block the UI thread.
+    func flushPersistence() async throws {
+        pendingSave?.cancel()
+        pendingSave = nil
+        try await persistSnapshot()
+    }
+
+    private func persistSnapshot() async throws {
+        guard canSave, hasUnsavedChanges else { return }
+        let requestedRevision = revision
+        let snapshot = state
+        do {
+            try await writer.write(snapshot, revision: requestedRevision)
+            persistedRevision = max(persistedRevision, requestedRevision)
+            hasUnsavedChanges = revision > persistedRevision
+            if requestedRevision >= failedRevision { persistenceError = nil }
+        } catch {
+            // A newer successful write supersedes failures from an older request.
+            guard requestedRevision > persistedRevision else { return }
+            failedRevision = max(failedRevision, requestedRevision)
+            persistenceError = "Modifications non sauvegardées : \(error.localizedDescription)"
+            throw WorkspaceError(message: "L’opération a été appliquée en mémoire, mais sa sauvegarde a échoué. Réessaie la sauvegarde dans l’application avant de relancer la commande. \(error.localizedDescription)")
+        }
+    }
+}

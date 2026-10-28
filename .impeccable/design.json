@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T15:08:57.435144+00:00",
+  "title": "Design System: AgentUI",
+  "extensions": {},
+  "components": [],
+  "narrative": {
+    "northStar": "L’espace de travail natif",
+    "overview": "Une interface compacte inspirée de la hiérarchie Orca, avec les conventions de navigation de macOS. La barre latérale organise le travail ; le terminal interactif occupe le centre et un inspecteur natif repliable donne accès au contexte du worktree sélectionné. La précision des libellés, la sélection native et les actions contextuelles portent l’identité.",
+    "keyCharacteristics": [
+      "Hiérarchie explicite, densité compacte et terminal au premier plan.",
+      "Contrôles SwiftUI, SF Symbols et couleurs sémantiques du système.",
+      "Libellés français directs, chemins et états accessibles sans surcharge."
+    ],
+    "rules": [
+      {
+        "name": "The Semantic Color Rule",
+        "body": "Garder les couleurs sémantiques et les états natifs ; une capture de leur apparence ne définit pas une palette permanente.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do conserver la hiérarchie dossier → projet → terminaux et worktrees → terminaux.",
+      "Do privilégier les contrôles natifs, les SF Symbols et les couleurs sémantiques.",
+      "Do maintenir le terminal comme surface principale et rendre les actions locales compréhensibles.",
+      "Do garder l’inspecteur repliable et lié au contexte sélectionné."
+    ],
+    "donts": [
+      "Don't présenter le point vert comme une activité d’agent.",
+      "Don't remplacer les matériaux système par des couleurs déduites des captures invalides.",
+      "Don't confondre les checks du HEAD distant de la PR avec les Actions du HEAD local.",
+      "Don't ajouter d’animations décoratives à cette interface centrée sur le terminal."
+    ]
+  }
+}
