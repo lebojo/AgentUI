@@ -3,6 +3,7 @@ import AppKit
 
 struct WorkspaceSidebar: View {
     @State private var search = ""
+    @State private var filtered = SidebarFilterResult()
 
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
@@ -51,11 +52,13 @@ struct WorkspaceSidebar: View {
                 sheet: $sheet,
                 removal: $removal,
                 store: store,
-                result: SidebarFilterInput(folders: store.folders, projects: store.projects, query: search).filtered(),
+                result: filtered,
                 query: search
             )
             SidebarFooter(store: store)
-
+        }
+        .onChange(of: SidebarFilterInput(folders: store.folders, projects: store.projects, query: search), initial: true) { _, input in
+            filtered = input.filtered()
         }
     }
 }
