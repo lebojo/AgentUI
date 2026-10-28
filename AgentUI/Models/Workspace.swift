@@ -129,6 +129,15 @@ enum WorkspaceDisk {
         return defaultApplicationDirectory
     }
 
+    static var worktreesDirectory: URL {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["AGENTUI_STATE_DIRECTORY"] != nil {
+            return applicationDirectory.appendingPathComponent("Worktrees", isDirectory: true)
+        }
+        #endif
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("agentui", isDirectory: true)
+    }
+
     private static var defaultApplicationDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("AgentUI", isDirectory: true)

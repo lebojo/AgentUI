@@ -7,7 +7,7 @@ enum GitService {
         return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    static func createWorktree(project: Project, branch: String, root: URL = WorkspaceDisk.applicationDirectory, timeout: TimeInterval = 90) async throws -> Worktree {
+    static func createWorktree(project: Project, branch: String, root: URL = WorkspaceDisk.worktreesDirectory, timeout: TimeInterval = 90) async throws -> Worktree {
         guard !branch.isEmpty, !branch.hasPrefix("-") else {
             throw WorkspaceError(message: "Indique un nom de branche, par exemple feature/interface.")
         }
@@ -17,9 +17,8 @@ enum GitService {
             throw WorkspaceError(message: "La branche « \(branch) » est déjà utilisée par un autre worktree ou par le dossier du projet.")
         }
         if source == .new { _ = try await run(["rev-parse", "--verify", "HEAD"], at: project.path, timeout: 10) }
-        let destination = root.appendingPathComponent("Worktrees").appendingPathComponent(project.id.uuidString)
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let destination = availableDestination(in: root, name: "\(project.name)-\(branch.replacingOccurrences(of: "/", with: "-"))")
         do {
             let arguments = source == .new ? ["worktree", "add", "-b", branch, destination.path, "HEAD"] : ["worktree", "add", destination.path, branch]
             _ = try await run(arguments, at: project.path, timeout: timeout)
@@ -50,6 +49,16 @@ enum GitService {
         if let marker = local.first { return marker == "*" || marker == "+" ? .checkedOut : .local }
         let remote = try await run(["branch", "--remotes", "--list", "*/" + branch], at: path, timeout: 10)
         return remote.isEmpty ? .new : .remote
+    }
+
+    private static func availableDestination(in root: URL, name: String) -> URL {
+        var destination = root.appendingPathComponent(name, isDirectory: true)
+        var suffix = 2
+        while FileManager.default.fileExists(atPath: destination.path) {
+            destination = root.appendingPathComponent("\(name)-\(suffix)", isDirectory: true)
+            suffix += 1
+        }
+        return destination
     }
 
     static func existingWorktrees(project: Project) async throws -> [Worktree] {
