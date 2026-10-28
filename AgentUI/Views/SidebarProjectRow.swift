@@ -47,7 +47,7 @@ struct SidebarProjectRow: View {
             }
         } label: {
             HStack(spacing: 7) {
-                Image(systemName: "shippingbox").foregroundStyle(.secondary)
+                Image(systemName: project.appearance.displaySymbol.systemName).foregroundStyle(project.appearance.color)
                 Button {
                     if project.worktrees.allSatisfy({ $0.terminals.isEmpty }) { store.wakeProject(project.id) }
                     else { store.setExpanded(project.id, !store.isExpanded(project.id)) }
@@ -81,9 +81,13 @@ struct SidebarProjectRow: View {
                     .disabled(store.busyProjects.contains(project.id))
                 Menu("Déplacer vers", systemImage: "folder") {
                     Button("Sans dossier") { store.moveProject(project.id, to: nil) }
-                    ForEach(store.folders) { folder in Button(folder.name) { store.moveProject(project.id, to: folder.id) } }
+                        .disabled(project.folderID == nil)
+                    ForEach(store.folders.destinations()) { destination in
+                        Button(destination.title) { store.moveProject(project.id, to: destination.id) }
+                            .disabled(project.folderID == destination.id)
+                    }
                 }
-                Button("Renommer…", systemImage: "pencil") { sheet = .rename(project.id, project.name) }
+                Button("Renommer et personnaliser…", systemImage: "paintpalette") { sheet = .rename(project.id, project.name) }
                 Button("Afficher dans le Finder", systemImage: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) }
                 Button("Actualiser les worktrees", systemImage: "arrow.clockwise") { Task { await store.refreshWorktrees(project.id) } }
                     .disabled(store.busyProjects.contains(project.id))

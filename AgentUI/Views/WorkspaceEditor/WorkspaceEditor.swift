@@ -1,12 +1,12 @@
 import SwiftUI
 
 enum WorkspaceSheet: Identifiable {
-    case folder
+    case folder(parentID: UUID?)
     case rename(UUID, String)
     case worktree(UUID, String)
     var id: String {
         switch self {
-        case .folder: "folder"
+        case .folder(let parentID): "folder-\(parentID?.uuidString ?? "root")"
         case .rename(let id, _): "rename-\(id)"
         case .worktree(let id, _): "worktree-\(id)"
         }
@@ -21,18 +21,27 @@ struct WorkspaceEditor: View {
     @State private var submitting = false
     @State private var submission: Task<Void, Never>?
     @State private var error: String?
+    @State private var appearance: SidebarAppearance?
     @FocusState private var focused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Label(title, systemImage: isWorktree ? "arrow.triangle.branch" : "folder")
-                .font(.title3.weight(.semibold))
+            Label {
+                Text(title)
+            } icon: {
+                Image(systemName: appearance?.displaySymbol.systemName ?? (isWorktree ? "arrow.triangle.branch" : "pencil"))
+                    .foregroundStyle(appearance?.color ?? .accentColor)
+            }
+            .font(.title3.weight(.semibold))
             Text(explanation).foregroundStyle(.secondary).font(.callout).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 6) {
                 Text(isWorktree ? "Nouvelle branche" : "Nom").font(.callout.weight(.medium))
                 TextField(isWorktree ? "feature/ma-tache" : "Mes projets", text: $name)
                     .textFieldStyle(.roundedBorder).focused($focused)
                     .onSubmit { submit() }.disabled(submitting)
+            }
+            if let appearance = Binding($appearance) {
+                SidebarAppearancePicker(appearance: appearance)
             }
             if let error {
                 Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled)
@@ -52,7 +61,13 @@ struct WorkspaceEditor: View {
         .padding(24).frame(width: 440)
         .interactiveDismissDisabled(submitting)
         .onAppear {
-            if case .rename(_, let current) = sheet { name = current }
+            switch sheet {
+            case .folder: appearance = SidebarAppearance(kind: .folder)
+            case .rename(let id, let current):
+                name = current
+                appearance = store.appearance(of: id)
+            case .worktree: break
+            }
             focused = true
         }
     }
@@ -60,15 +75,16 @@ struct WorkspaceEditor: View {
     private var isWorktree: Bool { if case .worktree = sheet { true } else { false } }
     private var title: String {
         switch sheet {
-        case .folder: "Nouveau dossier virtuel"
-        case .rename: "Renommer"
+        case .folder(nil): "Nouveau dossier virtuel"
+        case .folder: "Nouveau sous-dossier"
+        case .rename: appearance == nil ? "Renommer" : "Modifier"
         case .worktree: "Nouveau worktree"
         }
     }
     private var explanation: String {
         switch sheet {
         case .folder: "Réunis des projets situés à différents endroits sur ton Mac. Leurs fichiers restent en place."
-        case .rename: "Ce nom sera affiché dans la barre latérale."
+        case .rename: appearance == nil ? "Ce nom sera affiché dans la barre latérale." : "Ce nom, cette icône et cette couleur seront affichés dans la barre latérale."
         case .worktree(_, let project): "Crée une nouvelle branche depuis HEAD de \(project), dans un dossier de travail séparé. Un terminal y sera ouvert."
         }
     }
@@ -76,8 +92,14 @@ struct WorkspaceEditor: View {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !submitting else { return }
         switch sheet {
-        case .folder: store.addFolder(trimmed); dismiss()
-        case .rename(let id, _): store.rename(id, to: trimmed); dismiss()
+        case .folder(let parentID):
+            let id = store.addFolder(trimmed, parentID: parentID)
+            if let appearance { store.setAppearance(appearance, for: id) }
+            dismiss()
+        case .rename(let id, _):
+            store.rename(id, to: trimmed)
+            if let appearance { store.setAppearance(appearance, for: id) }
+            dismiss()
         case .worktree(let project, _):
             submitting = true
             error = nil

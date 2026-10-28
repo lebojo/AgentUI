@@ -135,7 +135,7 @@ import Foundation
             } catch is CocoaError {}
         }
         let oldFolder = try JSONDecoder().decode(ProjectFolder.self, from: Data("{\"id\":\"\(UUID().uuidString)\",\"name\":\"Existing\"}".utf8))
-        try require(oldFolder.sourcePath == nil, "Old virtual folders decode without sourcePath")
+        try require(oldFolder.sourcePath == nil && oldFolder.parentID == nil && oldFolder.appearance == SidebarAppearance(kind: .folder), "Old virtual folders decode without sourcePath, parent or appearance")
         try require(TerminalProcessDirectory.read(pid: getpid()) != nil, "Read native process cwd")
         print("PASS recursive repository import, gitfiles, symlink deduplication and backward compatibility")
         try await InspectorTests.run(root: root, repository: repository, unborn: unborn)

@@ -17,7 +17,7 @@ struct WorkspaceSidebar: View {
                         .keyboardShortcut("o")
                     Button("Importer un dossier…", systemImage: "square.and.arrow.down") { store.chooseFolder() }
                     Divider()
-                    Button("Nouveau dossier virtuel…", systemImage: "folder.badge.plus") { sheet = .folder }
+                    Button("Nouveau dossier virtuel…", systemImage: "folder.badge.plus") { sheet = .folder(parentID: nil) }
                         .keyboardShortcut("n", modifiers: [.command, .shift])
                 } label: {
                     Image(systemName: "plus").frame(width: 24, height: 24)
@@ -48,38 +48,7 @@ struct WorkspaceSidebar: View {
             List(selection: $store.selection) {
                 Section {
                     ForEach(filtered.groups) { group in
-                        let folder = group.folder
-                        DisclosureGroup(isExpanded: expanded(folder.id)) {
-                            let projects = group.projects
-                            ForEach(projects) { project in
-                                SidebarProjectRow(store: store, project: project, query: search, showAll: matches(folder.name), sheet: $sheet, removal: $removal)
-                            }
-                            if projects.isEmpty {
-                                Button("Ajouter un projet…") { store.chooseProjects(in: folder.id) }
-                                    .font(.system(size: 12)).foregroundStyle(.secondary)
-                                    .buttonStyle(.plain).padding(.vertical, 4)
-                            }
-                        } label: {
-                            HStack {
-                                Label(folder.name, systemImage: "folder")
-                                    .fontWeight(.medium).lineLimit(1)
-                                Spacer(minLength: 4)
-                                Text("\(group.total)")
-                                    .font(.caption).monospacedDigit().foregroundStyle(.secondary)
-                            }
-                            .help(folder.name)
-                            .contextMenu {
-                                Button("Ajouter des projets…", systemImage: "plus") { store.chooseProjects(in: folder.id) }
-                                Button("Renommer…", systemImage: "pencil") { sheet = .rename(folder.id, folder.name) }
-                                Divider()
-                                Button("Dissoudre le dossier", systemImage: "folder.badge.minus") { store.removeFolder(folder.id) }
-                            }
-                        }
-                        .dropDestination(for: String.self) { values, _ in
-                            guard let value = values.first, let id = UUID(uuidString: value), store.projects.contains(where: { $0.id == id }) else { return false }
-                            store.moveProject(id, to: folder.id)
-                            return true
-                        }
+                        SidebarFolderRow(store: store, group: group, query: search, sheet: $sheet, removal: $removal)
                     }
                     ForEach(filtered.ungrouped) { project in
                         SidebarProjectRow(store: store, project: project, query: search, showAll: false, sheet: $sheet, removal: $removal)
@@ -107,11 +76,6 @@ struct WorkspaceSidebar: View {
         .onChange(of: SidebarFilterInput(folders: store.folders, projects: store.projects, query: search), initial: true) { _, input in
             filtered = input.filtered()
         }
-    }
-
-    private func matches(_ value: String) -> Bool { search.isEmpty || value.localizedStandardContains(search) }
-    private func expanded(_ id: UUID) -> Binding<Bool> {
-        search.isEmpty ? $store[expanded: id] : .constant(true)
     }
 }
 
@@ -146,7 +110,7 @@ struct WorkspaceWelcomeView: View {
                 Button("Ajouter un projet…") { store.chooseProjects() }.buttonStyle(.borderedProminent)
                 Button("Importer un dossier…") { store.chooseFolder() }
             }.padding(.top, 6)
-            Button("Créer un dossier virtuel") { sheet = .folder }.buttonStyle(.link).font(.system(size: 12))
+            Button("Créer un dossier virtuel") { sheet = .folder(parentID: nil) }.buttonStyle(.link).font(.system(size: 12))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .textBackgroundColor))

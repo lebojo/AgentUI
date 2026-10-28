@@ -69,11 +69,51 @@ import Observation
         save()
     }
 
-    @discardableResult func addFolder(_ name: String) -> UUID {
-        let folder = ProjectFolder(name: name.trimmingCharacters(in: .whitespacesAndNewlines))
+    @discardableResult func addFolder(_ name: String, parentID: UUID? = nil) -> UUID {
+        let parentID = parentID.flatMap { id in folders.contains { $0.id == id } ? id : nil }
+        let folder = ProjectFolder(name: name.trimmingCharacters(in: .whitespacesAndNewlines), parentID: parentID)
         folders.append(folder)
+        if let parentID { revealFolder(parentID) }
         save()
         return folder.id
+    }
+
+    func canMoveFolder(_ id: UUID, to parentID: UUID?) -> Bool {
+        guard let folder = folders.first(where: { $0.id == id }), folder.parentID != parentID else { return false }
+        guard let parentID else { return true }
+        return folders.contains { $0.id == parentID } && !folders.subtree(of: id).contains(parentID)
+    }
+
+    func moveFolder(_ id: UUID, to parentID: UUID?) {
+        guard canMoveFolder(id, to: parentID), let index = folders.firstIndex(where: { $0.id == id }) else { return }
+        folders[index].parentID = parentID
+        if let parentID { revealFolder(parentID) }
+        save()
+    }
+
+    func drop(_ id: UUID, into folderID: UUID) -> Bool {
+        if projects.contains(where: { $0.id == id }) {
+            moveProject(id, to: folderID)
+            return true
+        }
+        guard canMoveFolder(id, to: folderID) else { return false }
+        moveFolder(id, to: folderID)
+        return true
+    }
+
+    func appearance(of id: UUID) -> SidebarAppearance? {
+        folders.first { $0.id == id }?.appearance ?? projects.first { $0.id == id }?.appearance
+    }
+
+    func setAppearance(_ appearance: SidebarAppearance, for id: UUID) {
+        if let index = folders.firstIndex(where: { $0.id == id }) {
+            folders[index].symbol = appearance.symbol
+            folders[index].tint = appearance.tint
+        } else if let index = projects.firstIndex(where: { $0.id == id }) {
+            projects[index].symbol = appearance.symbol
+            projects[index].tint = appearance.tint
+        } else { return }
+        save()
     }
 
     @discardableResult func addProject(_ url: URL, folderID: UUID? = nil) throws -> Project {
@@ -123,7 +163,6 @@ import Observation
         }
     }
 
-    /// The normal Add action also recognizes a container of repositories.
     func addLocation(_ url: URL, folderID: UUID? = nil) async throws {
         guard !isReadOnly, !isImporting else { return }
         isImporting = true
@@ -170,8 +209,6 @@ import Observation
                 folderID = folder.id
                 folders.append(folder)
             }
-            // Batch the import: preserve existing IDs, terminal sessions and custom names,
-            // and write the organization just once, even for a large set of repositories.
             var addedIDs: [UUID] = []
             for repository in repositories {
                 let path = WorkspaceDisk.canonicalPath(repository)
@@ -183,12 +220,11 @@ import Observation
                     addedIDs.append(project.id)
                 }
             }
-            collapsed.remove(folderID)
+            revealFolder(folderID)
             if selection == nil {
                 selection = projects.first(where: { $0.folderID == folderID })?.worktrees.first?.terminals.first?.id
             }
             save()
-            // Discover associated worktrees sequentially, avoiding a burst of Git processes.
             for id in addedIDs { await refreshWorktrees(id) }
             if let warning = discovery.warning {
                 errorMessage = "Les dépôts accessibles ont été ajoutés.\n\n" + warning
@@ -199,7 +235,7 @@ import Observation
     func moveProject(_ id: UUID, to folderID: UUID?) {
         guard let index = projects.firstIndex(where: { $0.id == id }) else { return }
         projects[index].folderID = folderID
-        if let folderID { collapsed.remove(folderID) }
+        if let folderID { revealFolder(folderID) }
         save()
     }
 
@@ -219,8 +255,11 @@ import Observation
     }
 
     func removeFolder(_ id: UUID) {
+        guard let removed = folders.first(where: { $0.id == id }) else { return }
+        let parentID = removed.parentID.flatMap { parent in folders.contains { $0.id == parent } ? parent : nil }
         folders.removeAll { $0.id == id }
-        for index in projects.indices where projects[index].folderID == id { projects[index].folderID = nil }
+        for index in folders.indices where folders[index].parentID == id { folders[index].parentID = parentID }
+        for index in projects.indices where projects[index].folderID == id { projects[index].folderID = parentID }
         collapsed.remove(id)
         save()
     }
@@ -245,7 +284,6 @@ import Observation
         if select { selection = terminal.id }
         save()
         let context = context(for: terminal.id)!
-        // Start immediately, including agent-created terminals that do not steal selection.
         sessions.start(context, command: command)
         return context
     }
@@ -282,7 +320,6 @@ import Observation
         let worktree: Worktree
         do { worktree = try await GitService.createWorktree(project: project, branch: branch) }
         catch let error as WorktreeCreationError {
-            // Recovery runs outside the cancelled task and does not delete anything.
             let recovered = await Task.detached {
                 try? await GitService.existingWorktrees(project: project)
             }.value
@@ -309,7 +346,6 @@ import Observation
 
     func refreshWorktrees(_ id: UUID) async {
         guard !busyProjects.contains(id), let project = projects.first(where: { $0.id == id }) else { return }
-        // Ordinary non-Git folders remain valid projects.
         guard let discovered = try? await GitService.existingWorktrees(project: project),
               !busyProjects.contains(id),
               let index = projects.firstIndex(where: { $0.id == id }) else { return }
@@ -322,7 +358,12 @@ import Observation
     private func reveal(projectID: UUID, worktreeID: UUID) {
         collapsed.remove(projectID)
         collapsed.remove(worktreeID)
-        if let folder = projects.first(where: { $0.id == projectID })?.folderID { collapsed.remove(folder) }
+        if let folder = projects.first(where: { $0.id == projectID })?.folderID { revealFolder(folder) }
+    }
+
+    private func revealFolder(_ id: UUID) {
+        collapsed.remove(id)
+        for ancestor in folders.ancestors(of: id) { collapsed.remove(ancestor) }
     }
 
     private func repairSelection() {
@@ -349,7 +390,6 @@ import Observation
         }
     }
 
-    /// Call before acknowledging a CLI mutation or quitting; never block the UI thread.
     func flushPersistence() async throws {
         pendingSave?.cancel()
         pendingSave = nil
@@ -366,7 +406,6 @@ import Observation
             hasUnsavedChanges = revision > persistedRevision
             if requestedRevision >= failedRevision { persistenceError = nil }
         } catch {
-            // A newer successful write supersedes failures from an older request.
             guard requestedRevision > persistedRevision else { return }
             failedRevision = max(failedRevision, requestedRevision)
             persistenceError = "Modifications non sauvegardées : \(error.localizedDescription)"
