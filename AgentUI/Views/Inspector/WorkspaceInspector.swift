@@ -45,16 +45,16 @@ private struct InspectorContents: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(tab.title).font(.headline)
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
+                    Text(tab.title).font(Typography.headline)
                     Text(context.worktree.isPrimary ? context.project.name : context.worktree.name)
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1).help(context.worktree.path)
+                        .font(Typography.caption).foregroundStyle(Palette.textSecondary).lineLimit(1).help(context.worktree.path)
                 }
                 Spacer()
                 if model.loading || loadingPreview { ProgressView().controlSize(.small) }
                 Button { refresh += 1 } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.borderless).help("Actualiser").accessibilityLabel("Actualiser \(tab.title)")
-            }.padding(12)
+            }.padding(Spacing.l)
             Divider()
             switch tab {
             case .files:
@@ -64,15 +64,15 @@ private struct InspectorContents: View {
             case .agents: AgentConversationList(store: store, context: context, refresh: refresh)
             case .git, .checks:
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 16) {
+                    LazyVStack(alignment: .leading, spacing: Spacing.xl) {
                         if let local = model.local {
                             if tab == .git { git(local) } else { checks(local) }
                         } else if let error = model.localError {
                             InspectorNotice(title: "Git indisponible", message: error, symbol: "folder.badge.questionmark")
                         } else {
-                            Text("Lecture du dépôt…").foregroundStyle(.secondary)
+                            Text("Lecture du dépôt…").foregroundStyle(Palette.textSecondary)
                         }
-                    }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                    }.padding(Spacing.l).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
@@ -88,23 +88,23 @@ private struct InspectorContents: View {
 
     @ViewBuilder private func git(_ local: LocalGitSnapshot) -> some View {
         if let branch = local.branch { BranchBadge(branch: branch) }
-        LazyVStack(alignment: .leading, spacing: 8) {
-            Text("Modifications · \(local.changes.count)").font(.subheadline.weight(.semibold))
+        LazyVStack(alignment: .leading, spacing: Spacing.m) {
+            Text("Modifications · \(local.changes.count)").font(Typography.sectionTitle)
             if local.changes.isEmpty {
-                Label("Aucune modification locale", systemImage: "checkmark.circle").foregroundStyle(.secondary).font(.callout)
+                Label("Aucune modification locale", systemImage: "checkmark.circle").foregroundStyle(Palette.textSecondary).font(Typography.body)
             }
             ForEach(local.changes) { change in
                 Button {
                     loadPreview(title: change.path, url: nil) { try await InspectorService.diff(change, at: local.root) }
                 } label: {
-                    HStack(alignment: .top, spacing: 8) {
-                        Text(change.status).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).frame(width: 22)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(change.path).font(.callout).lineLimit(2).truncationMode(.middle)
-                            Text(change.description).font(.caption).foregroundStyle(.secondary)
+                    HStack(alignment: .top, spacing: Spacing.m) {
+                        Text(change.status).font(Typography.captionMono).foregroundStyle(Palette.textSecondary).frame(width: Dimension.Inspector.statusColumnWidth)
+                        VStack(alignment: .leading, spacing: Spacing.xxs) {
+                            Text(change.path).font(Typography.body).lineLimit(2).truncationMode(.middle)
+                            Text(change.description).font(Typography.caption).foregroundStyle(Palette.textSecondary)
                         }
                         Spacer(minLength: 0)
-                    }.padding(.vertical, 3).contentShape(Rectangle())
+                    }.padding(.vertical, Spacing.xxs).contentShape(Rectangle())
                 }.buttonStyle(.plain).help("Afficher le diff de \(change.path)")
             }
         }
@@ -113,20 +113,20 @@ private struct InspectorContents: View {
     }
 
     @ViewBuilder private var githubSummary: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("GitHub").font(.subheadline.weight(.semibold))
+        VStack(alignment: .leading, spacing: Spacing.m) {
+            Text("GitHub").font(Typography.sectionTitle)
             if let github = model.github {
                 if let url = URL(string: github.repository.url) { Link(github.repository.nameWithOwner, destination: url).lineLimit(2) }
                 if let pr = github.pullRequest {
-                    if let url = URL(string: pr.url) { Link("#\(pr.number) · \(pr.title)", destination: url).font(.callout) }
+                    if let url = URL(string: pr.url) { Link("#\(pr.number) · \(pr.title)", destination: url).font(Typography.body) }
                     Text("\(pr.isDraft ? "Brouillon" : pr.state) · \(pr.headRefName) → \(pr.baseRefName)")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 } else if let error = github.pullRequestError {
                     InspectorNotice(title: "Pull request indisponible", message: error)
-                } else { Text("Aucune pull request pour cette branche.").font(.callout).foregroundStyle(.secondary) }
+                } else { Text("Aucune pull request pour cette branche.").font(Typography.body).foregroundStyle(Palette.textSecondary) }
             } else if let error = model.githubError {
                 InspectorNotice(title: "Connexion GitHub indisponible", message: error)
-            } else { Text("Chargement via gh…").font(.callout).foregroundStyle(.secondary) }
+            } else { Text("Chargement via gh…").font(Typography.body).foregroundStyle(Palette.textSecondary) }
         }
     }
 
@@ -135,21 +135,21 @@ private struct InspectorContents: View {
         if let github = model.github {
             if let pr = github.pullRequest, let checks = pr.statusCheckRollup, !checks.isEmpty {
                 Divider()
-                Text("Checks de la pull request").font(.subheadline.weight(.semibold))
+                Text("Checks de la pull request").font(Typography.sectionTitle)
                 if pr.headRefOid != local.headSHA {
                     Label("Ces checks concernent le commit distant de la PR, différent du HEAD local.", systemImage: "info.circle")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 }
                 ForEach(checks) { check in CheckRow(title: check.title, result: check.result, url: check.url) }
             }
             Divider()
-            Text("Actions · HEAD local").font(.subheadline.weight(.semibold))
-            if let sha = local.headSHA { Text(String(sha.prefix(8))).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
+            Text("Actions · HEAD local").font(Typography.sectionTitle)
+            if let sha = local.headSHA { Text(String(sha.prefix(8))).font(Typography.captionMono).foregroundStyle(Palette.textSecondary) }
             if let error = github.checksError {
                 InspectorNotice(title: "Actions indisponibles", message: error)
             } else if github.runs.isEmpty {
                 Text(local.headSHA == nil ? "Aucun commit dans ce dépôt." : "Aucune exécution GitHub Actions pour ce commit.")
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(Typography.body).foregroundStyle(Palette.textSecondary)
             }
             ForEach(github.runs) { run in CheckRow(title: run.workflowName.isEmpty ? run.displayTitle : run.workflowName, result: run.result, url: run.url) }
         }
@@ -175,9 +175,9 @@ struct InspectorNotice: View {
     let message: String
     var symbol = "exclamationmark.circle"
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(title, systemImage: symbol).font(.callout.weight(.medium))
-            Text(message).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Label(title, systemImage: symbol).font(Typography.label)
+            Text(message).font(Typography.caption).foregroundStyle(Palette.textSecondary).textSelection(.enabled)
         }
     }
 }
@@ -188,22 +188,22 @@ private struct CheckRow: View {
     let url: String?
     private var status: (symbol: String, color: Color, title: String) {
         switch result.uppercased() {
-        case "SUCCESS": ("checkmark.circle.fill", .green, "Réussi")
-        case "FAILURE", "ERROR", "TIMED_OUT", "ACTION_REQUIRED": ("xmark.circle.fill", .red, "Échec")
-        case "CANCELLED": ("slash.circle", .secondary, "Annulé")
-        case "SKIPPED", "NEUTRAL": ("minus.circle", .secondary, "Ignoré")
-        default: ("clock", .orange, "En attente / en cours")
+        case "SUCCESS": ("checkmark.circle.fill", Palette.success, "Réussi")
+        case "FAILURE", "ERROR", "TIMED_OUT", "ACTION_REQUIRED": ("xmark.circle.fill", Palette.danger, "Échec")
+        case "CANCELLED": ("slash.circle", Palette.textSecondary, "Annulé")
+        case "SKIPPED", "NEUTRAL": ("minus.circle", Palette.textSecondary, "Ignoré")
+        default: ("clock", Palette.warning, "En attente / en cours")
         }
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: Spacing.m) {
             Image(systemName: status.symbol).foregroundStyle(status.color)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: Spacing.xxs) {
                 if let url, let destination = URL(string: url) { Link(title, destination: destination) }
                 else { Text(title) }
-                Text(status.title).font(.caption).foregroundStyle(.secondary)
-            }.font(.callout)
-        }.padding(.vertical, 2)
+                Text(status.title).font(Typography.caption).foregroundStyle(Palette.textSecondary)
+            }.font(Typography.body)
+        }.padding(.vertical, Spacing.xxs)
     }
 }

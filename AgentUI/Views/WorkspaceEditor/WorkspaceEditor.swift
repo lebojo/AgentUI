@@ -25,17 +25,17 @@ struct WorkspaceEditor: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: Spacing.xl) {
             Label {
                 Text(title)
             } icon: {
                 Image(systemName: appearance?.displaySymbol.systemName ?? (isWorktree ? "arrow.triangle.branch" : "pencil"))
-                    .foregroundStyle(appearance?.color ?? .accentColor)
+                    .foregroundStyle(appearance?.color ?? Palette.accent)
             }
-            .font(.title3.weight(.semibold))
-            Text(explanation).foregroundStyle(.secondary).font(.callout).fixedSize(horizontal: false, vertical: true)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(isWorktree ? "Nouvelle branche" : "Nom").font(.callout.weight(.medium))
+            .font(Typography.title)
+            Text(explanation).foregroundStyle(Palette.textSecondary).font(Typography.body).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: Spacing.s) {
+                Text(isWorktree ? "Nouvelle branche" : "Nom").font(Typography.label)
                 TextField(isWorktree ? "feature/ma-tache" : "Mes projets", text: $name)
                     .textFieldStyle(.roundedBorder).focused($focused)
                     .onSubmit { submit() }.disabled(submitting)
@@ -44,11 +44,11 @@ struct WorkspaceEditor: View {
                 SidebarAppearancePicker(appearance: appearance)
             }
             if let error {
-                Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled)
+                Text(error).font(Typography.body).foregroundStyle(Palette.danger).textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
             }
             HStack {
-                if submitting { ProgressView().controlSize(.small); Text("Création du worktree…").font(.caption).foregroundStyle(.secondary) }
+                if submitting { ProgressView().controlSize(.small); Text("Création du worktree…").font(Typography.caption).foregroundStyle(Palette.textSecondary) }
                 Spacer()
                 Button(submitting ? "Arrêter" : "Annuler") {
                     if submitting { submission?.cancel() } else { dismiss() }
@@ -58,7 +58,7 @@ struct WorkspaceEditor: View {
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || submitting)
             }
         }
-        .padding(24).frame(width: 440)
+        .padding(Spacing.xxl).frame(width: Dimension.Sheet.width)
         .interactiveDismissDisabled(submitting)
         .onAppear {
             switch sheet {

@@ -2,13 +2,13 @@ import SwiftUI
 
 struct SidebarAppearancePicker: View {
     @Binding var appearance: SidebarAppearance
-    private let columns = Array(repeating: GridItem(.fixed(30), spacing: 6), count: 11)
+    private let columns = Array(repeating: GridItem(.fixed(IconSize.xl), spacing: Spacing.s), count: 11)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Icône").font(.callout.weight(.medium))
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Spacing.xl) {
+            VStack(alignment: .leading, spacing: Spacing.m) {
+                Text("Icône").font(Typography.label)
+                LazyVGrid(columns: columns, alignment: .leading, spacing: Spacing.s) {
                     ForEach(SidebarSymbol.allCases) { symbol in
                         Button { appearance.symbol = symbol } label: {
                             SymbolCell(symbol: symbol, color: appearance.color, isSelected: appearance.displaySymbol == symbol)
@@ -18,9 +18,9 @@ struct SidebarAppearancePicker: View {
                     }
                 }
             }
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Couleur").font(.callout.weight(.medium))
-                HStack(spacing: 4) {
+            VStack(alignment: .leading, spacing: Spacing.m) {
+                Text("Couleur").font(Typography.label)
+                HStack(spacing: Spacing.xs) {
                     Button { appearance.tint = nil } label: {
                         TintSwatch(color: appearance.kind.defaultColor, isAutomatic: true, isSelected: appearance.tint == nil)
                     }
@@ -50,12 +50,12 @@ private struct SymbolCell: View {
 
     var body: some View {
         Image(systemName: symbol.systemName)
-            .font(.system(size: 14))
-            .foregroundStyle(isSelected ? color : Color.secondary)
-            .frame(width: 30, height: 30)
-            .background(isSelected ? color.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+            .font(Typography.xl)
+            .foregroundStyle(isSelected ? color : Palette.textSecondary)
+            .frame(width: IconSize.xl, height: IconSize.xl)
+            .background(isSelected ? color.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: Radius.m))
             .overlay {
-                if isSelected { RoundedRectangle(cornerRadius: 6).strokeBorder(color.opacity(0.6)) }
+                if isSelected { RoundedRectangle(cornerRadius: Radius.m).strokeBorder(color.opacity(0.6)) }
             }
             .contentShape(Rectangle())
     }
@@ -69,15 +69,15 @@ private struct TintSwatch: View {
     var body: some View {
         Group {
             if isAutomatic {
-                Circle().strokeBorder(color, style: StrokeStyle(lineWidth: 2, dash: [3, 2]))
+                Circle().strokeBorder(color, style: StrokeStyle(lineWidth: Stroke.regular, dash: [3, 2]))
             } else {
                 Circle().fill(color)
             }
         }
-        .frame(width: 18, height: 18)
-        .padding(3)
+        .frame(width: IconSize.m, height: IconSize.m)
+        .padding(Spacing.xxs)
         .overlay {
-            if isSelected { Circle().strokeBorder(Color.primary.opacity(0.55), lineWidth: 1.5) }
+            if isSelected { Circle().strokeBorder(Palette.textPrimary.opacity(0.55), lineWidth: Stroke.thin) }
         }
         .contentShape(Circle())
     }

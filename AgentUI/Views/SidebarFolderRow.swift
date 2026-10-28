@@ -19,8 +19,8 @@ struct SidebarFolderRow: View {
             }
             if group.isEmpty {
                 Button("Ajouter un projet…") { store.chooseProjects(in: folder.id) }
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
-                    .buttonStyle(.plain).padding(.vertical, 4)
+                    .font(Typography.m).foregroundStyle(Palette.textSecondary)
+                    .buttonStyle(.plain).padding(.vertical, Spacing.xs)
             }
         } label: {
             HStack {
@@ -31,9 +31,9 @@ struct SidebarFolderRow: View {
                         .foregroundStyle(folder.appearance.color)
                 }
                 .fontWeight(.medium).lineLimit(1)
-                Spacer(minLength: 4)
+                Spacer(minLength: Spacing.xs)
                 Text("\(group.total)")
-                    .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                    .font(Typography.caption).monospacedDigit().foregroundStyle(Palette.textSecondary)
             }
             .help(folder.name)
             .draggable(folder.id.uuidString)

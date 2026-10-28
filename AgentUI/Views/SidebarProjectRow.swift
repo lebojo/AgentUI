@@ -17,7 +17,7 @@ struct SidebarProjectRow: View {
                     }
                     if worktree.terminals.isEmpty {
                         Button("Ouvrir un terminal") { addTerminal(project, worktree) }
-                            .buttonStyle(.plain).font(.caption).foregroundStyle(.secondary)
+                            .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
                     }
                 } else if showAll || matches(project.name) || matches(worktree.name) || worktree.terminals.contains(where: { matches($0.name) }) {
                     DisclosureGroup(isExpanded: expanded(worktree.id)) {
@@ -26,14 +26,14 @@ struct SidebarProjectRow: View {
                         }
                         if worktree.terminals.isEmpty {
                             Button("Ouvrir un terminal") { addTerminal(project, worktree) }
-                                .buttonStyle(.plain).font(.caption).foregroundStyle(.secondary)
+                                .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
                         }
                     } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "arrow.triangle.branch").foregroundStyle(.secondary)
+                        HStack(spacing: Spacing.s) {
+                            Image(systemName: "arrow.triangle.branch").foregroundStyle(Palette.textSecondary)
                             Text(worktree.name).lineLimit(1)
-                            Spacer(minLength: 2)
-                            Button { addTerminal(project, worktree) } label: { Image(systemName: "plus").font(.system(size: 10, weight: .semibold)) }
+                            Spacer(minLength: Spacing.xxs)
+                            Button { addTerminal(project, worktree) } label: { Image(systemName: "plus").font(Typography.xs.weight(.semibold)) }
                                 .buttonStyle(.borderless).help("Nouveau terminal dans \(worktree.name)")
                                 .accessibilityLabel("Nouveau terminal dans \(worktree.name)")
                         }
@@ -46,27 +46,27 @@ struct SidebarProjectRow: View {
                 }
             }
         } label: {
-            HStack(spacing: 7) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: project.appearance.displaySymbol.systemName).foregroundStyle(project.appearance.color)
                 Button {
                     if project.worktrees.allSatisfy({ $0.terminals.isEmpty }) { store.wakeProject(project.id) }
                     else { store.setExpanded(project.id, !store.isExpanded(project.id)) }
                 } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: Spacing.xs) {
                         Text(project.name).lineLimit(1)
                         if project.worktrees.allSatisfy({ $0.terminals.isEmpty }) {
-                            Image(systemName: "moon").font(.caption)
+                            Image(systemName: "moon").font(Typography.caption)
                         }
                     }
-                    .foregroundStyle(project.worktrees.allSatisfy({ $0.terminals.isEmpty }) ? Color.secondary : Color.primary)
+                    .foregroundStyle(project.worktrees.allSatisfy({ $0.terminals.isEmpty }) ? Palette.textSecondary : Palette.textPrimary)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help(project.worktrees.allSatisfy({ $0.terminals.isEmpty }) ? "Projet en veille — cliquer pour ouvrir un terminal" : project.name)
-                Spacer(minLength: 3)
+                Spacer(minLength: Spacing.xxs)
                 if store.busyProjects.contains(project.id) { ProgressView().controlSize(.mini) }
                 else {
-                    Button { sheet = .worktree(project.id, project.name) } label: { Image(systemName: "plus").font(.system(size: 11, weight: .semibold)) }
+                    Button { sheet = .worktree(project.id, project.name) } label: { Image(systemName: "plus").font(Typography.s.weight(.semibold)) }
                         .buttonStyle(.borderless).help("Créer un worktree pour \(project.name)")
                         .accessibilityLabel("Créer un worktree pour \(project.name)")
                 }
@@ -115,20 +115,20 @@ private struct SidebarTerminalRow: View {
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
     var body: some View {
-        HStack(spacing: 7) {
-            Image(systemName: "terminal").font(.system(size: 12)).foregroundStyle(.secondary)
+        HStack(spacing: Spacing.s) {
+            Image(systemName: "terminal").font(Typography.m).foregroundStyle(Palette.textSecondary)
             Text(terminal.name).lineLimit(1)
-            Spacer(minLength: 4)
+            Spacer(minLength: Spacing.xs)
             if let branch = store.sessions.branch(for: terminal.id, initialPath: path) {
-                BranchBadge(branch: branch).frame(maxWidth: 100)
+                BranchBadge(branch: branch).frame(maxWidth: Dimension.Badge.sidebarMaxWidth)
             }
             if let session = store.sessions.session(terminal.id) {
                 Image(systemName: session.hasExited ? "circle" : "circle.fill")
-                    .font(.system(size: 5)).foregroundStyle(session.hasExited ? Color.secondary : Color.green)
+                    .font(Typography.statusDot).foregroundStyle(session.hasExited ? Palette.textSecondary : Palette.success)
                     .accessibilityLabel(session.hasExited ? "Session terminée" : "Terminal ouvert")
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, Spacing.xxs)
         .tag(terminal.id)
         .help(terminal.name)
         .contextMenu {

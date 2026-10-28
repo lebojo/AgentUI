@@ -8,9 +8,9 @@ struct UsageSignInButton: View {
 
     var body: some View {
         if usage.pendingSignIns.contains(provider) {
-            HStack(spacing: 6) {
+            HStack(spacing: Spacing.s) {
                 ProgressView().controlSize(.small)
-                Text("En attente de la connexion…").font(.callout).foregroundStyle(.secondary)
+                Text("En attente de la connexion…").font(Typography.body).foregroundStyle(Palette.textSecondary)
             }
         } else {
             Button("Se connecter…", action: signIn)

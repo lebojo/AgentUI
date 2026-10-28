@@ -12,7 +12,7 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             WorkspaceSidebar(store: store, sheet: $sheet, removal: $removal)
-                .navigationSplitViewColumnWidth(min: 240, ideal: 285, max: 420)
+                .navigationSplitViewColumnWidth(min: Dimension.Sidebar.minWidth, ideal: Dimension.Sidebar.idealWidth, max: Dimension.Sidebar.maxWidth)
                 .navigationTitle("AgentUI")
         } detail: {
             if let context = store.context(for: store.selection) {
@@ -24,7 +24,7 @@ struct ContentView: View {
         }
         .inspector(isPresented: $inspectorVisible) {
             WorkspaceInspector(store: store)
-                .inspectorColumnWidth(min: 260, ideal: 310, max: 440)
+                .inspectorColumnWidth(min: Dimension.Inspector.minWidth, ideal: Dimension.Inspector.idealWidth, max: Dimension.Inspector.maxWidth)
         }
         .disabled(store.isReadOnly)
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -34,7 +34,7 @@ struct ContentView: View {
                     Spacer()
                     Button("Réessayer") { store.retryLoading() }
                 }
-                .font(.callout).padding(12).background(.bar)
+                .font(Typography.body).padding(Spacing.l).background(Palette.bar)
             } else if let error = store.persistenceError {
                 HStack {
                     Label(error, systemImage: "exclamationmark.triangle")
@@ -42,11 +42,11 @@ struct ContentView: View {
                     Spacer()
                     Button("Réessayer la sauvegarde") { Task { try? await store.flushPersistence() } }
                 }
-                .font(.callout).padding(12).background(.bar)
+                .font(Typography.body).padding(Spacing.l).background(Palette.bar)
             }
         }
         .navigationSplitViewStyle(.balanced)
-        .frame(minWidth: 760, minHeight: 480)
+        .frame(minWidth: Dimension.Window.minWidth, minHeight: Dimension.Window.minHeight)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { inspectorVisible.toggle() } label: { Image(systemName: "sidebar.right") }

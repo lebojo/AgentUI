@@ -10,7 +10,7 @@ struct WorkspaceSidebar: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Projets").font(.headline)
+                Text("Projets").font(Typography.headline)
                 Spacer()
                 Menu {
                     Button("Ajouter un projet…", systemImage: "folder.badge.plus") { store.chooseProjects() }
@@ -20,7 +20,7 @@ struct WorkspaceSidebar: View {
                     Button("Nouveau dossier virtuel…", systemImage: "folder.badge.plus") { sheet = .folder(parentID: nil) }
                         .keyboardShortcut("n", modifiers: [.command, .shift])
                 } label: {
-                    Image(systemName: "plus").frame(width: 24, height: 24)
+                    Image(systemName: "plus").frame(width: IconSize.l, height: IconSize.l)
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
@@ -29,21 +29,21 @@ struct WorkspaceSidebar: View {
                 .accessibilityLabel("Ajouter des projets ou un dossier virtuel")
                 .disabled(store.isReadOnly || store.isImporting)
             }
-            .padding(.horizontal, 14).padding(.top, 8)
-            HStack(spacing: 7) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            .padding(.horizontal, Spacing.l).padding(.top, Spacing.m)
+            HStack(spacing: Spacing.s) {
+                Image(systemName: "magnifyingglass").foregroundStyle(Palette.textSecondary)
                 TextField("Filtrer les projets et terminaux", text: $search)
                     .textFieldStyle(.plain)
                     .accessibilityLabel("Filtrer les projets et terminaux")
                 if !search.isEmpty {
                     Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
-                        .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Effacer le filtre")
+                        .buttonStyle(.plain).foregroundStyle(Palette.textSecondary).accessibilityLabel("Effacer le filtre")
                 }
             }
-            .font(.system(size: 12))
-            .padding(8)
-            .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 7))
-            .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 12)
+            .font(Typography.m)
+            .padding(Spacing.m)
+            .background(Palette.fill.opacity(0.6), in: RoundedRectangle(cornerRadius: Radius.m))
+            .padding(.horizontal, Spacing.l).padding(.top, Spacing.m).padding(.bottom, Spacing.l)
 
             List(selection: $store.selection) {
                 Section {
@@ -59,16 +59,16 @@ struct WorkspaceSidebar: View {
             .safeAreaInset(edge: .bottom, spacing: 0) { UsageBar() }
             .overlay {
                 if store.projects.isEmpty && store.folders.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "folder.badge.plus").font(.system(size: 26, weight: .light))
-                        Text("Tes projets, au même endroit").font(.system(size: 12, weight: .medium))
-                        Text("Ajoute un projet pour commencer.").font(.system(size: 11)).foregroundStyle(.secondary)
-                        Button("Ajouter un projet…") { store.chooseProjects() }.controlSize(.small).padding(.top, 4)
+                    VStack(spacing: Spacing.m) {
+                        Image(systemName: "folder.badge.plus").font(Typography.emptyStateSymbol)
+                        Text("Tes projets, au même endroit").font(Typography.m.weight(.medium))
+                        Text("Ajoute un projet pour commencer.").font(Typography.s).foregroundStyle(Palette.textSecondary)
+                        Button("Ajouter un projet…") { store.chooseProjects() }.controlSize(.small).padding(.top, Spacing.xs)
                     }
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Palette.textSecondary)
                     .padding()
                 } else if !search.isEmpty && filtered.groups.isEmpty && filtered.ungrouped.isEmpty {
-                    Text("Aucun résultat").font(.callout).foregroundStyle(.secondary)
+                    Text("Aucun résultat").font(Typography.body).foregroundStyle(Palette.textSecondary)
                 }
             }
             SidebarFooter(store: store)
@@ -85,15 +85,15 @@ private struct SidebarFooter: View {
     var body: some View {
         VStack(spacing: 0) {
             Divider()
-            HStack(spacing: 6) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: "terminal")
                 Text(store.isImporting ? "Recherche des dépôts…" : "\(store.terminalCount) terminaux")
                 Spacer()
                 if store.isImporting { ProgressView().controlSize(.mini) }
                 else { Text("\(store.sessions.runningCount) ouverts") }
             }
-            .font(.system(size: 11)).foregroundStyle(.secondary)
-            .padding(.horizontal, 14).padding(.vertical, 11)
+            .font(Typography.s).foregroundStyle(Palette.textSecondary)
+            .padding(.horizontal, Spacing.l).padding(.vertical, Spacing.l)
         }
     }
 }
@@ -102,19 +102,19 @@ struct WorkspaceWelcomeView: View {
     let store: WorkspaceStore
     @Binding var sheet: WorkspaceSheet?
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "terminal").font(.system(size: 42, weight: .ultraLight)).foregroundStyle(.secondary)
-            Text("Un espace pour tes projets").font(.system(size: 22, weight: .semibold))
+        VStack(spacing: Spacing.xl) {
+            Image(systemName: "terminal").font(Typography.heroSymbol).foregroundStyle(Palette.textSecondary)
+            Text("Un espace pour tes projets").font(Typography.display)
             Text("Regroupe tes projets, ouvre des terminaux\net travaille sur plusieurs branches à la fois.")
-                .font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineSpacing(4)
-            HStack(spacing: 12) {
+                .font(Typography.l).foregroundStyle(Palette.textSecondary).multilineTextAlignment(.center).lineSpacing(Spacing.xs)
+            HStack(spacing: Spacing.l) {
                 Button("Ajouter un projet…") { store.chooseProjects() }.buttonStyle(.borderedProminent)
                 Button("Importer un dossier…") { store.chooseFolder() }
-            }.padding(.top, 6)
-            Button("Créer un dossier virtuel") { sheet = .folder(parentID: nil) }.buttonStyle(.link).font(.system(size: 12))
+            }.padding(.top, Spacing.s)
+            Button("Créer un dossier virtuel") { sheet = .folder(parentID: nil) }.buttonStyle(.link).font(Typography.m)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .textBackgroundColor))
+        .background(Palette.surface)
         .navigationTitle("AgentUI")
     }
 
