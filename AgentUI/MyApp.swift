@@ -54,10 +54,13 @@ import AppKit
 struct AgentUIApplication: App {
     @NSApplicationDelegateAdaptor(ApplicationDelegate.self) private var delegate
     @State private var store = WorkspaceStore()
+    @State private var usage = UsageStore()
 
     var body: some Scene {
         Window("AgentUI", id: "workspace") {
             ContentView(store: store)
+                .environment(store)
+                .environment(usage)
                 .onAppear {
                     delegate.store = store
                     if delegate.closeCommand == nil { delegate.closeCommand = CloseTerminalCommand(store: store) }

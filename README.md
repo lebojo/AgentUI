@@ -17,6 +17,7 @@ A native macOS app to organize your projects, Git worktrees and coding agents (C
 - **Real terminals**: native PTY, the user's shell, and a branch badge that follows the working directory.
 - **Inspector**: files, agents, Git changes, diffs, pull request and GitHub Actions checks.
 - **`agentui` CLI**: agents can create terminals and worktrees from inside their own terminal.
+- **Agent usage**: remaining Claude and Codex plan limits, with reset countdowns, below the project list.
 - **Persistence**: your organization is restored on relaunch.
 
 ## Requirements
@@ -63,6 +64,12 @@ xcodebuild -project AgentUI.xcodeproj -scheme AgentUI -configuration Debug \
 - Terminals of the main folder appear directly under the project. Additional worktrees hold their own terminals. Existing worktrees are discovered when a project is added, then via **Refresh Worktrees**.
 - A **green badge** shows the current branch next to each Git terminal and in its header. It follows branch and shell directory changes within about two seconds, without spawning periodic Git processes. Outside a repository it disappears; on a detached HEAD, a neutral badge shows the abbreviated commit.
 - The context menu lets you rename and close a terminal, rename or remove a project, and dissolve a virtual folder.
+
+### Agent usage
+
+The bottom of the project list shows, for each signed-in agent, the 5-hour and weekly windows with a countdown to the next reset. The chevron collapses it to each agent's logo and session percentage (remembered across launches). Click it for a sheet with every window (including per-model weekly limits), extra usage credits and a Refresh button.
+
+Usage comes from the agents' own sign-in, like Orca: Claude reads the `Claude Code-credentials` Keychain item (or `~/.claude/.credentials.json`) and queries `api.anthropic.com/api/oauth/usage`; Codex reads `~/.codex/auth.json` (or `$CODEX_HOME`) and queries `chatgpt.com/backend-api/wham/usage`. Tokens are only sent to their own provider and never stored or refreshed by AgentUI. Data refreshes every five minutes. In the sheet, **Sign In** next to a signed-out agent opens an AgentUI terminal running `claude` or `codex login` in the selected worktree (or the first project), then checks every five seconds for up to ten minutes until the usage appears. When no agent is signed in, the bar shows a single sign-in link; otherwise signed-out agents stay out of the bar. An expired session is reported until the agent runs again and renews it.
 
 ### Shortcuts
 

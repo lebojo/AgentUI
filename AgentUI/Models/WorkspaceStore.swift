@@ -288,6 +288,17 @@ import Observation
         return context
     }
 
+    func addTerminalInCurrentContext(name: String, command: [String]) throws {
+        let current = context(for: selection).map { ($0.project.id, $0.worktree.id) }
+        let fallback = projects.lazy.compactMap { project in
+            (project.worktrees.first(where: \.isPrimary) ?? project.worktrees.first).map { (project.id, $0.id) }
+        }.first
+        guard let (projectID, worktreeID) = current ?? fallback else {
+            throw WorkspaceError(message: "Ajoute d’abord un projet : la connexion se fait dans un terminal AgentUI.")
+        }
+        try addTerminal(projectID: projectID, worktreeID: worktreeID, name: name, command: command)
+    }
+
     func closeTerminal(_ id: UUID) {
         let previous = context(for: id)
         sessions.close(id)

@@ -10,7 +10,8 @@ xcrun swiftc -parse-as-library \
   AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Services/AgentCLI.swift \
   AgentUI/Models/InspectorModels.swift AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/InspectorService.swift \
   AgentUI/Models/InspectorStore.swift AgentUI/Services/WorkspaceWriter.swift \
-  Tests/RegressionTests.swift Tests/InspectorTests.swift Tests/CoreTests.swift -o "$test_binary"
+  AgentUI/Models/UsageModels.swift AgentUI/Models/UsageStore.swift AgentUI/Services/UsageService.swift \
+  Tests/RegressionTests.swift Tests/InspectorTests.swift Tests/UsageTests.swift Tests/CoreTests.swift -o "$test_binary"
 "$test_binary"
 
 xcrun swiftc -parse-as-library \

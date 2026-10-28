@@ -56,6 +56,7 @@ struct WorkspaceSidebar: View {
                 }
             }
             .listStyle(.sidebar)
+            .safeAreaInset(edge: .bottom, spacing: 0) { UsageBar() }
             .overlay {
                 if store.projects.isEmpty && store.folders.isEmpty {
                     VStack(spacing: 8) {

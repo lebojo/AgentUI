@@ -4,6 +4,7 @@ import AppKit
 struct ContentView: View {
     @Bindable var store: WorkspaceStore
     @AppStorage("inspectorVisible") private var inspectorVisible = true
+    @Environment(UsageStore.self) private var usage
     @State private var sheet: WorkspaceSheet?
     @State private var removal: Removal?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -61,6 +62,7 @@ struct ContentView: View {
                 catch { break }
             }
         }
+        .task { await usage.monitor() }
         .sheet(item: $sheet) { item in
             WorkspaceEditor(store: store, sheet: item)
         }
