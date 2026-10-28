@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    tags: ['*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: xcode-27
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Resolve version
+        run: |
+          VERSION="${TAG#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Tag $TAG, version $VERSION, build $GITHUB_RUN_NUMBER"
+
+      - name: Cache Swift packages
+        uses: actions/cache@v5
+        with:
+          path: DerivedData/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('AgentUI.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Unit tests
+        run: ./Tests/run.sh
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AgentUI.xcodeproj \
+            -scheme AgentUI \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath "$DERIVED_DATA" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Sign and package
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp -R "$DERIVED_DATA/Build/Products/Release/AgentUI.app" dist/
+          cd dist
+          codesign --force --deep --sign - AgentUI.app
+          codesign --verify --deep --strict --verbose=2 AgentUI.app
+          lipo -info AgentUI.app/Contents/MacOS/AgentUI
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' AgentUI.app/Contents/Info.plist
+          ditto -c -k --sequesterRsrc --keepParent AgentUI.app AgentUI.zip
+          shasum -a 256 AgentUI.zip > AgentUI.zip.sha256
+          cat AgentUI.zip.sha256
+
+      - name: Write release notes
+        run: |
+          cat > dist/notes.md <<'EOF'
+          ## Requirements
+
+          - macOS 14 or later
+          - Universal build: runs natively on Apple silicon and Intel Macs
+          - Optional: [`gh`](https://cli.github.com) installed and authenticated (`gh auth login`) for GitHub data in the inspector
+
+          ## First launch
+
+          This build is ad-hoc signed and not notarized, so macOS blocks it the first time:
+
+          1. Download and unzip `AgentUI.zip`.
+          2. Move `AgentUI.app` to `/Applications`.
+          3. Open it once, then go to **System Settings › Privacy & Security** and click **Open Anyway**.
+
+          Alternatively, remove the quarantine attribute from Terminal:
+
+          ```sh
+          xattr -dr com.apple.quarantine /Applications/AgentUI.app
+          ```
+
+          `AgentUI.zip.sha256` contains the SHA-256 checksum of the archive (`shasum -a 256 -c AgentUI.zip.sha256`).
+          EOF
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd dist
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" AgentUI.zip AgentUI.zip.sha256 --clobber
+          else
+            gh release create "$TAG" AgentUI.zip AgentUI.zip.sha256 \
+              --title "AgentUI $VERSION" \
+              --notes-file notes.md \
+              --generate-notes \
+              --latest
+          fi
