@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgentUI — every agent on one board</title>
+  <meta name="description" content="A native macOS app that organizes your projects, Git worktrees and coding agents (Claude, Codex) in real terminals. SwiftUI, no WebView, no Electron.">
+  <meta name="theme-color" content="#0d1820">
+  <meta property="og:title" content="AgentUI — every agent on one board">
+  <meta property="og:description" content="Projects, Git worktrees and coding agents in real terminals, in one native macOS window.">
+  <meta property="og:image" content="assets/icon-256.png">
+  <link rel="icon" type="image/png" href="assets/favicon-64.png">
+  <link rel="apple-touch-icon" href="assets/icon-256.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Martian+Mono:wght@400;500;600&family=Kalam:wght@700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!--
+THESIS: AgentUI is a flight strip bay for coding agents: every terminal is a strip, every virtual folder a bay, and the page refuses the dark-hero-plus-screenshot layout every Mac dev tool ships.
+OWN-WORLD: Night control-room slate (#0d1820) with aluminum rails; printed paper strips in buff (Claude), pale blue (Codex) and white (shell); Martian Mono for printed fields, Barlow Condensed for callsigns and headings, amber holder for the one primary action, red grease pencil for annotations.
+STORY: The visitor sees their own day (agents on branches, in projects) laid out as one controlled board, understands the app is native and organizes without moving files, downloads the zip.
+FIRST VIEWPORT: Left 40%: wordmark with grease-pencil "working name", headline, one paragraph, amber Download strip tab, GitHub link. Right 60%: a live strip bay of three bays with draggable strips and a "+ Worktree" printer.
+FORM: Flight Strip Bay, my top-ranked grounded candidate (#1), chosen by the user over the assigned roll; seed key cf95d77e.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+-->
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <a class="mark" href="#" aria-label="AgentUI home">
+    <img src="assets/icon-256.png" alt="" width="32" height="32">
+    <span class="mark-name">AgentUI</span>
+  </a>
+  <span class="pencil pencil-name" aria-hidden="true">
+    <svg viewBox="0 0 120 40" class="pencil-ring"><path d="M8 22c2-10 30-16 58-15 26 1 48 6 46 15-2 10-32 14-60 13C26 34 5 30 8 22c1-4 6-7 12-9" /></svg>
+    working name
+  </span>
+  <nav class="top-nav" aria-label="Primary">
+    <a href="#board">The board</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com/lebojo/AgentUI">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.7 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>
+      <span>GitHub</span>
+    </a>
+  </nav>
+</header>
+
+<main id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <h1 id="hero-title">Every agent in flight, on&nbsp;one&nbsp;board.</h1>
+      <p class="lede">A native macOS app for your projects, Git worktrees and coding agents. Claude and Codex run in real terminals, filed by project and branch, in one window you control.</p>
+      <div class="actions">
+        <a class="pull-tab" href="https://github.com/lebojo/AgentUI/releases/latest/download/AgentUI.zip" data-download>
+          <span class="pull-tab-grip" aria-hidden="true"></span>
+          <span class="pull-tab-main">
+            <span class="pull-tab-label">Download for macOS</span>
+            <span class="pull-tab-meta"><span data-version>v0.1</span> · macOS 14+<span class="meta-arch"> · Apple silicon &amp; Intel</span></span>
+          </span>
+          <svg class="icon pull-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14" /></svg>
+        </a>
+        <a class="link-quiet" href="https://github.com/lebojo/AgentUI">View the source</a>
+      </div>
+      <p class="native-line">SwiftUI and AppKit. No WebView, no Electron.</p>
+    </div>
+
+    <div class="bay-wrap" id="board">
+      <div class="bay" role="group" aria-label="Sample strip board. Each strip is a terminal; drag strips between bays, or focus one and use Alt with the arrow keys.">
+        <div class="bay-head">
+          <span class="bay-title">Strip board</span>
+          <span class="bay-note">Sample data</span>
+          <button class="printer" type="button" data-print>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            Worktree
+          </button>
+        </div>
+
+        <div class="rack" data-bay="Client work">
+          <div class="rack-label"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Client work</div>
+          <ol class="slots">
+            <li class="strip" data-agent="claude" tabindex="0">
+              <span class="f-call"><b>Review</b><small>Claude</small></span>
+              <span class="f-route"><span class="f-proj">storefront</span><span class="f-branch">feature/checkout</span></span>
+              <span class="f-state"><i class="dot on"></i>Running</span>
+              <span class="f-use">5H 42%<small>WK 18%</small></span>
+            </li>
+            <li class="strip" data-agent="codex" tabindex="0">
+              <span class="f-call"><b>Tests</b><small>Codex</small></span>
+              <span class="f-route"><span class="f-proj">storefront</span><span class="f-branch">feature/tests</span></span>
+              <span class="f-state"><i class="dot on"></i>Running</span>
+              <span class="f-use">5H 11%<small>WK 30%</small></span>
+            </li>
+          </ol>
+        </div>
+
+        <div class="rack" data-bay="Open source">
+          <div class="rack-label"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Open source</div>
+          <ol class="slots">
+            <li class="strip" data-agent="shell" tabindex="0">
+              <span class="f-call"><b>Shell</b><small>zsh</small></span>
+              <span class="f-route"><span class="f-proj">swiftterm</span><span class="f-branch">main</span></span>
+              <span class="f-state"><i class="dot on"></i>Open</span>
+              <span class="f-use">—</span>
+            </li>
+            <li class="strip" data-agent="claude" tabindex="0">
+              <span class="f-call"><b>Docs</b><small>Claude</small></span>
+              <span class="f-route"><span class="f-proj">website</span><span class="f-branch">docs/intro</span></span>
+              <span class="f-state"><svg class="icon moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>Asleep</span>
+              <span class="f-use">5H 42%<small>WK 18%</small></span>
+            </li>
+          </ol>
+        </div>
+
+        <div class="rack" data-bay="Unfiled">
+          <div class="rack-label"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 8-9-5-9 5 9 5 9-5Zm-18 0v8l9 5 9-5V8"/></svg>Unfiled</div>
+          <ol class="slots">
+            <li class="strip" data-agent="codex" tabindex="0">
+              <span class="f-call"><b>Fix</b><small>Codex</small></span>
+              <span class="f-route"><span class="f-proj">agentui</span><span class="f-branch">fix/close-shortcut</span></span>
+              <span class="f-state"><i class="dot"></i>Done</span>
+              <span class="f-use">5H 11%<small>WK 30%</small></span>
+            </li>
+          </ol>
+        </div>
+      </div>
+      <p class="pencil pencil-drag" aria-hidden="true">
+        <svg viewBox="0 0 80 40" class="pencil-arrow"><path d="M4 32C20 30 44 22 58 8m0 0-12 2m12-2 1 12" /></svg>
+        drag a strip to another bay
+      </p>
+      <p class="sr-only" aria-live="polite" data-announce></p>
+    </div>
+  </section>
+
+  <section class="mapped" aria-labelledby="mapped-title">
+    <div class="section-head">
+      <h2 id="mapped-title">The board, in the app.</h2>
+      <p>Folders on the left, a real terminal in the middle, the worktree's context on the right. Every piece maps to something you already do.</p>
+    </div>
+
+    <ol class="ledger">
+      <li class="row">
+        <span class="row-code">FLD</span>
+        <div class="row-body">
+          <h3>Projects and virtual folders</h3>
+          <p>Group repositories from anywhere on disk. Nothing moves: folders are a view, never a <code>mv</code>. Import a folder and every Git repository inside it is found, and reimporting keeps your names and terminals.</p>
+        </div>
+        <span class="row-tag">Sidebar</span>
+      </li>
+      <li class="row">
+        <span class="row-code">WTR</span>
+        <div class="row-body">
+          <h3>One branch, one worktree</h3>
+          <p>The <b>+</b> next to a project creates a branch in its own worktree and opens a terminal in it. Stop interrupts Git and its hooks; a partial creation is kept on disk and reconciled.</p>
+        </div>
+        <span class="row-tag">Git</span>
+      </li>
+      <li class="row">
+        <span class="row-code">PTY</span>
+        <div class="row-body">
+          <h3>Real terminals</h3>
+          <p>A native PTY running your own shell, on SwiftTerm. A green badge follows the branch of the working directory, so you always know where an agent is writing.</p>
+        </div>
+        <span class="row-tag">Terminal</span>
+      </li>
+      <li class="row">
+        <span class="row-code">INS</span>
+        <div class="row-body">
+          <h3>An inspector for the worktree</h3>
+          <p>Files, agents, Git changes with read-only diffs, the branch's pull request and its GitHub Actions checks, all for the terminal you selected.</p>
+        </div>
+        <span class="row-tag">Inspector</span>
+      </li>
+      <li class="row">
+        <span class="row-code">RES</span>
+        <div class="row-body">
+          <h3>Resume any conversation</h3>
+          <p>Claude and Codex conversations recorded for the worktree, newest first. Play resumes one in a new terminal; sessions already running are marked so you never open them twice.</p>
+        </div>
+        <span class="row-tag">Agents</span>
+      </li>
+      <li class="row">
+        <span class="row-code">USE</span>
+        <div class="row-body">
+          <h3>Plan limits in sight</h3>
+          <p>The remaining Claude and Codex 5-hour and weekly limits sit below the project list, with a countdown to each reset. Tokens only ever go to their own provider.</p>
+        </div>
+        <span class="row-tag">Usage</span>
+      </li>
+      <li class="row">
+        <span class="row-code">SAV</span>
+        <div class="row-body">
+          <h3>Comes back as you left it</h3>
+          <p>Projects, folders and terminal names are restored on relaunch. Saves happen off the main thread, and a failed write is shown with a retry, never lost silently.</p>
+        </div>
+        <span class="row-tag">Persistence</span>
+      </li>
+    </ol>
+  </section>
+
+  <section class="cli" aria-labelledby="cli-title">
+    <div class="cli-copy">
+      <h2 id="cli-title">Agents file their own strips.</h2>
+      <p>Every terminal gets the <code>agentui</code> command. An agent can open a sibling terminal, or a whole new worktree with a child agent on a fresh branch, without touching the screen you are looking at.</p>
+      <p class="cli-small">Commands answer in JSON and only report success once the change is saved.</p>
+    </div>
+    <div class="console">
+      <div class="console-bar"><span>zsh — storefront</span></div>
+<pre class="console-body"><code><span class="c-prompt">$</span> agentui worktree create --branch feature/tests \
+    --name "Tests" -- codex "Add the tests"
+<span class="c-out">{ "ok": true, "terminalID": "8E1F…", "path": "…/Worktrees/feature-tests" }</span>
+<span class="c-prompt">$</span> agentui terminal create --name "Review" -- claude "Review the changes"
+<span class="c-out">{ "ok": true, "terminalID": "C04A…" }</span></code></pre>
+      <div class="console-print" aria-hidden="true">
+        <span class="strip strip-static" data-agent="codex">
+          <span class="f-call"><b>Tests</b><small>Codex</small></span>
+          <span class="f-route"><span class="f-proj">storefront</span><span class="f-branch">feature/tests</span></span>
+          <span class="f-state"><i class="dot on"></i>Running</span>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <section class="install" id="install" aria-labelledby="install-title">
+    <div class="section-head">
+      <h2 id="install-title">Cleared for takeoff in three steps.</h2>
+      <p>Version <span data-version>0.1</span> is an early build. It is not notarized by Apple yet, so macOS asks you to allow it once.</p>
+    </div>
+    <ol class="steps">
+      <li class="step">
+        <svg class="step-art" viewBox="0 0 64 48" aria-hidden="true"><rect x="14" y="6" width="36" height="36" rx="3"/><path d="M32 14v16m0 0-6-6m6 6 6-6M22 36h20"/></svg>
+        <h3>Download and unzip</h3>
+        <p><a href="https://github.com/lebojo/AgentUI/releases/latest/download/AgentUI.zip" data-download>AgentUI.zip</a> holds one universal app for Apple silicon and Intel Macs.</p>
+      </li>
+      <li class="step">
+        <svg class="step-art" viewBox="0 0 64 48" aria-hidden="true"><rect x="4" y="12" width="20" height="24" rx="3"/><path d="M28 24h14m0 0-5-5m5 5-5 5"/><path d="M46 10h14v28H46z"/><path d="M50 16h6M50 22h6"/></svg>
+        <h3>Move it to Applications</h3>
+        <p>Drag <b>AgentUI.app</b> into your Applications folder. It needs macOS 14 or later.</p>
+      </li>
+      <li class="step">
+        <svg class="step-art" viewBox="0 0 64 48" aria-hidden="true"><path d="M32 6 10 14v10c0 10 9 16 22 18 13-2 22-8 22-18V14Z"/><path d="m24 24 6 6 11-12"/></svg>
+        <h3>Allow the first launch</h3>
+        <p>Open it once, then choose <b>Open Anyway</b> in System Settings › Privacy &amp; Security. Or, in a terminal:</p>
+        <code class="copy-line">xattr -dr com.apple.quarantine /Applications/AgentUI.app</code>
+      </li>
+    </ol>
+    <p class="install-extra">For GitHub data in the inspector, install <a href="https://cli.github.com">gh</a> and run <code>gh auth login</code>. Claude Code and Codex must already be installed and signed in on your Mac.</p>
+  </section>
+
+  <section class="close" aria-labelledby="close-title">
+    <h2 id="close-title">Bring your agents in.</h2>
+    <a class="pull-tab" href="https://github.com/lebojo/AgentUI/releases/latest/download/AgentUI.zip" data-download>
+      <span class="pull-tab-grip" aria-hidden="true"></span>
+      <span class="pull-tab-main">
+        <span class="pull-tab-label">Download AgentUI</span>
+        <span class="pull-tab-meta"><span data-version>v0.1</span> · free and open source</span>
+      </span>
+      <svg class="icon pull-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14" /></svg>
+    </a>
+  </section>
+</main>
+
+<footer class="foot">
+  <p><b>AgentUI is a working name.</b> The project will be renamed along the way; what it does stays the same.</p>
+  <p>Free software under the <a href="https://github.com/lebojo/AgentUI/blob/main/LICENSE">GPL-3.0</a>, with a commercial license available. <a href="https://github.com/lebojo/AgentUI">Source on GitHub</a>.</p>
+</footer>
+
+<a class="coffee" href="https://buymeacoffee.com/jordanchap" target="_blank" rel="noopener">
+  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h13v5a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6Z"/><path d="M17 11h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3c0 1.5 1 1.5 1 3M12 3c0 1.5 1 1.5 1 3"/></svg>
+  <span>Like the project? <b>Buy me a coffee</b></span>
+</a>
+
+<script src="app.js" defer></script>
+</body>
+</html>
