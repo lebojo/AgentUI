@@ -7,7 +7,7 @@
 [![SwiftUI](https://img.shields.io/badge/UI-SwiftUI-0A84FF?logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
 
-A native macOS app to organize your projects, Git worktrees and coding agents (Claude, Codex…) in real terminals. A SwiftUI sidebar, a native inspector and an AppKit [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) terminal, with no WebView and no Electron. Inspired by the layout of [Orca](https://github.com/stablyai/orca).
+A native macOS app to organize your projects, Git worktrees and coding agents (Claude, Codex, Copilot, OpenCode…) in real terminals. A SwiftUI sidebar, a native inspector and an AppKit [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) terminal, with no WebView and no Electron. Inspired by the layout of [Orca](https://github.com/stablyai/orca).
 
 ## Features
 
@@ -93,7 +93,7 @@ The right panel button in the toolbar shows or hides the SwiftUI inspector. Visi
 | Tab | Content |
 | --- | --- |
 | **Files** | Folders load on expansion, folders before files, `.git` and `.DS_Store` hidden. Symlinks and packages are not traversed. Read-only preview of UTF-8 text files, limited to 128 KiB. Open in the default app or in Finder. |
-| **Agents** | Claude and Codex conversations recorded on disk for the worktree, most recent first. **Play** resumes one in a new terminal (`claude --resume` / `codex resume`). Claude sessions already running (from `claude agents --json`) are marked and cannot be opened twice. |
+| **Agents** | Claude, Codex, Copilot and OpenCode conversations recorded on disk for the worktree, most recent first: `~/.claude/projects`, `~/.codex/sessions`, `~/.copilot/session-state` and the `session` table of `~/.local/share/opencode/opencode.db` (OpenCode subagent and archived sessions are left out). **Play** resumes one in a new terminal (`claude --resume` / `codex resume` / `copilot --resume` / `opencode --session`). Claude sessions already running (from `claude agents --json`) are marked and cannot be opened twice. |
 | **Git** | Branch, staged, unstaged and untracked changes; read-only diff or preview. Links to the GitHub repository and the branch's pull request. |
 | **Checks** | Pull request checks and up to ten GitHub Actions runs for the local HEAD commit. A message flags PR checks that refer to a different commit. |
 
@@ -124,7 +124,7 @@ agentui terminal create --project UUID --worktree UUID --name "Review"
 
 Commands return JSON with `ok`, `projectID`, `worktreeID`, `terminalID` and `path`. A failure returns a non-zero exit code. Programs after `--` receive their arguments verbatim, without shell interpolation. Creations requested by an agent do not change the terminal selected on screen.
 
-The CLI waits for the save before reporting success. If the write fails after creation, it returns `ok: false` with the identifiers already created: retry the save in the app, without recreating the terminal. Claude, Codex and other tools must already be installed and authenticated on the Mac.
+The CLI waits for the save before reporting success. If the write fails after creation, it returns `ok: false` with the identifiers already created: retry the save in the app, without recreating the terminal. Claude, Codex, Copilot, OpenCode and other tools must already be installed and authenticated on the Mac.
 
 Communication uses a request mailbox private to the app instance, with no network port and no Node/Python dependency. The command runs the same native executable, in CLI mode.
 

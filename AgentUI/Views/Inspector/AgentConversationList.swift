@@ -16,7 +16,7 @@ struct AgentConversationList: View {
                 }.listStyle(.plain)
             } else if conversations != nil {
                 ContentUnavailableView("Aucune conversation", systemImage: "bubble.left.and.bubble.right",
-                                       description: Text("Les conversations Claude et Codex lancées dans ce dossier apparaîtront ici."))
+                                       description: Text("Les conversations Claude, Codex, Copilot et OpenCode lancées dans ce dossier apparaîtront ici."))
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -83,6 +83,8 @@ private extension ConversationAgent {
         switch self {
         case .claude: Image(.claudeLogo)
         case .codex: Image(.codexLogo)
+        case .copilot: Image(.copilotLogo)
+        case .openCode: Image(.openCodeLogo)
         }
     }
 }

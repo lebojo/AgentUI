@@ -1,7 +1,8 @@
 import Foundation
 
 enum ConversationAgent: String, Codable, CaseIterable, Identifiable, Sendable {
-    case claude, codex
+    case claude, codex, copilot
+    case openCode = "opencode"
 
     var id: String { rawValue }
 
@@ -9,6 +10,8 @@ enum ConversationAgent: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .claude: "Claude"
         case .codex: "Codex"
+        case .copilot: "Copilot"
+        case .openCode: "OpenCode"
         }
     }
 
@@ -16,6 +19,8 @@ enum ConversationAgent: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .claude: "--dangerously-skip-permissions"
         case .codex: "--dangerously-bypass-approvals-and-sandbox"
+        case .copilot: "--allow-all"
+        case .openCode: "--auto"
         }
     }
 
@@ -37,6 +42,8 @@ struct AgentConversation: Identifiable, Equatable, Sendable {
         switch agent {
         case .claude: ["claude", "--resume", sessionID]
         case .codex: ["codex", "resume", sessionID]
+        case .copilot: ["copilot", "--resume", sessionID]
+        case .openCode: ["opencode", "--session", sessionID]
         }
     }
 }

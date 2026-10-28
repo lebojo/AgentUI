@@ -23,7 +23,7 @@ xcrun swiftc -parse-as-library \
 "$store_binary"
 
 xcrun swiftc -parse-as-library \
-  AgentUI/Models/AgentConversation.swift AgentUI/Services/ConversationTranscripts.swift AgentUI/Services/ConversationIndex.swift \
+  AgentUI/Models/AgentConversation.swift AgentUI/Services/ConversationTranscripts.swift AgentUI/Services/ConversationIndex.swift AgentUI/Services/OpenCodeSessions.swift \
   AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift \
   Tests/ConversationTests.swift -o "$conversation_binary"
 "$conversation_binary"

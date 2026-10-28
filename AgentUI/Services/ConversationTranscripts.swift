@@ -176,3 +176,77 @@ struct CodexRollout: Equatable, Sendable {
         return titles
     }
 }
+
+struct CopilotWorkspace: Equatable, Sendable {
+    let cwd: String?
+    let title: String?
+
+    private struct Event: Decodable {
+        struct Payload: Decodable {
+            let content: MessageContent?
+        }
+        let type: String?
+        let data: Payload?
+    }
+
+    static func read(_ url: URL) -> CopilotWorkspace? {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        let fields = YAMLFields.parse(text)
+        return CopilotWorkspace(cwd: fields["cwd"], title: ConversationTitle.clean(fields["name"]) ?? ConversationTitle.clean(fields["summary"]))
+    }
+
+    static func firstPrompt(in events: URL, limit: Int = 2_097_152) -> String? {
+        var prompt: String?
+        JSONLines.forEach(events, limit: limit) { line in
+            guard JSONLines.line(line, contains: "\"user.message\""),
+                  let event = try? JSONDecoder().decode(Event.self, from: line), event.type == "user.message" else { return true }
+            prompt = ConversationTitle.clean(event.data?.content?.text)
+            return prompt == nil
+        }
+        return prompt
+    }
+}
+
+enum YAMLFields {
+    static func parse(_ text: String) -> [String: String] {
+        var fields: [String: String] = [:]
+        var key: String?
+        var lines: [String] = []
+        for line in text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
+            if let first = line.first, !first.isWhitespace, first != "#", first != "-", let colon = line.firstIndex(of: ":") {
+                if let key { fields[key] = scalar(lines) }
+                key = String(line[..<colon])
+                lines = [line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)]
+            } else if key != nil {
+                lines.append(line.trimmingCharacters(in: .whitespaces))
+            }
+        }
+        if let key { fields[key] = scalar(lines) }
+        return fields
+    }
+
+    private static func scalar(_ lines: [String]) -> String? {
+        guard let head = lines.first else { return nil }
+        if head.hasPrefix("|") || head.hasPrefix(">") {
+            return lines.dropFirst().joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let value = ([head] + lines.dropFirst().filter { !$0.isEmpty }).joined(separator: " ")
+        if value.count > 1, value.hasPrefix("'"), value.hasSuffix("'") {
+            return String(value.dropFirst().dropLast()).replacingOccurrences(of: "''", with: "'")
+        }
+        if value.count > 1, value.hasPrefix("\""), value.hasSuffix("\"") {
+            return (try? JSONDecoder().decode(String.self, from: Data(value.utf8))) ?? String(value.dropFirst().dropLast())
+        }
+        let plain = lines.map(withoutComment).filter { !$0.isEmpty }.joined(separator: " ")
+        return ["", "~", "null"].contains(plain) ? nil : plain
+    }
+
+    private static func withoutComment(_ line: String) -> String {
+        var previous: Character = " "
+        for index in line.indices {
+            if line[index] == "#", previous.isWhitespace { return line[..<index].trimmingCharacters(in: .whitespaces) }
+            previous = line[index]
+        }
+        return line
+    }
+}

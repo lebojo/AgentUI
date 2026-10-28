@@ -16,6 +16,9 @@ actor ConversationIndex {
     private let home: URL
     private var claudeCache: [String: Cached<ClaudeTranscript>] = [:]
     private var codexCache: [String: Cached<CodexRollout?>] = [:]
+    private var copilotCache: [String: Cached<CopilotWorkspace?>] = [:]
+    private var copilotPromptCache: [String: Cached<String?>] = [:]
+    private var openCodeCache: (stamps: [Stamp?], sessions: [OpenCodeSessions.Session])?
 
     init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
         self.home = home
@@ -33,7 +36,8 @@ actor ConversationIndex {
     }
 
     func conversations(at path: String) -> [AgentConversation] {
-        (claudeConversations(at: path) + codexConversations(at: path)).sorted { $0.updatedAt > $1.updatedAt }
+        (claudeConversations(at: path) + codexConversations(at: path) + copilotConversations(at: path) + openCodeConversations(at: path))
+            .sorted { $0.updatedAt > $1.updatedAt }
     }
 
     static func claudeDirectoryName(for path: String) -> String {
@@ -85,6 +89,46 @@ actor ConversationIndex {
             found[rollout.sessionID] = AgentConversation(agent: .codex, sessionID: rollout.sessionID, title: title, updatedAt: stamp.modified)
         }
         return Array(found.values)
+    }
+
+    private func copilotConversations(at path: String) -> [AgentConversation] {
+        let sessions = home.appendingPathComponent(".copilot/session-state", isDirectory: true)
+        var found: [AgentConversation] = []
+        for directory in Self.contents(of: sessions) {
+            let workspaceURL = directory.appendingPathComponent("workspace.yaml")
+            let events = directory.appendingPathComponent("events.jsonl")
+            guard let workspaceStamp = Self.stamp(workspaceURL),
+                  let workspace = cached(workspaceURL, stamp: workspaceStamp, in: &copilotCache, read: { CopilotWorkspace.read(workspaceURL) }),
+                  Self.samePath(workspace.cwd, path) else { continue }
+            let eventsStamp = Self.stamp(events)
+            var title = workspace.title
+            if title == nil, let eventsStamp {
+                title = cached(events, stamp: eventsStamp, in: &copilotPromptCache) { CopilotWorkspace.firstPrompt(in: events) }
+            }
+            let updatedAt = max(workspaceStamp.modified, eventsStamp?.modified ?? .distantPast)
+            found.append(AgentConversation(agent: .copilot, sessionID: directory.lastPathComponent,
+                                           title: title ?? "Conversation Copilot", updatedAt: updatedAt))
+        }
+        return found
+    }
+
+    private func openCodeConversations(at path: String) -> [AgentConversation] {
+        var found: [String: AgentConversation] = [:]
+        for session in openCodeSessions() where Self.samePath(session.directory, path) {
+            if let existing = found[session.id], existing.updatedAt >= session.updatedAt { continue }
+            let title = ConversationTitle.clean(session.title) ?? "Conversation OpenCode"
+            found[session.id] = AgentConversation(agent: .openCode, sessionID: session.id, title: title, updatedAt: session.updatedAt)
+        }
+        return Array(found.values)
+    }
+
+    private func openCodeSessions() -> [OpenCodeSessions.Session] {
+        let database = home.appendingPathComponent(".local/share/opencode/opencode.db")
+        let stamps = [database, URL(fileURLWithPath: database.path + "-wal")].map(Self.stamp)
+        if let openCodeCache, openCodeCache.stamps == stamps { return openCodeCache.sessions }
+        guard let sessions = OpenCodeSessions.read(database) else { return openCodeCache?.sessions ?? [] }
+        openCodeCache = (stamps, sessions)
+        return sessions
     }
 
     private func cached<Value>(_ url: URL, stamp: Stamp, in cache: inout [String: Cached<Value>], read: () -> Value) -> Value {
