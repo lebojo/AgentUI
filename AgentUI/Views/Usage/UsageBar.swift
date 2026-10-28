@@ -2,8 +2,10 @@ import SwiftUI
 
 struct UsageBar: View {
     @AppStorage("usageBarCollapsed") private var isCollapsed = false
+
     @Environment(WorkspaceStore.self) private var workspace
     @Environment(UsageStore.self) private var usage
+
     @State private var showsDetails = false
 
     var body: some View {
@@ -86,6 +88,12 @@ private struct UsageBarRow: View {
         state.usage?.headline?.resetText(from: now)
     }
 
+    private var accessibilityText: String {
+        let parts = windows.map { "\($0.kind.title) : \($0.percentText) utilisés" }
+        let reset = countdown.map { ", réinitialisation dans \($0)" } ?? ""
+        return "\(provider.title), " + parts.joined(separator: ", ") + reset
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             HStack(spacing: Spacing.xs) {
@@ -111,12 +119,6 @@ private struct UsageBarRow: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
-    }
-
-    private var accessibilityText: String {
-        let parts = windows.map { "\($0.kind.title) : \($0.percentText) utilisés" }
-        let reset = countdown.map { ", réinitialisation dans \($0)" } ?? ""
-        return "\(provider.title), " + parts.joined(separator: ", ") + reset
     }
 }
 

@@ -14,15 +14,35 @@ enum WorkspaceSheet: Identifiable {
 }
 
 struct WorkspaceEditor: View {
-    let store: WorkspaceStore
-    let sheet: WorkspaceSheet
     @Environment(\.dismiss) private var dismiss
+
     @State private var name = ""
     @State private var submitting = false
     @State private var submission: Task<Void, Never>?
     @State private var error: String?
     @State private var appearance: SidebarAppearance?
+
     @FocusState private var focused: Bool
+
+    let store: WorkspaceStore
+    let sheet: WorkspaceSheet
+
+    private var isWorktree: Bool { if case .worktree = sheet { true } else { false } }
+    private var title: String {
+        switch sheet {
+        case .folder(nil): "Nouveau dossier virtuel"
+        case .folder: "Nouveau sous-dossier"
+        case .rename: appearance == nil ? "Renommer" : "Modifier"
+        case .worktree: "Nouveau worktree"
+        }
+    }
+    private var explanation: String {
+        switch sheet {
+        case .folder: "Réunis des projets situés à différents endroits sur ton Mac. Leurs fichiers restent en place."
+        case .rename: appearance == nil ? "Ce nom sera affiché dans la barre latérale." : "Ce nom, cette icône et cette couleur seront affichés dans la barre latérale."
+        case .worktree(_, let project): "Crée une nouvelle branche depuis HEAD de \(project), dans un dossier de travail séparé. Un terminal y sera ouvert."
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xl) {
@@ -72,22 +92,6 @@ struct WorkspaceEditor: View {
         }
     }
 
-    private var isWorktree: Bool { if case .worktree = sheet { true } else { false } }
-    private var title: String {
-        switch sheet {
-        case .folder(nil): "Nouveau dossier virtuel"
-        case .folder: "Nouveau sous-dossier"
-        case .rename: appearance == nil ? "Renommer" : "Modifier"
-        case .worktree: "Nouveau worktree"
-        }
-    }
-    private var explanation: String {
-        switch sheet {
-        case .folder: "Réunis des projets situés à différents endroits sur ton Mac. Leurs fichiers restent en place."
-        case .rename: appearance == nil ? "Ce nom sera affiché dans la barre latérale." : "Ce nom, cette icône et cette couleur seront affichés dans la barre latérale."
-        case .worktree(_, let project): "Crée une nouvelle branche depuis HEAD de \(project), dans un dossier de travail séparé. Un terminal y sera ouvert."
-        }
-    }
     private func submit() {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !submitting else { return }

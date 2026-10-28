@@ -1,21 +1,27 @@
 import SwiftUI
 
 struct SidebarFolderRow: View {
-    @Bindable var store: WorkspaceStore
-    let group: SidebarFilterResult.Group
-    let query: String
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
 
+    @Bindable var store: WorkspaceStore
+
+    let group: SidebarFilterResult.Group
+    let query: String
+
     private var folder: ProjectFolder { group.folder }
+
+    private var expanded: Binding<Bool> {
+        query.isEmpty ? $store[expanded: folder.id] : .constant(true)
+    }
 
     var body: some View {
         DisclosureGroup(isExpanded: expanded) {
             ForEach(group.subgroups) { subgroup in
-                SidebarFolderRow(store: store, group: subgroup, query: query, sheet: $sheet, removal: $removal)
+                SidebarFolderRow(sheet: $sheet, removal: $removal, store: store, group: subgroup, query: query)
             }
             ForEach(group.projects) { project in
-                SidebarProjectRow(store: store, project: project, query: query, showAll: group.showsAll, sheet: $sheet, removal: $removal)
+                SidebarProjectRow(sheet: $sheet, removal: $removal, store: store, project: project, query: query, showAll: group.showsAll)
             }
             if group.isEmpty {
                 Button("Ajouter un projet…") { store.chooseProjects(in: folder.id) }
@@ -57,9 +63,5 @@ struct SidebarFolderRow: View {
             guard let value = values.first, let id = UUID(uuidString: value) else { return false }
             return store.drop(id, into: folder.id)
         }
-    }
-
-    private var expanded: Binding<Bool> {
-        query.isEmpty ? $store[expanded: folder.id] : .constant(true)
     }
 }

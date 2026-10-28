@@ -2,7 +2,9 @@ import SwiftUI
 
 struct AgentConversationList: View {
     @State private var conversations: [AgentConversation]?
+
     @Bindable var store: WorkspaceStore
+
     let context: TerminalContext
     let refresh: Int
 

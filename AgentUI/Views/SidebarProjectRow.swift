@@ -2,18 +2,21 @@ import SwiftUI
 import AppKit
 
 struct SidebarProjectRow: View {
+    @Binding var sheet: WorkspaceSheet?
+    @Binding var removal: Removal?
+
     @Bindable var store: WorkspaceStore
+
     let project: Project
     let query: String
     let showAll: Bool
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
+
     var body: some View {
         DisclosureGroup(isExpanded: expanded(project.id)) {
             ForEach(project.worktrees) { worktree in
                 if worktree.isPrimary {
                     ForEach(worktree.terminals.filter { showAll || matches(project.name) || matches($0.name) }) { terminal in
-                        SidebarTerminalRow(store: store, terminal: terminal, path: worktree.path, sheet: $sheet, removal: $removal)
+                        SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, path: worktree.path)
                     }
                     if worktree.terminals.isEmpty {
                         Button("Ouvrir un terminal") { addTerminal(project, worktree) }
@@ -22,7 +25,7 @@ struct SidebarProjectRow: View {
                 } else if showAll || matches(project.name) || matches(worktree.name) || worktree.terminals.contains(where: { matches($0.name) }) {
                     DisclosureGroup(isExpanded: expanded(worktree.id)) {
                         ForEach(worktree.terminals.filter { showAll || matches(project.name) || matches(worktree.name) || matches($0.name) }) { terminal in
-                            SidebarTerminalRow(store: store, terminal: terminal, path: worktree.path, sheet: $sheet, removal: $removal)
+                            SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, path: worktree.path)
                         }
                         if worktree.terminals.isEmpty {
                             Button("Ouvrir un terminal") { addTerminal(project, worktree) }
@@ -109,11 +112,13 @@ struct SidebarProjectRow: View {
 }
 
 private struct SidebarTerminalRow: View {
+    @Binding var sheet: WorkspaceSheet?
+    @Binding var removal: Removal?
+
     let store: WorkspaceStore
     let terminal: TerminalRecord
     let path: String
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
+
     var body: some View {
         HStack(spacing: Spacing.s) {
             Image(systemName: "terminal").font(Typography.m).foregroundStyle(Palette.textSecondary)
@@ -137,5 +142,4 @@ private struct SidebarTerminalRow: View {
             Button("Fermer le terminal…", systemImage: "xmark", role: .destructive) { removal = .terminal(terminal.id) }
         }
     }
-
 }

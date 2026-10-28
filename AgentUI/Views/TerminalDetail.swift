@@ -1,10 +1,11 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct TerminalDetail: View {
+    @State private var session: TerminalSession?
+
     let store: WorkspaceStore
     let context: TerminalContext
-    @State private var session: TerminalSession?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,11 +23,13 @@ struct TerminalDetail: View {
                     do { _ = try store.addTerminal(projectID: context.project.id, worktreeID: context.worktree.id) }
                     catch { store.errorMessage = error.localizedDescription }
                 } label: { Label("Terminal", systemImage: "plus") }
-                .buttonStyle(.borderless).help("Nouveau terminal dans ce worktree")
-                .keyboardShortcut("t")
+                    .buttonStyle(.borderless).help("Nouveau terminal dans ce worktree")
+                    .keyboardShortcut("t")
             }
             .font(Typography.m).lineLimit(1).padding(.horizontal, Spacing.xl).frame(height: Dimension.Detail.headerHeight)
+
             Divider()
+
             if let session {
                 NativeTerminalView(session: session)
                     .id(ObjectIdentifier(session))
