@@ -2,16 +2,19 @@ import SwiftUI
 import AppKit
 
 struct ContentView: View {
-    @Bindable var store: WorkspaceStore
     @AppStorage("inspectorVisible") private var inspectorVisible = true
+
     @Environment(UsageStore.self) private var usage
+
     @State private var sheet: WorkspaceSheet?
     @State private var removal: Removal?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
+    @Bindable var store: WorkspaceStore
+
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            WorkspaceSidebar(store: store, sheet: $sheet, removal: $removal)
+            WorkspaceSidebar(sheet: $sheet, removal: $removal, store: store)
                 .navigationSplitViewColumnWidth(min: Dimension.Sidebar.minWidth, ideal: Dimension.Sidebar.idealWidth, max: Dimension.Sidebar.maxWidth)
                 .navigationTitle("AgentUI")
         } detail: {
@@ -19,7 +22,7 @@ struct ContentView: View {
                 TerminalDetail(store: store, context: context)
                     .id(context.terminal.id)
             } else {
-                WorkspaceWelcomeView(store: store, sheet: $sheet)
+                WorkspaceWelcomeView(sheet: $sheet, store: store)
             }
         }
         .inspector(isPresented: $inspectorVisible) {
@@ -81,7 +84,6 @@ struct ContentView: View {
             }
         } message: { Text("Les processus des terminaux concernés seront arrêtés. Les fichiers et les worktrees sur disque seront conservés.") }
     }
-
 }
 
 enum Removal {

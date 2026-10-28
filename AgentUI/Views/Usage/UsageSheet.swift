@@ -39,29 +39,6 @@ private struct UsageProviderSection: View {
     let state: UsageState
     let now: Date
 
-    var body: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: Spacing.l) {
-                content
-                if let error = state.error {
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .font(Typography.caption).foregroundStyle(Palette.warning)
-                        .textSelection(.enabled)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Spacing.m)
-        } label: {
-            HStack(spacing: Spacing.s) {
-                UsageProviderLogo(provider: provider, size: IconSize.s)
-                Text(provider.title).font(Typography.headline)
-                if let plan = state.usage?.plan {
-                    Text(plan).font(Typography.caption).foregroundStyle(Palette.textSecondary)
-                }
-            }
-        }
-    }
-
     @ViewBuilder private var content: some View {
         switch state {
         case .loading:
@@ -91,6 +68,29 @@ private struct UsageProviderSection: View {
             }
         case .failed(_, nil):
             EmptyView()
+        }
+    }
+
+    var body: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: Spacing.l) {
+                content
+                if let error = state.error {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(Typography.caption).foregroundStyle(Palette.warning)
+                        .textSelection(.enabled)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Spacing.m)
+        } label: {
+            HStack(spacing: Spacing.s) {
+                UsageProviderLogo(provider: provider, size: IconSize.s)
+                Text(provider.title).font(Typography.headline)
+                if let plan = state.usage?.plan {
+                    Text(plan).font(Typography.caption).foregroundStyle(Palette.textSecondary)
+                }
+            }
         }
     }
 }

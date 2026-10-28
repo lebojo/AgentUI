@@ -2,8 +2,9 @@ import AppKit
 import SwiftUI
 
 struct WorkspaceInspector: View {
-    @Bindable var store: WorkspaceStore
     @AppStorage("inspectorTab") private var tab: InspectorTab = .files
+
+    @Bindable var store: WorkspaceStore
 
     var body: some View {
         Group {
@@ -16,7 +17,7 @@ struct WorkspaceInspector: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .safeAreaInset(edge: .top,) {
+        .safeAreaInset(edge: .top) {
             Picker("Vue du panneau de droite", selection: $tab) {
                 ForEach(InspectorTab.allCases) { item in
                     Label(item.title, systemImage: item.symbol)
@@ -33,14 +34,34 @@ struct WorkspaceInspector: View {
 }
 
 private struct InspectorContents: View {
-    @Bindable var store: WorkspaceStore
-    let context: TerminalContext
-    let tab: InspectorTab
     @State private var model = InspectorStore()
     @State private var refresh = 0
     @State private var preview: TextPreview?
     @State private var previewError: String?
     @State private var loadingPreview = false
+
+    @Bindable var store: WorkspaceStore
+
+    let context: TerminalContext
+    let tab: InspectorTab
+
+    @ViewBuilder private var githubSummary: some View {
+        VStack(alignment: .leading, spacing: Spacing.m) {
+            Text("GitHub").font(Typography.sectionTitle)
+            if let github = model.github {
+                if let url = URL(string: github.repository.url) { Link(github.repository.nameWithOwner, destination: url).lineLimit(2) }
+                if let pr = github.pullRequest {
+                    if let url = URL(string: pr.url) { Link("#\(pr.number) · \(pr.title)", destination: url).font(Typography.body) }
+                    Text("\(pr.isDraft ? "Brouillon" : pr.state) · \(pr.headRefName) → \(pr.baseRefName)")
+                        .font(Typography.caption).foregroundStyle(Palette.textSecondary)
+                } else if let error = github.pullRequestError {
+                    InspectorNotice(title: "Pull request indisponible", message: error)
+                } else { Text("Aucune pull request pour cette branche.").font(Typography.body).foregroundStyle(Palette.textSecondary) }
+            } else if let error = model.githubError {
+                InspectorNotice(title: "Connexion GitHub indisponible", message: error)
+            } else { Text("Chargement via gh…").font(Typography.body).foregroundStyle(Palette.textSecondary) }
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -112,24 +133,6 @@ private struct InspectorContents: View {
         githubSummary
     }
 
-    @ViewBuilder private var githubSummary: some View {
-        VStack(alignment: .leading, spacing: Spacing.m) {
-            Text("GitHub").font(Typography.sectionTitle)
-            if let github = model.github {
-                if let url = URL(string: github.repository.url) { Link(github.repository.nameWithOwner, destination: url).lineLimit(2) }
-                if let pr = github.pullRequest {
-                    if let url = URL(string: pr.url) { Link("#\(pr.number) · \(pr.title)", destination: url).font(Typography.body) }
-                    Text("\(pr.isDraft ? "Brouillon" : pr.state) · \(pr.headRefName) → \(pr.baseRefName)")
-                        .font(Typography.caption).foregroundStyle(Palette.textSecondary)
-                } else if let error = github.pullRequestError {
-                    InspectorNotice(title: "Pull request indisponible", message: error)
-                } else { Text("Aucune pull request pour cette branche.").font(Typography.body).foregroundStyle(Palette.textSecondary) }
-            } else if let error = model.githubError {
-                InspectorNotice(title: "Connexion GitHub indisponible", message: error)
-            } else { Text("Chargement via gh…").font(Typography.body).foregroundStyle(Palette.textSecondary) }
-        }
-    }
-
     @ViewBuilder private func checks(_ local: LocalGitSnapshot) -> some View {
         githubSummary
         if let github = model.github {
@@ -174,6 +177,7 @@ struct InspectorNotice: View {
     let title: String
     let message: String
     var symbol = "exclamationmark.circle"
+
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             Label(title, systemImage: symbol).font(Typography.label)

@@ -4,6 +4,7 @@ struct UsageSignInButton: View {
     @Environment(WorkspaceStore.self) private var workspace
     @Environment(UsageStore.self) private var usage
     @Environment(\.dismiss) private var dismiss
+
     let provider: UsageProvider
 
     var body: some View {

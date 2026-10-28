@@ -2,11 +2,12 @@ import SwiftUI
 import AppKit
 
 struct ExplorerDirectory: View {
-    let url: URL
-    let open: (URL) -> Void
     @State private var entries: [ExplorerEntry] = []
     @State private var error: String?
     @State private var loaded = false
+
+    let url: URL
+    let open: (URL) -> Void
 
     var body: some View {
         Group {
@@ -28,9 +29,11 @@ struct ExplorerDirectory: View {
 }
 
 private struct ExplorerRow: View {
+    @State private var expanded = false
+
     let entry: ExplorerEntry
     let open: (URL) -> Void
-    @State private var expanded = false
+
     var body: some View {
         Group {
             if entry.isDirectory {
@@ -53,8 +56,10 @@ private struct ExplorerRow: View {
 }
 
 struct TextPreviewSheet: View {
-    let preview: TextPreview
     @Environment(\.dismiss) private var dismiss
+
+    let preview: TextPreview
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {

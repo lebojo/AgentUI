@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SidebarAppearancePicker: View {
     @Binding var appearance: SidebarAppearance
+
     private let columns = Array(repeating: GridItem(.fixed(IconSize.xl), spacing: Spacing.s), count: 11)
 
     var body: some View {
