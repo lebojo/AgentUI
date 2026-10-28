@@ -46,7 +46,7 @@ struct UsageBar: View {
                     .help(isCollapsed ? "Afficher le détail des limites" : "Réduire l’usage")
                     .accessibilityLabel(isCollapsed ? "Développer l’usage" : "Réduire l’usage")
                 }
-                .padding(.leading, Spacing.l).padding(.trailing, Spacing.m).padding(.vertical, Spacing.m)
+                .padding(.leading, Spacing.l).padding(.trailing, Spacing.m).padding(.vertical, isCollapsed ? Spacing.m : Spacing.l)
             } else if usage.isSignedOutEverywhere {
                 UsageSignedOutRow(isWaiting: !usage.pendingSignIns.isEmpty) { showsDetails = true }
             }
