@@ -8,14 +8,14 @@ struct TerminalDetail: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "shippingbox").foregroundStyle(.secondary)
+            HStack(spacing: Spacing.m) {
+                Image(systemName: "shippingbox").foregroundStyle(Palette.textSecondary)
                 Text(context.project.name).fontWeight(.medium)
-                Image(systemName: "chevron.right").font(.system(size: 9)).foregroundStyle(.tertiary)
-                Image(systemName: "arrow.triangle.branch").foregroundStyle(.secondary)
-                Text(context.worktree.name).foregroundStyle(.secondary)
+                Image(systemName: "chevron.right").font(Typography.xxs).foregroundStyle(Palette.textTertiary)
+                Image(systemName: "arrow.triangle.branch").foregroundStyle(Palette.textSecondary)
+                Text(context.worktree.name).foregroundStyle(Palette.textSecondary)
                 if let branch = store.sessions.branch(for: context.terminal.id, initialPath: context.worktree.path) {
-                    BranchBadge(branch: branch).frame(maxWidth: 180)
+                    BranchBadge(branch: branch).frame(maxWidth: Dimension.Badge.detailMaxWidth)
                 }
                 Spacer()
                 Button {
@@ -25,7 +25,7 @@ struct TerminalDetail: View {
                 .buttonStyle(.borderless).help("Nouveau terminal dans ce worktree")
                 .keyboardShortcut("t")
             }
-            .font(.system(size: 12)).lineLimit(1).padding(.horizontal, 18).frame(height: 40)
+            .font(Typography.m).lineLimit(1).padding(.horizontal, Spacing.xl).frame(height: Dimension.Detail.headerHeight)
             Divider()
             if let session {
                 NativeTerminalView(session: session)
@@ -40,23 +40,23 @@ struct TerminalDetail: View {
                             self.session = store.sessions.start(context)
                         }
                     }
-                    .font(.callout).padding(12).background(.bar)
+                    .font(Typography.body).padding(Spacing.l).background(Palette.bar)
                 }
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             Divider()
-            HStack(spacing: 8) {
-                Image(systemName: "folder").foregroundStyle(.secondary)
+            HStack(spacing: Spacing.m) {
+                Image(systemName: "folder").foregroundStyle(Palette.textSecondary)
                 Text((session?.currentDirectory ?? context.worktree.path).replacingOccurrences(of: NSHomeDirectory(), with: "~"))
                     .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
-                Spacer(minLength: 12)
-                Text("⌘T  Nouveau terminal").foregroundStyle(.secondary)
+                Spacer(minLength: Spacing.l)
+                Text("⌘T  Nouveau terminal").foregroundStyle(Palette.textSecondary)
             }
-            .font(.system(size: 11)).foregroundStyle(.secondary)
-            .padding(.horizontal, 16).frame(height: 29)
+            .font(Typography.s).foregroundStyle(Palette.textSecondary)
+            .padding(.horizontal, Spacing.xl).frame(height: Dimension.Detail.footerHeight)
         }
-        .background(Color(nsColor: .textBackgroundColor))
+        .background(Palette.surface)
         .navigationTitle(context.terminal.name)
         .task { session = store.sessions.start(context) }
     }

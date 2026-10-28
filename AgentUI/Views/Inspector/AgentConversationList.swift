@@ -45,34 +45,34 @@ private struct AgentConversationRow: View {
     let resume: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.m) {
             conversation.agent.logo
                 .resizable()
                 .scaledToFit()
-                .frame(width: 16, height: 16)
+                .frame(width: IconSize.s, height: IconSize.s)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: Spacing.xxs) {
                 Text(conversation.title).lineLimit(2)
-                HStack(spacing: 4) {
+                HStack(spacing: Spacing.xs) {
                     Text(conversation.agent.title)
                     Text("·")
                     Text(conversation.updatedAt, format: .relative(presentation: .named))
                     if conversation.isRunning {
                         Text("·")
-                        Text("En cours").foregroundStyle(.green)
+                        Text("En cours").foregroundStyle(Palette.success)
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(Typography.caption)
+                .foregroundStyle(Palette.textSecondary)
             }
-            Spacer(minLength: 4)
+            Spacer(minLength: Spacing.xs)
             Button(action: resume) { Image(systemName: "play.fill") }
                 .buttonStyle(.borderless)
                 .disabled(conversation.isRunning)
                 .help(conversation.isRunning ? "Cette conversation est déjà ouverte" : "Reprendre dans un nouveau terminal")
                 .accessibilityLabel("Reprendre \(conversation.title)")
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, Spacing.xxs)
     }
 }
 

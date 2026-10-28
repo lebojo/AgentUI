@@ -17,6 +17,8 @@ Une interface compacte inspirée de la hiérarchie Orca, avec les conventions de
 - Contrôles SwiftUI, SF Symbols et couleurs sémantiques du système.
 - Libellés français directs, chemins et états accessibles sans surcharge.
 
+Les valeurs sont centralisées dans `AgentUI/Design/` : `Spacing` (2, 4, 6, 8, 12, 16, 24), `Radius`, `Typography`, `Palette`, `IconSize`, `Stroke`, `Motion` et `Dimension`. Les vues n’emploient aucune valeur en dur ; les opacités restent locales.
+
 Documentation extraite de `AgentUI/ContentView.swift`, `AgentUI/Views/`, `AgentUI/Services/TerminalSessions.swift` et `AgentUI/MyApp.swift`. Les captures ont été écartées : Stage Manager et la capture AppKit ont altéré la composition ou la vibrance et les couleurs (voir `.impeccable/review/REVIEW.md`). Ce document décrit le code ; il ne constitue pas une validation visuelle.
 
 ## Colors
@@ -53,7 +55,7 @@ Le détail empile un fil de contexte projet / worktree (40 pt), le terminal exte
 
 À droite, `.inspector` conserve la présentation native et une largeur de 260–440 pt (310 pt idéale). Le bouton `sidebar.right` le masque ou le montre ; visibilité et onglet sont mémorisés. Un `Picker(.segmented)` natif à quatre symboles donne accès à Fichiers, Agents, Git et Checks. Il est placé dans un `.safeAreaInset(edge: .top)` de l’inspecteur et reste fixé sous la toolbar pendant le défilement. Le contenu suit le worktree sélectionné ; sans sélection, un état vide invite à ouvrir un terminal. Les aperçus apparaissent dans une feuille redimensionnable (minimum 560 × 360 pt, taille idéale 780 × 540 pt).
 
-Les formulaires sont des feuilles de 440 pt de largeur, avec une marge de 24 pt et un espacement principal de 18 pt. Le redimensionnement repose sur les conteneurs natifs ; aucun breakpoint web n’est défini.
+Les formulaires sont des feuilles de 440 pt de largeur, avec une marge de 24 pt et un espacement principal de 16 pt. Le redimensionnement repose sur les conteneurs natifs ; aucun breakpoint web n’est défini.
 
 ## Elevation & Depth
 
@@ -61,7 +63,7 @@ La profondeur vient de la fenêtre, de la barre latérale, des feuilles et des m
 
 ## Shapes
 
-Contrôles et feuilles conservent leurs formes macOS. Le filtre utilise un rectangle arrondi (rayon de 7 pt) et une marge intérieure de 8 pt. Les champs des formulaires utilisent `.roundedBorder`. Les onglets de l’inspecteur utilisent un fond accentué discret et un rayon de 6 pt pour l’onglet sélectionné. Ne pas généraliser le rayon du filtre à tous les contrôles.
+Contrôles et feuilles conservent leurs formes macOS. Le filtre utilise un rectangle arrondi (`Radius.m`, 6 pt) et une marge intérieure de 8 pt. Les champs des formulaires utilisent `.roundedBorder`. Les cellules du sélecteur d’icône utilisent un fond accentué discret et le même rayon pour la cellule sélectionnée.
 
 ## Components
 

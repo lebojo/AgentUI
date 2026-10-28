@@ -9,18 +9,18 @@ struct UsageBar: View {
     var body: some View {
         Group {
             if !usage.connectedProviders.isEmpty {
-                HStack(alignment: isCollapsed ? .center : .top, spacing: 6) {
+                HStack(alignment: isCollapsed ? .center : .top, spacing: Spacing.s) {
                     Button { showsDetails = true } label: {
                         TimelineView(.periodic(from: .now, by: 30)) { context in
                             if isCollapsed {
-                                HStack(spacing: 14) {
+                                HStack(spacing: Spacing.l) {
                                     ForEach(usage.connectedProviders) { provider in
                                         UsageCollapsedItem(provider: provider, state: usage.state(for: provider))
                                     }
                                     Spacer(minLength: 0)
                                 }
                             } else {
-                                VStack(spacing: 9) {
+                                VStack(spacing: Spacing.m) {
                                     ForEach(usage.connectedProviders) { provider in
                                         UsageBarRow(provider: provider, state: usage.state(for: provider), now: context.date)
                                     }
@@ -32,19 +32,19 @@ struct UsageBar: View {
                     .buttonStyle(.plain)
                     .help("Afficher le détail de l’usage")
                     .accessibilityHint("Affiche le détail de l’usage")
-                    Button { withAnimation(.snappy(duration: 0.2)) { isCollapsed.toggle() } } label: {
+                    Button { withAnimation(Motion.standard) { isCollapsed.toggle() } } label: {
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(Typography.xxs.weight(.semibold))
                             .rotationEffect(.degrees(isCollapsed ? 180 : 0))
-                            .frame(width: 16, height: 16)
+                            .frame(width: IconSize.s, height: IconSize.s)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Palette.textSecondary)
                     .help(isCollapsed ? "Afficher le détail des limites" : "Réduire l’usage")
                     .accessibilityLabel(isCollapsed ? "Développer l’usage" : "Réduire l’usage")
                 }
-                .padding(.leading, 14).padding(.trailing, 10).padding(.vertical, isCollapsed ? 8 : 10)
+                .padding(.leading, Spacing.l).padding(.trailing, Spacing.m).padding(.vertical, Spacing.m)
             } else if usage.isSignedOutEverywhere {
                 UsageSignedOutRow(isWaiting: !usage.pendingSignIns.isEmpty) { showsDetails = true }
             }
@@ -60,15 +60,15 @@ private struct UsageSignedOutRow: View {
     let showDetails: () -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.s) {
             Image(systemName: "gauge.with.dots.needle.33percent")
             Text(isWaiting ? "En attente de la connexion…" : "Usage des agents")
-            Spacer(minLength: 4)
+            Spacer(minLength: Spacing.xs)
             if isWaiting { ProgressView().controlSize(.mini) }
             else { Button("Se connecter…", action: showDetails).buttonStyle(.link) }
         }
-        .font(.system(size: 11)).foregroundStyle(.secondary)
-        .padding(.horizontal, 14).padding(.vertical, 10)
+        .font(Typography.s).foregroundStyle(Palette.textSecondary)
+        .padding(.horizontal, Spacing.l).padding(.vertical, Spacing.m)
     }
 }
 
@@ -87,23 +87,23 @@ private struct UsageBarRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 5) {
-                UsageProviderLogo(provider: provider, size: 12)
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            HStack(spacing: Spacing.xs) {
+                UsageProviderLogo(provider: provider, size: IconSize.xs)
                 Text(provider.title).fontWeight(.medium)
                 if state.error != nil {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.warning)
                         .help(state.error ?? "")
                 }
-                Spacer(minLength: 4)
+                Spacer(minLength: Spacing.xs)
                 if let countdown {
                     Label(countdown, systemImage: "arrow.clockwise")
                         .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Palette.textSecondary)
                 }
             }
-            .font(.system(size: 11))
-            HStack(spacing: 10) {
+            .font(Typography.s)
+            HStack(spacing: Spacing.m) {
                 ForEach(windows) { window in
                     UsageCompactMeter(window: window)
                 }
@@ -127,21 +127,21 @@ private struct UsageCollapsedItem: View {
     private var window: UsageWindow? { state.usage?.headline }
 
     var body: some View {
-        HStack(spacing: 5) {
-            UsageProviderLogo(provider: provider, size: 13)
+        HStack(spacing: Spacing.xs) {
+            UsageProviderLogo(provider: provider, size: IconSize.xs)
             if let window {
                 Text(window.percentText)
                     .monospacedDigit()
-                    .foregroundStyle(window.level == .comfortable ? Color.secondary : window.level.tint)
+                    .foregroundStyle(window.level == .comfortable ? Palette.textSecondary : window.level.tint)
             } else {
-                Text("—").foregroundStyle(.secondary)
+                Text("—").foregroundStyle(Palette.textSecondary)
             }
             if state.error != nil {
-                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.warning)
                     .help(state.error ?? "")
             }
         }
-        .font(.system(size: 11, weight: .medium))
+        .font(Typography.s.weight(.medium))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(window.map { "\(provider.title), \($0.kind.title) : \($0.percentText) utilisés" } ?? "\(provider.title), usage indisponible")
     }
@@ -151,14 +151,14 @@ private struct UsageCompactMeter: View {
     let window: UsageWindow
 
     var body: some View {
-        HStack(spacing: 5) {
-            Text(window.kind.shortTitle).foregroundStyle(.secondary)
+        HStack(spacing: Spacing.xs) {
+            Text(window.kind.shortTitle).foregroundStyle(Palette.textSecondary)
             UsageGauge(fraction: window.fraction, level: window.level)
             Text(window.percentText)
                 .monospacedDigit()
-                .foregroundStyle(window.level == .comfortable ? Color.secondary : window.level.tint)
-                .frame(minWidth: 30, alignment: .trailing)
+                .foregroundStyle(window.level == .comfortable ? Palette.textSecondary : window.level.tint)
+                .frame(minWidth: Dimension.Usage.percentMinWidth, alignment: .trailing)
         }
-        .font(.system(size: 10))
+        .font(Typography.xs)
     }
 }

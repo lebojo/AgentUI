@@ -70,7 +70,7 @@ struct AgentUIApplication: App {
                     }
                 }
         }
-        .defaultSize(width: 1180, height: 760)
+        .defaultSize(width: Dimension.Window.defaultWidth, height: Dimension.Window.defaultHeight)
         .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .newItem) {

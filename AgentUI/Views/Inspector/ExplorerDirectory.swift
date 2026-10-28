@@ -12,7 +12,7 @@ struct ExplorerDirectory: View {
         Group {
             if let error { InspectorNotice(title: "Dossier inaccessible", message: error) }
             else if !loaded { ProgressView().controlSize(.small) }
-            else if entries.isEmpty { Text("Dossier vide").font(.caption).foregroundStyle(.secondary) }
+            else if entries.isEmpty { Text("Dossier vide").font(Typography.caption).foregroundStyle(Palette.textSecondary) }
             ForEach(entries) { entry in
                 ExplorerRow(entry: entry, open: open)
             }
@@ -44,7 +44,7 @@ private struct ExplorerRow: View {
                 }.buttonStyle(.plain)
             }
         }
-        .font(.callout).help(entry.url.path)
+        .font(Typography.body).help(entry.url.path)
         .contextMenu {
             Button("Ouvrir dans l’application par défaut") { NSWorkspace.shared.open(entry.url) }
             Button("Afficher dans le Finder") { NSWorkspace.shared.activateFileViewerSelecting([entry.url]) }
@@ -58,7 +58,7 @@ struct TextPreviewSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(preview.title).font(.headline).lineLimit(1).truncationMode(.middle)
+                Text(preview.title).font(Typography.headline).lineLimit(1).truncationMode(.middle)
                 Spacer()
                 if let url = preview.url {
                     Button("Ouvrir") { NSWorkspace.shared.open(url) }
@@ -67,9 +67,9 @@ struct TextPreviewSheet: View {
             }.padding()
             Divider()
             ScrollView([.horizontal, .vertical]) {
-                Text(preview.text).font(.system(size: 12, design: .monospaced))
+                Text(preview.text).font(Typography.code)
                     .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .topLeading).padding()
-            }.background(Color(nsColor: .textBackgroundColor))
-        }.frame(minWidth: 560, idealWidth: 780, minHeight: 360, idealHeight: 540)
+            }.background(Palette.surface)
+        }.frame(minWidth: Dimension.PreviewSheet.minWidth, idealWidth: Dimension.PreviewSheet.idealWidth, minHeight: Dimension.PreviewSheet.minHeight, idealHeight: Dimension.PreviewSheet.idealHeight)
     }
 }

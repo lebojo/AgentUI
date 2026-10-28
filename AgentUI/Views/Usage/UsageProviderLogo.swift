@@ -9,7 +9,7 @@ struct UsageProviderLogo: View {
             .resizable()
             .scaledToFit()
             .frame(width: size, height: size)
-            .foregroundStyle(.primary)
+            .foregroundStyle(Palette.textPrimary)
             .accessibilityHidden(true)
     }
 }

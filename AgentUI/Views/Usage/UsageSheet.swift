@@ -6,9 +6,9 @@ struct UsageSheet: View {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
                 HStack {
-                    Text("Usage des agents").font(.title3.weight(.semibold))
+                    Text("Usage des agents").font(Typography.title)
                     Spacer()
                     if usage.isRefreshing { ProgressView().controlSize(.small) }
                     Button { Task { await usage.refresh() } } label: { Image(systemName: "arrow.clockwise") }
@@ -22,14 +22,14 @@ struct UsageSheet: View {
                 HStack {
                     if let lastRefresh = usage.lastRefresh {
                         Text("Mis à jour \(lastRefresh.formatted(.relative(presentation: .named)))")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(Typography.caption).foregroundStyle(Palette.textSecondary)
                     }
                     Spacer()
                     Button("Fermer") { dismiss() }.keyboardShortcut(.defaultAction)
                 }
             }
-            .padding(24)
-            .frame(width: 440)
+            .padding(Spacing.xxl)
+            .frame(width: Dimension.Sheet.width)
         }
     }
 }
@@ -41,22 +41,22 @@ private struct UsageProviderSection: View {
 
     var body: some View {
         GroupBox {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Spacing.l) {
                 content
                 if let error = state.error {
                     Label(error, systemImage: "exclamationmark.triangle")
-                        .font(.caption).foregroundStyle(.orange)
+                        .font(Typography.caption).foregroundStyle(Palette.warning)
                         .textSelection(.enabled)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(8)
+            .padding(Spacing.m)
         } label: {
-            HStack(spacing: 6) {
-                UsageProviderLogo(provider: provider, size: 15)
-                Text(provider.title).font(.headline)
+            HStack(spacing: Spacing.s) {
+                UsageProviderLogo(provider: provider, size: IconSize.s)
+                Text(provider.title).font(Typography.headline)
                 if let plan = state.usage?.plan {
-                    Text(plan).font(.caption).foregroundStyle(.secondary)
+                    Text(plan).font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 }
             }
         }
@@ -65,15 +65,15 @@ private struct UsageProviderSection: View {
     @ViewBuilder private var content: some View {
         switch state {
         case .loading:
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.m) {
                 ProgressView().controlSize(.small)
-                Text("Chargement…").font(.callout).foregroundStyle(.secondary)
+                Text("Chargement…").font(Typography.body).foregroundStyle(Palette.textSecondary)
             }
         case .signedOut:
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Non connecté").font(.callout.weight(.medium))
-                    Text(provider.signInHint).font(.caption).foregroundStyle(.secondary)
+            HStack(alignment: .center, spacing: Spacing.l) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text("Non connecté").font(Typography.label)
+                    Text(provider.signInHint).font(Typography.caption).foregroundStyle(Palette.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
@@ -81,7 +81,7 @@ private struct UsageProviderSection: View {
             }
         case .loaded(let usage), .failed(_, .some(let usage)):
             if usage.windows.isEmpty {
-                Text("Aucune limite communiquée pour ce compte.").font(.callout).foregroundStyle(.secondary)
+                Text("Aucune limite communiquée pour ce compte.").font(Typography.body).foregroundStyle(Palette.textSecondary)
             }
             ForEach(usage.windows) { window in
                 UsageWindowRow(window: window, now: now)
@@ -100,13 +100,13 @@ private struct UsageWindowRow: View {
     let now: Date
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
             HStack(alignment: .firstTextBaseline) {
-                Text(window.kind.title).font(.callout.weight(.medium))
+                Text(window.kind.title).font(Typography.label)
                 Spacer()
                 Text("\(window.percentText) utilisés")
-                    .font(.callout).monospacedDigit()
-                    .foregroundStyle(window.level == .comfortable ? Color.primary : window.level.tint)
+                    .font(Typography.body).monospacedDigit()
+                    .foregroundStyle(window.level == .comfortable ? Palette.textPrimary : window.level.tint)
             }
             UsageGauge(fraction: window.fraction, level: window.level)
             HStack(alignment: .firstTextBaseline) {
@@ -116,7 +116,7 @@ private struct UsageWindowRow: View {
                     Text("Réinitialisation dans \(countdown) (\(date))").monospacedDigit()
                 }
             }
-            .font(.caption).foregroundStyle(.secondary)
+            .font(Typography.caption).foregroundStyle(Palette.textSecondary)
         }
         .accessibilityElement(children: .combine)
     }
@@ -131,20 +131,20 @@ private struct UsageSpendRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Usage supplémentaire").font(.callout.weight(.medium))
+                Text("Usage supplémentaire").font(Typography.label)
                 Spacer()
                 Text(spend.isEnabled ? amounts : "Désactivé")
-                    .font(.callout).monospacedDigit()
-                    .foregroundStyle(spend.isEnabled ? Color.primary : Color.secondary)
+                    .font(Typography.body).monospacedDigit()
+                    .foregroundStyle(spend.isEnabled ? Palette.textPrimary : Palette.textSecondary)
             }
             if spend.isEnabled, spend.limit > 0 {
                 let percent = spend.spent / spend.limit * 100
                 UsageGauge(fraction: min(1, percent / 100), level: UsageLevel(usedPercent: percent))
             }
             Text("Crédits facturés au-delà des limites du forfait, chaque mois.")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(Typography.caption).foregroundStyle(Palette.textSecondary)
         }
         .accessibilityElement(children: .combine)
     }
