@@ -66,9 +66,11 @@ enum Wrapper: String, CaseIterable {
 struct Member {
     var lines: [String]
     let firstLine: Int
+    let lastLine: Int
     let blankBefore: Bool
     let section: Section
     let missingPrivate: Bool
+    let isDirective: Bool
     let name: String
 }
 
@@ -95,7 +97,13 @@ struct SourceScanner {
         var stringDelimiter: String?
         var interpolationStack: [(delimiter: String, parentheses: Int)] = []
         for line in lines {
-            depths.append(depth)
+            let isInsideLiteral = stringDelimiter != nil || inBlockComment > 0 || !interpolationStack.isEmpty
+            depths.append(depth + (isInsideLiteral ? 1 : 0))
+            if !isInsideLiteral {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("#if") { depth += 1 }
+                if trimmed.hasPrefix("#endif") { depth -= 1 }
+            }
             let chars = Array(line)
             var index = 0
             while index < chars.count {
@@ -143,8 +151,8 @@ struct SourceScanner {
                         interpolationStack[interpolationStack.count - 1].parentheses -= 1
                     }
                 }
-                if char == "{" { depth += 1 }
-                if char == "}" { depth -= 1 }
+                if "{([".contains(char) { depth += 1 }
+                if "})]".contains(char) { depth -= 1 }
                 index += 1
             }
             if stringDelimiter == "\"" { stringDelimiter = nil }
@@ -186,7 +194,7 @@ struct ViewParser {
             let line = lines[index]
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty {
-                if pending.isEmpty { blankBefore = true }
+                if pending.isEmpty { blankBefore = true } else { pending.append(line) }
                 index += 1
                 continue
             }
@@ -202,14 +210,15 @@ struct ViewParser {
                 last += 1
                 pending.append(lines[last])
             }
-            members.append(makeMember(lines: pending, firstLine: pendingStart ?? index, blankBefore: blankBefore))
+            members.append(makeMember(lines: pending, firstLine: pendingStart ?? index, lastLine: last, blankBefore: blankBefore))
             pending = []
             pendingStart = nil
             blankBefore = false
             index = last + 1
         }
+        while pending.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { pending.removeLast() }
         if !pending.isEmpty, let pendingStart {
-            members.append(makeMember(lines: pending, firstLine: pendingStart, blankBefore: blankBefore))
+            members.append(makeMember(lines: pending, firstLine: pendingStart, lastLine: pendingStart + pending.count - 1, blankBefore: blankBefore))
         }
         return members
     }
@@ -225,13 +234,14 @@ struct ViewParser {
         return trimmed.hasPrefix("}") || trimmed.hasPrefix(".") || trimmed.hasPrefix(")") || trimmed.hasPrefix("]")
     }
 
-    private func makeMember(lines: [String], firstLine: Int, blankBefore: Bool) -> Member {
-        let declaration = lines
+    private func makeMember(lines: [String], firstLine: Int, lastLine: Int, blankBefore: Bool) -> Member {
+        let code = lines
             .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.hasPrefix("//") }
-            .joined(separator: " ")
-        let wrapper = Wrapper.allCases.first { declaration.range(of: "@\($0.rawValue)\\b", options: .regularExpression) != nil }
-        let tokens = declaration
+            .filter { !$0.isEmpty && !$0.hasPrefix("//") }
+        let declaration = code.joined(separator: " ")
+        let head = String(declaration.prefix { $0 != "{" && $0 != "=" })
+        let wrapper = Wrapper.allCases.first { head.range(of: "@\($0.rawValue)\\b", options: .regularExpression) != nil }
+        let tokens = head
             .replacingOccurrences(of: #"@\w+(\([^)]*\))?"#, with: "", options: .regularExpression)
             .split(whereSeparator: { $0.isWhitespace })
             .map(String.init)
@@ -255,12 +265,22 @@ struct ViewParser {
         } else {
             section = .trailing
         }
-        return Member(lines: lines, firstLine: firstLine, blankBefore: blankBefore, section: section, missingPrivate: missingPrivate, name: name)
+        return Member(
+            lines: lines,
+            firstLine: firstLine,
+            lastLine: lastLine,
+            blankBefore: blankBefore,
+            section: section,
+            missingPrivate: missingPrivate,
+            isDirective: code.first?.hasPrefix("#") == true,
+            name: name
+        )
     }
 
     private func isComputed(_ declaration: String) -> Bool {
-        guard let brace = declaration.firstIndex(of: "{") else { return false }
-        return !declaration[..<brace].contains("=")
+        guard let brace = declaration.firstIndex(of: "{"), !declaration[..<brace].contains("=") else { return false }
+        let accessors = declaration[declaration.index(after: brace)...].trimmingCharacters(in: .whitespaces)
+        return !accessors.hasPrefix("didSet") && !accessors.hasPrefix("willSet")
     }
 }
 
@@ -275,7 +295,8 @@ struct Linter {
     private func violations(in view: ViewDeclaration) -> [Violation] {
         var result: [Violation] = []
         var highest: Member?
-        for (index, member) in view.members.enumerated() {
+        let members = view.members.filter { !$0.isDirective }
+        for (index, member) in members.enumerated() {
             let line = member.firstLine + 1
             if member.missingPrivate {
                 result.append(Violation(file: path, line: line, message: "\(view.name).\(member.name) doit être déclaré private (\(member.section.title))"))
@@ -286,7 +307,7 @@ struct Linter {
                 highest = member
             }
             guard index > 0 else { continue }
-            let previous = view.members[index - 1]
+            let previous = members[index - 1]
             if previous.section != member.section && previous.section < member.section && !member.blankBefore {
                 result.append(Violation(file: path, line: line, message: "\(view.name).\(member.name) doit être séparé de la section précédente par une ligne vide"))
             }
@@ -296,13 +317,21 @@ struct Linter {
 
     func fixed() -> [String] {
         var output = lines
-        for view in ViewParser(lines: lines).views().reversed() {
-            guard let first = view.members.first else { continue }
-            let start = first.firstLine
-            let end = view.closingLine
-            output.replaceSubrange(start..<end, with: rebuilt(view.members))
+        for _ in 0..<100 {
+            guard let fix = nextFix(in: output) else { break }
+            output.replaceSubrange(fix.range, with: fix.lines)
         }
         return output
+    }
+
+    private func nextFix(in source: [String]) -> (range: Range<Int>, lines: [String])? {
+        for view in ViewParser(lines: source).views() where !view.members.contains(where: \.isDirective) {
+            guard let first = view.members.first, let last = view.members.last, !violations(in: view).isEmpty else { continue }
+            let range = first.firstLine..<(last.lastLine + 1)
+            let rebuilt = rebuilt(view.members)
+            if Array(source[range]) != rebuilt { return (range, rebuilt) }
+        }
+        return nil
     }
 
     private func rebuilt(_ members: [Member]) -> [String] {
@@ -344,7 +373,13 @@ func swiftFiles(in paths: [String]) -> [String] {
 let arguments = Array(CommandLine.arguments.dropFirst())
 let shouldFix = arguments.contains("--fix")
 let roots = arguments.filter { $0 != "--fix" }
-let files = swiftFiles(in: roots.isEmpty ? ["AgentUI"] : roots)
+let paths = roots.isEmpty ? ["AgentUI"] : roots
+let missing = paths.filter { !FileManager.default.fileExists(atPath: $0) }
+guard missing.isEmpty else {
+    missing.forEach { print("error: \($0) n’existe pas") }
+    exit(2)
+}
+let files = swiftFiles(in: paths)
 var remaining: [Violation] = []
 
 for file in files {
