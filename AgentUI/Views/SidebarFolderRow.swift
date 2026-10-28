@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SidebarFolderRow: View {
+    @State private var isDropTargeted = false
+
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
 
@@ -41,8 +43,14 @@ struct SidebarFolderRow: View {
                 Text("\(group.total)")
                     .font(Typography.caption).monospacedDigit().foregroundStyle(Palette.textSecondary)
             }
+            .contentShape(Rectangle())
+            .background(Palette.accent.opacity(isDropTargeted ? 0.2 : 0), in: RoundedRectangle(cornerRadius: Radius.s))
             .help(folder.name)
             .draggable(folder.id.uuidString)
+            .dropDestination(for: String.self) { values, _ in
+                guard let value = values.first, let id = UUID(uuidString: value) else { return false }
+                return store.drop(id, into: folder.id)
+            } isTargeted: { isDropTargeted = $0 }
             .contextMenu {
                 Button("Ajouter des projets…", systemImage: "plus") { store.chooseProjects(in: folder.id) }
                 Button("Nouveau sous-dossier…", systemImage: "folder.badge.plus") { sheet = .folder(parentID: folder.id) }
@@ -58,10 +66,6 @@ struct SidebarFolderRow: View {
                 Divider()
                 Button("Dissoudre le dossier", systemImage: "folder.badge.minus") { store.removeFolder(folder.id) }
             }
-        }
-        .dropDestination(for: String.self) { values, _ in
-            guard let value = values.first, let id = UUID(uuidString: value) else { return false }
-            return store.drop(id, into: folder.id)
         }
     }
 }

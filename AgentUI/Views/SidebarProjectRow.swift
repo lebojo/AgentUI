@@ -61,20 +61,17 @@ struct SidebarProjectRow: View {
         } label: {
             HStack(spacing: Spacing.s) {
                 Image(systemName: project.appearance.displaySymbol.systemName).foregroundStyle(project.appearance.color)
-                Button {
-                    if project.worktrees.allSatisfy({ $0.terminals.isEmpty }) { store.wakeProject(project.id) }
-                    else { store.setExpanded(project.id, !store.isExpanded(project.id)) }
-                } label: {
-                    HStack(spacing: Spacing.xs) {
-                        Text(project.name).lineLimit(1)
-                        if project.worktrees.allSatisfy({ $0.terminals.isEmpty }) {
-                            Image(systemName: "moon").font(Typography.caption)
-                        }
+                HStack(spacing: Spacing.xs) {
+                    Text(project.name).lineLimit(1)
+                    if project.worktrees.allSatisfy({ $0.terminals.isEmpty }) {
+                        Image(systemName: "moon").font(Typography.caption)
                     }
-                    .foregroundStyle(project.worktrees.allSatisfy({ $0.terminals.isEmpty }) ? Palette.textSecondary : Palette.textPrimary)
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .foregroundStyle(project.worktrees.allSatisfy({ $0.terminals.isEmpty }) ? Palette.textSecondary : Palette.textPrimary)
+                .contentShape(Rectangle())
+                .onTapGesture { activate(project) }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { activate(project) }
                 .help(project.worktrees.allSatisfy({ $0.terminals.isEmpty }) ? "Projet en veille — cliquer pour ouvrir un terminal" : project.name)
                 Spacer(minLength: Spacing.xxs)
                 if store.busyProjects.contains(project.id) { ProgressView().controlSize(.mini) }
@@ -84,6 +81,7 @@ struct SidebarProjectRow: View {
                         .accessibilityLabel("Créer un worktree pour \(project.name)")
                 }
             }
+            .contentShape(Rectangle())
             .help(project.path)
             .draggable(project.id.uuidString)
             .contextMenu {
@@ -117,6 +115,10 @@ struct SidebarProjectRow: View {
     }
     private func confirmDeletion(_ project: Project, _ worktree: Worktree) {
         removal = .worktree(projectID: project.id, worktreeID: worktree.id, name: worktree.name)
+    }
+    private func activate(_ project: Project) {
+        if project.worktrees.allSatisfy({ $0.terminals.isEmpty }) { store.wakeProject(project.id) }
+        else { store.setExpanded(project.id, !store.isExpanded(project.id)) }
     }
     private func addTerminal(_ project: Project, _ worktree: Worktree) {
         do {
