@@ -28,12 +28,9 @@ A native macOS app to organize your projects, Git worktrees and coding agents (C
 
 ## Download
 
-Download `AgentUI.zip` from the [latest release](https://github.com/lebojo/AgentUI/releases/latest). The app is a universal build (Apple silicon and Intel), ad-hoc signed but not notarized, so on first launch:
+Download `AgentUI.zip` from the [latest release](https://github.com/lebojo/AgentUI/releases/latest), unzip it and move `AgentUI.app` to `/Applications`. The app is a universal build (Apple silicon and Intel), signed with a Developer ID and notarized by Apple.
 
-1. Unzip the archive and move `AgentUI.app` to `/Applications`.
-2. Open it once, then go to **System Settings › Privacy & Security** and click **Open Anyway**.
-
-Or remove the quarantine attribute from Terminal: `xattr -dr com.apple.quarantine /Applications/AgentUI.app`.
+To build from source instead, see below.
 
 ## Installation
 
