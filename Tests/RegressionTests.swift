@@ -13,7 +13,7 @@ import Foundation
         let snapshot = try await InspectorService.localGit(at: repo.path)
         let change = snapshot.changes.first { $0.path == "a[1].txt" }!
         let diff = try await InspectorService.diff(change, at: repo.path)
-        try CoreTests.require(diff.contains("diff --git a/a[1].txt") && !diff.contains("diff --git a/a1.txt"), "Literal diff path cannot match a second file")
+        try CoreTests.require(diff.sections.contains { $0.patch.contains("diff --git a/a[1].txt") } && !diff.sections.contains { $0.patch.contains("diff --git a/a1.txt") }, "Literal diff path cannot match a second file")
         let text = root.appendingPathComponent("utf8-boundary.txt")
         for character in ["é", "€", "🙂"] {
             for offset in 1..<character.utf8.count {

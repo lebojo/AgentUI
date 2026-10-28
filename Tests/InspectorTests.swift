@@ -18,14 +18,57 @@ enum InspectorTests {
         let local = try await InspectorService.localGit(at: repository.path)
         guard let untracked = local.changes.first(where: { $0.path == "new folder/new.txt" }) else { fatalError("New directory should expose individual files") }
         let untrackedPreview = try await InspectorService.diff(untracked, at: repository.path)
-        try require(untrackedPreview == "new text", "Preview new files inside untracked directories")
+        let untrackedLines = untrackedPreview.sections.first?.lines.filter { $0.kind == .addition } ?? []
+        try require(untrackedPreview.sections.map(\.kind) == [.untracked] && untrackedLines.map(\.text) == ["new text"]
+                    && untrackedLines.last?.missingFinalNewline == true && untrackedPreview.sections[0].patch.contains("+++ b/new folder/new.txt"),
+                    "Preview new files inside untracked directories as a new-file patch")
         guard let change = local.changes.first(where: { $0.path == "tracked file.txt" }) else { fatalError("Missing tracked change") }
         try require(change.status == "MM" && local.branch?.name == "main" && local.headSHA?.count == 40, "Real Git snapshot includes staged and unstaged state")
         let diff = try await InspectorService.diff(change, at: repository.path)
-        try require(diff.contains("+staged") && diff.contains("+unstaged"), "Preview both index and worktree diffs")
+        try require(diff.sections.map(\.kind) == [.staged, .unstaged] && diff.sections[0].patch.contains("+staged") && diff.sections[1].patch.contains("+unstaged") && diff.onlySection == nil
+                    && diff.sections[0].lines.contains(GitDiffLine(id: 2, kind: .addition, text: "staged", oldNumber: nil, newNumber: 1)),
+                    "Preview both index and worktree diffs")
         let empty = try await InspectorService.localGit(at: unborn.path)
         try require(empty.headSHA == nil && empty.branch?.name == "develop", "Inspector supports unborn HEAD")
         print("PASS inspector status and real staged/unstaged diffs")
+
+        let patch = "diff --git a/f b/f\nindex 1..2 100644\n--- a/f\n+++ b/f\n@@ -3,4 +3,4 @@ func\n keep\n--- old\n-gone\n++++ new\n+\tadded\n same\n\\ No newline at end of file\n"
+        let lines = GitDiffLine.parse(patch)
+        try require(lines.map(\.kind) == [.hunk, .context, .deletion, .deletion, .addition, .addition, .context], "Parse hunks without mistaking content for headers")
+        try require(lines[2].text == "-- old" && lines[2].oldNumber == 4 && lines[4].text == "+++ new" && lines[5].text == "\tadded" && lines[6].missingFinalNewline
+                    && lines[5].newNumber == 5 && lines[6].oldNumber == 6 && lines[6].newNumber == 6, "Track old and new line numbers")
+        let rows = GitDiffRow.pair(lines).map(\.content)
+        guard rows.count == 5, case .pair(let changedOld, let changedNew) = rows[2], case .pair(let goneOld, let goneNew) = rows[3] else {
+            fatalError("Side-by-side rows keep banners and context aligned")
+        }
+        try require(changedOld?.text == "-- old" && changedNew?.text == "+++ new" && goneOld?.text == "gone" && goneNew?.text == "\tadded",
+                    "Side-by-side rows pair deletions with additions")
+        let lonely = GitDiffRow.pair(GitDiffLine.parse("@@ -1,2 +1 @@\n-a\n-b\n+c\n")).map(\.content)
+        guard lonely.count == 3, case .pair(let extra, nil) = lonely[2] else { fatalError("Unmatched deletions keep an empty right side") }
+        try require(extra?.text == "b", "Unmatched deletions keep an empty right side")
+        let noNewline = GitDiffLine.parse("@@ -1 +1 @@\n-old\n\\ No newline at end of file\n+new\n\\ No newline at end of file\n")
+        let noNewlineRows = GitDiffRow.pair(noNewline).map(\.content)
+        guard noNewlineRows.count == 2, case .pair(let before, let after) = noNewlineRows[1] else { fatalError("Missing final newline keeps the change paired") }
+        try require(before?.text == "old" && after?.text == "new" && before?.missingFinalNewline == true && after?.missingFinalNewline == true,
+                    "Missing final newline keeps the change paired")
+
+        let combined = GitDiffLine.parse("diff --cc f\nindex a,b..c\n--- a/f\n+++ b/f\n@@@ -1,3 -1,1 +1,3 @@@\n  keep\n- --- gone\n++added\n +theirs\n")
+        try require(combined.map(\.kind) == [.hunk, .context, .deletion, .addition, .addition] && combined[2].text == "--- gone"
+                    && combined[2].oldNumber == 2 && combined[3].oldNumber == nil && combined[3].newNumber == 2
+                    && combined[4].oldNumber == 3 && combined[4].newNumber == 3, "Parse combined diffs of conflicted files")
+
+        let mixed = GitDiffSection(kind: .unstaged, patch: "@@ -1 +1 @@\n-a\n+a\r\n").lines
+        let crlf = GitDiffSection(kind: .unstaged, patch: "@@ -1 +1 @@\n-a\r\n+b\r\n").lines
+        try require(mixed[1].endingSymbols == "" && mixed[2].endingSymbols == "␍" && crlf.allSatisfy { $0.endingSymbols.isEmpty },
+                    "Reveal carriage returns only when line endings change")
+
+        let truncated = GitDiffSection.untracked(path: "f", content: TextContent(text: "a\nb", isTruncated: true), isExecutable: true)
+        try require(truncated.additions == 2 && !truncated.isComplete && truncated.lines.last?.kind == .meta
+                    && truncated.patch.contains("new file mode 100755") && !truncated.patch.contains("No newline"),
+                    "Truncated untracked previews never count the notice as content")
+        let deep = GitDiff(path: "f", sections: [GitDiffSection(kind: .unstaged, patch: "@@ -123456 +123456 @@\n-a\n+b\n")])
+        try require(deep.lineNumberDigits == 6 && deep.onlySection?.additions == 1, "Gutter fits the widest line number")
+        print("PASS diff parsing and side-by-side pairing")
 
         let entries = try await InspectorService.children(at: repository)
         try require(!entries.contains(where: { $0.name == ".git" }), "Hide Git internals")

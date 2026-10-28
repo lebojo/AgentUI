@@ -128,9 +128,25 @@ struct GitHubSnapshot: Equatable, Sendable {
     let checksError: String?
 }
 
+struct TextContent: Sendable {
+    let text: String
+    let isTruncated: Bool
+}
+
 struct TextPreview: Identifiable {
     var id = UUID()
     let title: String
     let text: String
     let url: URL?
+}
+
+enum InspectorPreview: Identifiable {
+    case file(TextPreview)
+    case diff(GitDiff)
+    var id: UUID {
+        switch self {
+        case .file(let preview): preview.id
+        case .diff(let diff): diff.id
+        }
+    }
 }

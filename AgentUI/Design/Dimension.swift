@@ -51,6 +51,12 @@ enum Dimension {
         static let swatchSize: CGFloat = 8
     }
 
+    enum DiffSheet {
+        static let idealWidth: CGFloat = 1000
+        static let idealHeight: CGFloat = 640
+        static let markerWidth: CGFloat = 14
+    }
+
     enum Usage {
         static let percentMinWidth: CGFloat = 30
     }

@@ -19,4 +19,8 @@ enum Palette {
 
     static let branchForeground = Color(.branchForeground)
     static let branchBackground = Color(.branchBackground)
+
+    static let diffAdditionBackground = Color(.diffAdditionBackground)
+    static let diffDeletionBackground = Color(.diffDeletionBackground)
+    static let diffHunkBackground = Color(.diffHunkBackground)
 }

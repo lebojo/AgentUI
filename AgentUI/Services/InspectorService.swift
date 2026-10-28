@@ -19,6 +19,11 @@ enum InspectorService {
     }
 
     static func textFile(_ url: URL) async throws -> String {
+        let content = try await textContent(url)
+        return content.text + (content.isTruncated ? "\n\n[Aperçu limité à 128 Ko]" : "")
+    }
+
+    static func textContent(_ url: URL) async throws -> TextContent {
         try await Task.detached(priority: .utility) {
             let values = try url.resourceValues(forKeys: [.isRegularFileKey])
             guard values.isRegularFile == true else { throw ReadCommandError(message: "Ce fichier ne peut pas être prévisualisé. Utilise le Finder pour l’ouvrir.") }
@@ -37,7 +42,7 @@ enum InspectorService {
             guard !data.contains(0), let text = String(data: prefix, encoding: .utf8) else {
                 throw ReadCommandError(message: "Ce fichier n’est pas un texte UTF-8. Ouvre-le dans son application.")
             }
-            return text + (data.count > 131_072 ? "\n\n[Aperçu limité à 128 Ko]" : "")
+            return TextContent(text: text, isTruncated: data.count > 131_072)
         }.value
     }
 
@@ -53,18 +58,33 @@ enum InspectorService {
                                 changes: GitChange.parsePorcelain(try await changes))
     }
 
-    static func diff(_ change: GitChange, at root: String) async throws -> String {
-        if change.isUntracked { return try await textFile(URL(fileURLWithPath: root).appendingPathComponent(change.path)) }
+    static func diff(_ change: GitChange, at root: String) async throws -> GitDiff {
+        if change.isUntracked {
+            let url = URL(fileURLWithPath: root).appendingPathComponent(change.path)
+            let content = try await textContent(url)
+            let isExecutable = FileManager.default.isExecutableFile(atPath: url.path)
+            let section = await parse { .untracked(path: change.path, content: content, isExecutable: isExecutable) }
+            return GitDiff(path: change.path, sections: [section])
+        }
         let git = URL(fileURLWithPath: "/usr/bin/git")
         let paths = [change.path] + (change.originalPath.map { [$0] } ?? [])
         let flags = ["--literal-pathspecs", "--no-pager", "diff", "--no-ext-diff", "--no-textconv", "--no-color"]
         async let unstaged = ReadCommand.run(git, flags + ["--"] + paths, at: root, limit: 524_288)
         async let staged = ReadCommand.run(git, flags + ["--cached", "--"] + paths, at: root, limit: 524_288)
-        let working = String(decoding: try await unstaged, as: UTF8.self)
-        let index = String(decoding: try await staged, as: UTF8.self)
-        let parts = [("Modifications indexées", index), ("Modifications non indexées", working)]
-            .filter { !$0.1.isEmpty }.map { "\($0.0)\n\n\($0.1)" }
-        return parts.isEmpty ? "Aucun diff disponible pour ce fichier." : parts.joined(separator: "\n\n")
+        let stagedPatch = String(decoding: try await staged, as: UTF8.self)
+        let unstagedPatch = String(decoding: try await unstaged, as: UTF8.self)
+        async let stagedSection = parse(stagedPatch, kind: .staged)
+        async let unstagedSection = parse(unstagedPatch, kind: .unstaged)
+        return GitDiff(path: change.path, sections: await [stagedSection, unstagedSection].compactMap { $0 })
+    }
+
+    private static func parse(_ patch: String, kind: GitDiffSection.Kind) async -> GitDiffSection? {
+        guard !patch.isEmpty else { return nil }
+        return await parse { GitDiffSection(kind: kind, patch: patch) }
+    }
+
+    private static func parse(_ section: @escaping @Sendable () -> GitDiffSection) async -> GitDiffSection {
+        await Task.detached(priority: .userInitiated, operation: section).value
     }
 
     static func github(at path: String, branch: GitBranch?, headSHA: String?, executable override: URL? = nil) async throws -> GitHubSnapshot {

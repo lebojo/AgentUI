@@ -8,7 +8,7 @@ trap 'rm -f "$test_binary" "$store_binary" "$conversation_binary"' EXIT
 xcrun swiftc -parse-as-library \
   AgentUI/Models/Workspace.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/BridgeProtocol.swift \
   AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Services/AgentCLI.swift \
-  AgentUI/Models/InspectorModels.swift AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/InspectorService.swift \
+  AgentUI/Models/InspectorModels.swift AgentUI/Models/GitDiff.swift AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/InspectorService.swift \
   AgentUI/Models/InspectorStore.swift AgentUI/Services/WorkspaceWriter.swift \
   AgentUI/Models/UsageModels.swift AgentUI/Models/UsageStore.swift AgentUI/Services/UsageService.swift \
   AgentUI/Models/AgentConversation.swift AgentUI/Models/AgentLaunch.swift AgentUI/Models/TerminalTheme.swift AgentUI/Models/TerminalAppearance.swift \

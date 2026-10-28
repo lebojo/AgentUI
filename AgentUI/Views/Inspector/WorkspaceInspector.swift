@@ -36,7 +36,7 @@ struct WorkspaceInspector: View {
 private struct InspectorContents: View {
     @State private var model = InspectorStore()
     @State private var refresh = 0
-    @State private var preview: TextPreview?
+    @State private var preview: InspectorPreview?
     @State private var previewError: String?
     @State private var loadingPreview = false
 
@@ -101,7 +101,12 @@ private struct InspectorContents: View {
             guard tab == .git || tab == .checks else { return }
             await model.monitor(path: context.worktree.path, forceRemote: refresh > 0)
         }
-        .sheet(item: $preview) { TextPreviewSheet(preview: $0) }
+        .sheet(item: $preview) { preview in
+            switch preview {
+            case .file(let file): TextPreviewSheet(preview: file)
+            case .diff(let diff): DiffPreviewSheet(diff: diff)
+            }
+        }
         .alert("Aperçu indisponible", isPresented: Binding(get: { previewError != nil }, set: { if !$0 { previewError = nil } })) {
             Button("OK") { previewError = nil }
         } message: { Text(previewError ?? "") }
@@ -116,7 +121,7 @@ private struct InspectorContents: View {
             }
             ForEach(local.changes) { change in
                 Button {
-                    loadPreview(title: change.path, url: nil) { try await InspectorService.diff(change, at: local.root) }
+                    loadPreview { .diff(try await InspectorService.diff(change, at: local.root)) }
                 } label: {
                     HStack(alignment: .top, spacing: Spacing.m) {
                         Text(change.status).font(Typography.captionMono).foregroundStyle(Palette.textSecondary).frame(width: Dimension.Inspector.statusColumnWidth)
@@ -159,15 +164,15 @@ private struct InspectorContents: View {
     }
 
     private func openFile(_ url: URL) {
-        loadPreview(title: url.lastPathComponent, url: url) { try await InspectorService.textFile(url) }
+        loadPreview { .file(TextPreview(title: url.lastPathComponent, text: try await InspectorService.textFile(url), url: url)) }
     }
 
-    private func loadPreview(title: String, url: URL?, load: @escaping () async throws -> String) {
+    private func loadPreview(load: @escaping () async throws -> InspectorPreview) {
         guard !loadingPreview else { return }
         loadingPreview = true
         Task { @MainActor in
             defer { loadingPreview = false }
-            do { preview = try TextPreview(title: title, text: await load(), url: url) }
+            do { preview = try await load() }
             catch { previewError = error.localizedDescription }
         }
     }
