@@ -3,7 +3,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 test_binary="$(mktemp -t agentui-core-tests)"
 store_binary="$(mktemp -t agentui-store-tests)"
-trap 'rm -f "$test_binary" "$store_binary"' EXIT
+conversation_binary="$(mktemp -t agentui-conversation-tests)"
+trap 'rm -f "$test_binary" "$store_binary" "$conversation_binary"' EXIT
 xcrun swiftc -parse-as-library \
   AgentUI/Models/Workspace.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/BridgeProtocol.swift \
   AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Services/AgentCLI.swift \
@@ -18,3 +19,9 @@ xcrun swiftc -parse-as-library \
   AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift \
   Tests/StoreTests.swift -o "$store_binary"
 "$store_binary"
+
+xcrun swiftc -parse-as-library \
+  AgentUI/Models/AgentConversation.swift AgentUI/Services/ConversationTranscripts.swift AgentUI/Services/ConversationIndex.swift \
+  AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift \
+  Tests/ConversationTests.swift -o "$conversation_binary"
+"$conversation_binary"

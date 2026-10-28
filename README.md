@@ -80,7 +80,7 @@ The right panel button in the toolbar shows or hides the SwiftUI inspector. Visi
 | Tab | Content |
 | --- | --- |
 | **Files** | Folders load on expansion, folders before files, `.git` and `.DS_Store` hidden. Symlinks and packages are not traversed. Read-only preview of UTF-8 text files, limited to 128 KiB. Open in the default app or in Finder. |
-| **Agents** | All terminals of the project, grouped by worktree, with their session state and an action to create one. This tab does not infer an agent's internal activity. |
+| **Agents** | Claude and Codex conversations recorded on disk for the worktree, most recent first. **Play** resumes one in a new terminal (`claude --resume` / `codex resume`). Claude sessions already running (from `claude agents --json`) are marked and cannot be opened twice. |
 | **Git** | Branch, staged, unstaged and untracked changes; read-only diff or preview. Links to the GitHub repository and the branch's pull request. |
 | **Checks** | Pull request checks and up to ten GitHub Actions runs for the local HEAD commit. A message flags PR checks that refer to a different commit. |
 

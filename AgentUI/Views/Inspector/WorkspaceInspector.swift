@@ -61,7 +61,7 @@ private struct InspectorContents: View {
                 List {
                     ExplorerDirectory(url: URL(fileURLWithPath: context.worktree.path), open: openFile)
                 }.listStyle(.plain).id(refresh)
-            case .agents: agents
+            case .agents: AgentConversationList(store: store, context: context, refresh: refresh)
             case .git, .checks:
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
@@ -84,37 +84,6 @@ private struct InspectorContents: View {
         .alert("Aperçu indisponible", isPresented: Binding(get: { previewError != nil }, set: { if !$0 { previewError = nil } })) {
             Button("OK") { previewError = nil }
         } message: { Text(previewError ?? "") }
-    }
-
-    private var agents: some View {
-        List {
-            ForEach(context.project.worktrees) { worktree in
-                Section {
-                    ForEach(worktree.terminals) { terminal in
-                        Button { store.selection = terminal.id } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "terminal")
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(terminal.name).lineLimit(1)
-                                    Text(sessionState(terminal.id)).font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer(minLength: 2)
-                                if store.selection == terminal.id { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
-                            }.contentShape(Rectangle())
-                        }.buttonStyle(.plain).padding(.vertical, 3)
-                    }
-                    Button("Nouveau terminal", systemImage: "plus") {
-                        do { _ = try store.addTerminal(projectID: context.project.id, worktreeID: worktree.id) }
-                        catch { store.errorMessage = error.localizedDescription }
-                    }.buttonStyle(.borderless)
-                } header: { Text(worktree.isPrimary ? "Principal" : worktree.name).textCase(nil) }
-            }
-        }.listStyle(.plain)
-    }
-
-    private func sessionState(_ id: UUID) -> String {
-        guard let session = store.sessions.session(id) else { return "À ouvrir" }
-        return session.hasExited ? "Terminé" : "Ouvert"
     }
 
     @ViewBuilder private func git(_ local: LocalGitSnapshot) -> some View {
