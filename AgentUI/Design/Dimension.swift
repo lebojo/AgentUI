@@ -42,6 +42,15 @@ enum Dimension {
         static let idealHeight: CGFloat = 540
     }
 
+    enum Settings {
+        static let width: CGFloat = 580
+        static let minHeight: CGFloat = 460
+        static let idealHeight: CGFloat = 640
+        static let themeCardMinWidth: CGFloat = 112
+        static let themeSampleHeight: CGFloat = 52
+        static let swatchSize: CGFloat = 8
+    }
+
     enum Usage {
         static let percentMinWidth: CGFloat = 30
     }

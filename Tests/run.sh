@@ -11,7 +11,8 @@ xcrun swiftc -parse-as-library \
   AgentUI/Models/InspectorModels.swift AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/InspectorService.swift \
   AgentUI/Models/InspectorStore.swift AgentUI/Services/WorkspaceWriter.swift \
   AgentUI/Models/UsageModels.swift AgentUI/Models/UsageStore.swift AgentUI/Services/UsageService.swift \
-  Tests/RegressionTests.swift Tests/InspectorTests.swift Tests/UsageTests.swift Tests/CoreTests.swift -o "$test_binary"
+  AgentUI/Models/AgentConversation.swift AgentUI/Models/AgentLaunch.swift AgentUI/Models/TerminalTheme.swift AgentUI/Models/TerminalAppearance.swift \
+  Tests/RegressionTests.swift Tests/InspectorTests.swift Tests/UsageTests.swift Tests/SettingsTests.swift Tests/CoreTests.swift -o "$test_binary"
 "$test_binary"
 
 xcrun swiftc -parse-as-library \

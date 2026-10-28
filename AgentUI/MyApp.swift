@@ -55,12 +55,14 @@ struct AgentUIApplication: App {
     @NSApplicationDelegateAdaptor(ApplicationDelegate.self) private var delegate
     @State private var store = WorkspaceStore()
     @State private var usage = UsageStore()
+    @State private var settings = SettingsStore()
 
     var body: some Scene {
         Window("AgentUI", id: "workspace") {
             ContentView(store: store)
                 .environment(store)
                 .environment(usage)
+                .environment(settings)
                 .onAppear {
                     delegate.store = store
                     if delegate.closeCommand == nil { delegate.closeCommand = CloseTerminalCommand(store: store) }
@@ -85,6 +87,10 @@ struct AgentUIApplication: App {
                     alert.runModal()
                 }
             }
+        }
+        Settings {
+            SettingsView()
+                .environment(settings)
         }
     }
 }

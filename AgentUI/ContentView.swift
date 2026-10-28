@@ -73,25 +73,49 @@ struct ContentView: View {
             Button("OK") { store.errorMessage = nil }
         } message: { Text(store.errorMessage ?? "") }
         .confirmationDialog(removal?.title ?? "Retirer", isPresented: Binding(get: { removal != nil }, set: { if !$0 { removal = nil } }), titleVisibility: .visible) {
-            Button("Retirer", role: .destructive) {
+            Button(removal?.confirmation ?? "Retirer", role: .destructive) {
                 if let removal {
                     switch removal {
                     case .project(let id): store.removeProject(id)
                     case .terminal(let id): store.closeTerminal(id)
+                    case .worktree(let projectID, let worktreeID, _): deleteWorktree(projectID: projectID, worktreeID: worktreeID)
                     }
                 }
                 removal = nil
             }
-        } message: { Text("Les processus des terminaux concernés seront arrêtés. Les fichiers et les worktrees sur disque seront conservés.") }
+        } message: { Text(removal?.message ?? "") }
+    }
+
+    private func deleteWorktree(projectID: UUID, worktreeID: UUID) {
+        Task {
+            do { try await store.deleteWorktree(projectID: projectID, worktreeID: worktreeID) }
+            catch { store.errorMessage = error.localizedDescription }
+        }
     }
 }
 
 enum Removal {
-    case project(UUID), terminal(UUID)
+    case project(UUID), terminal(UUID), worktree(projectID: UUID, worktreeID: UUID, name: String)
     var title: String {
         switch self {
         case .project: "Retirer ce projet de la barre latérale ?"
         case .terminal: "Fermer ce terminal ?"
+        case .worktree(_, _, let name): "Supprimer définitivement le worktree « \(name) » ?"
+        }
+    }
+    var confirmation: String {
+        switch self {
+        case .project: "Retirer"
+        case .terminal: "Fermer"
+        case .worktree: "Supprimer pour toujours"
+        }
+    }
+    var message: String {
+        switch self {
+        case .project, .terminal:
+            "Les processus des terminaux concernés seront arrêtés. Les fichiers et les worktrees sur disque seront conservés."
+        case .worktree:
+            "Ses terminaux seront fermés et son dossier sera effacé du disque, y compris les modifications non commitées. Cette action est irréversible. La branche et ses commits restent dans le dépôt."
         }
     }
 }

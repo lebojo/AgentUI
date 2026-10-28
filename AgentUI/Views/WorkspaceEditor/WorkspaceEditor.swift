@@ -15,6 +15,7 @@ enum WorkspaceSheet: Identifiable {
 
 struct WorkspaceEditor: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(SettingsStore.self) private var settings
 
     @State private var name = ""
     @State private var submitting = false
@@ -40,8 +41,12 @@ struct WorkspaceEditor: View {
         switch sheet {
         case .folder: "Réunis des projets situés à différents endroits sur ton Mac. Leurs fichiers restent en place."
         case .rename: appearance == nil ? "Ce nom sera affiché dans la barre latérale." : "Ce nom, cette icône et cette couleur seront affichés dans la barre latérale."
-        case .worktree(_, let project): "Crée une nouvelle branche depuis HEAD de \(project), dans un dossier de travail séparé. Un terminal y sera ouvert."
+        case .worktree(_, let project): "Ouvre la branche dans un dossier de travail séparé. Si elle n’existe pas encore, elle est créée depuis HEAD de \(project). \(worktreeLaunchDescription)"
         }
+    }
+
+    private var worktreeLaunchDescription: String {
+        settings.agentLaunch.launches(on: .newWorktree) ? "\(settings.agentLaunch.agent.title) y sera lancé." : "Un terminal y sera ouvert."
     }
 
     var body: some View {
@@ -55,7 +60,7 @@ struct WorkspaceEditor: View {
             .font(Typography.title)
             Text(explanation).foregroundStyle(Palette.textSecondary).font(Typography.body).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: Spacing.s) {
-                Text(isWorktree ? "Nouvelle branche" : "Nom").font(Typography.label)
+                Text(isWorktree ? "Branche" : "Nom").font(Typography.label)
                 TextField(isWorktree ? "feature/ma-tache" : "Mes projets", text: $name)
                     .textFieldStyle(.roundedBorder).focused($focused)
                     .onSubmit { submit() }.disabled(submitting)
@@ -108,7 +113,7 @@ struct WorkspaceEditor: View {
             submitting = true
             error = nil
             submission = Task {
-                do { _ = try await store.createWorktree(projectID: project, branch: trimmed); dismiss() }
+                do { _ = try await store.createWorktree(projectID: project, branch: trimmed, command: settings.agentLaunch.command(on: .newWorktree)); dismiss() }
                 catch is CancellationError { self.error = "Création annulée." }
                 catch { self.error = error.localizedDescription }
                 submitting = false

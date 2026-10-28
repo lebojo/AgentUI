@@ -18,9 +18,6 @@ import Observation
         currentDirectory = context.worktree.path
         view = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
         super.init()
-        view.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-        view.nativeBackgroundColor = .textBackgroundColor
-        view.nativeForegroundColor = .textColor
         view.processDelegate = self
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
@@ -39,7 +36,6 @@ import Observation
         if env["LANG"] == nil { env["LANG"] = "en_US.UTF-8" }
         let configuredShell = env["SHELL"] ?? "/bin/zsh"
         let shell = FileManager.default.isExecutableFile(atPath: configuredShell) ? configuredShell : "/bin/zsh"
-        // Positional arguments preserve spaces, quotes and metacharacters in agent prompts.
         let args = command.isEmpty ? ["-l"] : ["-l", "-c", "exec \"$@\"", "agentui"] + command
         view.startProcess(executable: shell, args: args, environment: env.map { "\($0.key)=\($0.value)" }, currentDirectory: path)
         if !view.process.running {
@@ -62,7 +58,6 @@ import Observation
 
     func stop() {
         guard view.process.running else { return }
-        // Closing a terminal has the same hangup semantics as closing a Terminal.app tab.
         let pid = view.process.shellPid
         if pid > 0 { kill(-pid, SIGHUP) }
         view.terminate()
@@ -80,7 +75,6 @@ import Observation
         return branchesByPath[initialPath]
     }
 
-    /// One background pass for the entire sidebar; no per-row timers or Git processes.
     func refreshRepositories(worktreePaths: [String]) async {
         guard !refreshingRepositories else { return }
         refreshingRepositories = true
@@ -129,9 +123,17 @@ import Observation
     }
 }
 
-/// Only the selected view is mounted; other PTYs and their scrollback stay alive.
 struct NativeTerminalView: NSViewRepresentable {
+    final class Coordinator {
+        var appliedAppearance: TerminalAppearance?
+        var appliedColorScheme: ColorScheme?
+    }
+
     let session: TerminalSession
+    let appearance: TerminalAppearance
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     func makeNSView(context: Context) -> NSView {
         let host = NSView()
         host.setAccessibilityLabel("Terminal interactif")
@@ -145,8 +147,17 @@ struct NativeTerminalView: NSViewRepresentable {
             terminal.topAnchor.constraint(equalTo: host.topAnchor, constant: 10),
             terminal.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -8)
         ])
+        applyAppearance(context: context)
         DispatchQueue.main.async { terminal.window?.makeFirstResponder(terminal) }
         return host
     }
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func updateNSView(_ nsView: NSView, context: Context) { applyAppearance(context: context) }
+
+    private func applyAppearance(context: Context) {
+        let colorScheme = context.environment.colorScheme
+        guard context.coordinator.appliedAppearance != appearance || context.coordinator.appliedColorScheme != colorScheme else { return }
+        context.coordinator.appliedAppearance = appearance
+        context.coordinator.appliedColorScheme = colorScheme
+        session.view.apply(appearance)
+    }
 }

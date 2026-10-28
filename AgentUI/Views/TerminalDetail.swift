@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 
 struct TerminalDetail: View {
+    @Environment(SettingsStore.self) private var settings
+
     @State private var session: TerminalSession?
 
     let store: WorkspaceStore
@@ -20,7 +22,11 @@ struct TerminalDetail: View {
                 }
                 Spacer()
                 Button {
-                    do { _ = try store.addTerminal(projectID: context.project.id, worktreeID: context.worktree.id) }
+                    do {
+                        _ = try store.addTerminal(projectID: context.project.id, worktreeID: context.worktree.id,
+                                                  name: settings.agentLaunch.terminalName(on: .newTerminal),
+                                                  command: settings.agentLaunch.command(on: .newTerminal))
+                    }
                     catch { store.errorMessage = error.localizedDescription }
                 } label: { Label("Terminal", systemImage: "plus") }
                     .buttonStyle(.borderless).help("Nouveau terminal dans ce worktree")
@@ -31,7 +37,7 @@ struct TerminalDetail: View {
             Divider()
 
             if let session {
-                NativeTerminalView(session: session)
+                NativeTerminalView(session: session, appearance: settings.terminal)
                     .id(ObjectIdentifier(session))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 if session.hasExited {

@@ -2,6 +2,8 @@ import SwiftUI
 import AppKit
 
 struct SidebarProjectRow: View {
+    @Environment(SettingsStore.self) private var settings
+
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
 
@@ -44,6 +46,14 @@ struct SidebarProjectRow: View {
                         .contextMenu {
                             Button("Nouveau terminal", systemImage: "terminal") { addTerminal(project, worktree) }
                             Button("Afficher dans le Finder", systemImage: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: worktree.path) }
+                            Divider()
+                            Button("Supprimer le worktree…", systemImage: "trash", role: .destructive) { confirmDeletion(project, worktree) }
+                                .disabled(store.busyProjects.contains(project.id))
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button("Supprimer", systemImage: "trash") { confirmDeletion(project, worktree) }
+                                .tint(Palette.danger)
+                                .disabled(store.busyProjects.contains(project.id))
                         }
                     }
                 }
@@ -105,8 +115,15 @@ struct SidebarProjectRow: View {
     private func expanded(_ id: UUID) -> Binding<Bool> {
         query.isEmpty ? $store[expanded: id] : .constant(true)
     }
+    private func confirmDeletion(_ project: Project, _ worktree: Worktree) {
+        removal = .worktree(projectID: project.id, worktreeID: worktree.id, name: worktree.name)
+    }
     private func addTerminal(_ project: Project, _ worktree: Worktree) {
-        do { _ = try store.addTerminal(projectID: project.id, worktreeID: worktree.id) }
+        do {
+            _ = try store.addTerminal(projectID: project.id, worktreeID: worktree.id,
+                                      name: settings.agentLaunch.terminalName(on: .newTerminal),
+                                      command: settings.agentLaunch.command(on: .newTerminal))
+        }
         catch { store.errorMessage = error.localizedDescription }
     }
 }

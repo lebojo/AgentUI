@@ -1,6 +1,5 @@
 import Foundation
 
-/// Local Git work is kept off the UI thread. Arguments never go through a shell.
 enum GitService {
     static func run(_ arguments: [String], at path: String, timeout: TimeInterval = 90) async throws -> String {
         let data = try await CommandRunner.run(URL(fileURLWithPath: "/usr/bin/git"), arguments, at: path,
@@ -13,17 +12,44 @@ enum GitService {
             throw WorkspaceError(message: "Indique un nom de branche, par exemple feature/interface.")
         }
         _ = try await run(["check-ref-format", "--branch", branch], at: project.path, timeout: 10)
-        _ = try await run(["rev-parse", "--verify", "HEAD"], at: project.path, timeout: 10)
+        let source = try await branchSource(branch, at: project.path)
+        if source == .checkedOut {
+            throw WorkspaceError(message: "La branche « \(branch) » est déjà utilisée par un autre worktree ou par le dossier du projet.")
+        }
+        if source == .new { _ = try await run(["rev-parse", "--verify", "HEAD"], at: project.path, timeout: 10) }
         let destination = root.appendingPathComponent("Worktrees").appendingPathComponent(project.id.uuidString)
             .appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
         do {
-            _ = try await run(["worktree", "add", "-b", branch, destination.path, "HEAD"], at: project.path, timeout: timeout)
+            let arguments = source == .new ? ["worktree", "add", "-b", branch, destination.path, "HEAD"] : ["worktree", "add", destination.path, branch]
+            _ = try await run(arguments, at: project.path, timeout: timeout)
         } catch {
             let reason = error is CancellationError ? "Création annulée." : error.localizedDescription
             throw WorktreeCreationError(path: WorkspaceDisk.canonicalPath(destination), branch: branch, reason: reason)
         }
         return Worktree(name: branch, path: WorkspaceDisk.canonicalPath(destination), terminals: [TerminalRecord(name: "Terminal")])
+    }
+
+    static func removeWorktree(project: Project, path: String, timeout: TimeInterval = 90) async throws {
+        guard WorkspaceDisk.canonicalPath(URL(fileURLWithPath: path)) != project.path else {
+            throw WorkspaceError(message: "Le dossier principal du projet ne peut pas être supprimé.")
+        }
+        if FileManager.default.fileExists(atPath: path) {
+            _ = try await run(["worktree", "remove", "--force", path], at: project.path, timeout: timeout)
+        } else {
+            _ = try await run(["worktree", "prune"], at: project.path, timeout: 10)
+        }
+    }
+
+    private enum BranchSource {
+        case new, local, remote, checkedOut
+    }
+
+    private static func branchSource(_ branch: String, at path: String) async throws -> BranchSource {
+        let local = try await run(["branch", "--list", branch], at: path, timeout: 10)
+        if let marker = local.first { return marker == "*" || marker == "+" ? .checkedOut : .local }
+        let remote = try await run(["branch", "--remotes", "--list", "*/" + branch], at: path, timeout: 10)
+        return remote.isEmpty ? .new : .remote
     }
 
     static func existingWorktrees(project: Project) async throws -> [Worktree] {

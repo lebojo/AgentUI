@@ -64,12 +64,31 @@ import Foundation
         try require(discovered.contains(where: { $0.path == worktree.path && $0.name == branch }), "Discover existing worktrees and preserve branch name")
         do {
             _ = try await GitService.createWorktree(project: gitProject, branch: "feature/agent-tests", root: root)
-            throw WorkspaceError(message: "FAIL: duplicate branch accepted")
-        } catch let error as WorktreeCreationError {
-            try require(error.reason.contains("already exists"), "Duplicate branch rejected")
+            throw WorkspaceError(message: "FAIL: branch used by another worktree accepted")
+        } catch let error as WorkspaceError {
+            try require(error.message.contains("déjà utilisée"), "Branch used by another worktree rejected")
         }
         let finalWorktrees = try await GitService.existingWorktrees(project: gitProject)
         try require(finalWorktrees.count == discovered.count, "Failed operation doesn't create an extra worktree")
+        _ = try await GitService.run(["branch", "existing/feature"], at: repository.path)
+        let reused = try await GitService.createWorktree(project: gitProject, branch: "existing/feature", root: root)
+        let reusedBranch = try await GitService.run(["branch", "--show-current"], at: reused.path)
+        try require(reusedBranch == "existing/feature" && reused.name == "existing/feature", "Existing branch is checked out in the new worktree")
+        let mainBranch = try await GitService.run(["branch", "--show-current"], at: repository.path)
+        try require(mainBranch == "main", "Original checkout unchanged when reusing a branch")
+        try Data("draft".utf8).write(to: URL(fileURLWithPath: reused.path).appendingPathComponent("uncommitted.txt"))
+        try await GitService.removeWorktree(project: gitProject, path: reused.path)
+        try require(!fm.fileExists(atPath: reused.path), "Deleting a worktree removes its folder, even with uncommitted files")
+        let keptBranch = try await GitService.run(["branch", "--list", "existing/feature"], at: repository.path)
+        try require(!keptBranch.isEmpty, "Deleting a worktree keeps its branch")
+        let afterDeletion = try await GitService.existingWorktrees(project: gitProject)
+        try require(afterDeletion.count == discovered.count, "Deleted worktree is no longer registered")
+        do {
+            try await GitService.removeWorktree(project: gitProject, path: repository.path)
+            throw WorkspaceError(message: "FAIL: primary checkout deleted")
+        } catch let error as WorkspaceError {
+            try require(error.message.contains("principal"), "The primary checkout cannot be deleted")
+        }
         do {
             _ = try await GitService.createWorktree(project: gitProject, branch: "--force", root: root)
             throw WorkspaceError(message: "FAIL: option injection accepted")
@@ -141,6 +160,7 @@ import Foundation
         try await InspectorTests.run(root: root, repository: repository, unborn: unborn)
         try await RegressionTests.run(root: root)
         try await UsageTests.run()
+        try SettingsTests.run()
         print("All core tests passed.")
     }
 }

@@ -355,6 +355,26 @@ import Observation
         return context
     }
 
+    func deleteWorktree(projectID: UUID, worktreeID: UUID) async throws {
+        guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: "Une opération Git est déjà en cours sur ce projet.") }
+        guard let project = projects.first(where: { $0.id == projectID }),
+              let worktree = project.worktrees.first(where: { $0.id == worktreeID }) else {
+            throw WorkspaceError(message: "Worktree introuvable.")
+        }
+        guard !worktree.isPrimary else { throw WorkspaceError(message: "Le dossier principal du projet ne peut pas être supprimé.") }
+        busyProjects.insert(projectID)
+        defer { busyProjects.remove(projectID) }
+        for terminal in worktree.terminals { sessions.close(terminal.id) }
+        try await GitService.removeWorktree(project: project, path: worktree.path)
+        guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
+        projects[index].worktrees.removeAll { $0.id == worktreeID }
+        if context(for: selection) == nil {
+            selection = projects[index].worktrees.flatMap(\.terminals).first?.id
+            repairSelection()
+        }
+        save()
+    }
+
     func refreshWorktrees(_ id: UUID) async {
         guard !busyProjects.contains(id), let project = projects.first(where: { $0.id == id }) else { return }
         guard let discovered = try? await GitService.existingWorktrees(project: project),

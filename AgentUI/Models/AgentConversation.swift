@@ -1,13 +1,26 @@
 import Foundation
 
-enum ConversationAgent: String, Sendable {
+enum ConversationAgent: String, Codable, CaseIterable, Identifiable, Sendable {
     case claude, codex
+
+    var id: String { rawValue }
 
     var title: String {
         switch self {
         case .claude: "Claude"
         case .codex: "Codex"
         }
+    }
+
+    var permissionBypassFlag: String {
+        switch self {
+        case .claude: "--dangerously-skip-permissions"
+        case .codex: "--dangerously-bypass-approvals-and-sandbox"
+        }
+    }
+
+    func launchCommand(skippingPermissions: Bool) -> [String] {
+        [rawValue] + (skippingPermissions ? [permissionBypassFlag] : [])
     }
 }
 

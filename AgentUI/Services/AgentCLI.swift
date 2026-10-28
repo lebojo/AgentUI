@@ -16,7 +16,7 @@ enum AgentCLI {
       agentui terminal create --name Review -- claude "Relis les modifications"
       agentui worktree create --branch feature/tests -- codex "Ajoute les tests"
     Chaque création renvoie les identifiants et le chemin au format JSON.
-    Les worktrees partent du HEAD du projet et nécessitent une nouvelle branche.
+    Une branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.
     """
 
     static func run(arguments: [String]) -> Int32 {
