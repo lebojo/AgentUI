@@ -102,10 +102,28 @@ extension [ProjectFolder] {
     }
 }
 
-struct TerminalContext {
-    var project: Project
-    var worktree: Worktree
-    var terminal: TerminalRecord
+struct TerminalContext: Equatable, Sendable {
+    struct ProjectInfo: Equatable, Sendable {
+        let id: UUID
+        let name: String
+    }
+
+    struct WorktreeInfo: Equatable, Sendable {
+        let id: UUID
+        let name: String
+        let path: String
+        let isPrimary: Bool
+    }
+
+    let project: ProjectInfo
+    let worktree: WorktreeInfo
+    let terminal: TerminalRecord
+
+    init(project: Project, worktree: Worktree, terminal: TerminalRecord) {
+        self.project = ProjectInfo(id: project.id, name: project.name)
+        self.worktree = WorktreeInfo(id: worktree.id, name: worktree.name, path: worktree.path, isPrimary: worktree.isPrimary)
+        self.terminal = terminal
+    }
 }
 
 struct WorkspaceError: LocalizedError {

@@ -7,7 +7,6 @@ struct ExplorerDirectory: View {
     @State private var loaded = false
 
     let url: URL
-    let open: (URL) -> Void
 
     var body: some View {
         Group {
@@ -15,7 +14,7 @@ struct ExplorerDirectory: View {
             else if !loaded { ProgressView().controlSize(.small) }
             else if entries.isEmpty { Text("Dossier vide").font(Typography.caption).foregroundStyle(Palette.textSecondary) }
             ForEach(entries) { entry in
-                ExplorerRow(entry: entry, open: open)
+                ExplorerRow(entry: entry)
             }
         }
         .task(id: url) {
@@ -29,19 +28,20 @@ struct ExplorerDirectory: View {
 }
 
 private struct ExplorerRow: View {
+    @Environment(InspectorPreviews.self) private var previews
+
     @State private var expanded = false
 
     let entry: ExplorerEntry
-    let open: (URL) -> Void
 
     var body: some View {
         Group {
             if entry.isDirectory {
                 DisclosureGroup(isExpanded: $expanded) {
-                    if expanded { ExplorerDirectory(url: entry.url, open: open) }
+                    if expanded { ExplorerDirectory(url: entry.url) }
                 } label: { Label(entry.name, systemImage: "folder").lineLimit(1) }
             } else {
-                Button { open(entry.url) } label: {
+                Button { previews.open(entry.url) } label: {
                     Label(entry.name, systemImage: entry.isSymbolicLink ? "link" : "doc")
                         .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }.buttonStyle(.plain)

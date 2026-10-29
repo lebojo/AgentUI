@@ -18,7 +18,7 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: Dimension.Sidebar.minWidth, ideal: Dimension.Sidebar.idealWidth, max: Dimension.Sidebar.maxWidth)
                 .navigationTitle("AgentUI")
         } detail: {
-            if let context = store.context(for: store.selection) {
+            if let context = store.selectedContext {
                 TerminalDetail(store: store, context: context)
                     .id(context.terminal.id)
             } else {
@@ -69,10 +69,10 @@ struct ContentView: View {
         .sheet(item: $sheet) { item in
             WorkspaceEditor(store: store, sheet: item)
         }
-        .alert("Impossible de terminer l’opération", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
+        .alert("Impossible de terminer l’opération", isPresented: $store.errorMessage.isPresent) {
             Button("OK") { store.errorMessage = nil }
         } message: { Text(store.errorMessage ?? "") }
-        .confirmationDialog(removal?.title ?? "Retirer", isPresented: Binding(get: { removal != nil }, set: { if !$0 { removal = nil } }), titleVisibility: .visible) {
+        .confirmationDialog(removal?.title ?? "Retirer", isPresented: $removal.isPresent, titleVisibility: .visible) {
             Button(removal?.confirmation ?? "Retirer", role: .destructive) {
                 if let removal {
                     switch removal {
