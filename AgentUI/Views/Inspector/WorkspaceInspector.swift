@@ -33,6 +33,8 @@ struct WorkspaceInspector: View {
 }
 
 private struct InspectorContents: View {
+    @Environment(AppVisibility.self) private var visibility
+
     @State private var model = InspectorStore()
     @State private var previews = InspectorPreviews()
     @State private var refresh = 0
@@ -59,9 +61,10 @@ private struct InspectorContents: View {
         }
         .environment(previews)
         .modifier(InspectorPreviewPresenter(previews: previews))
-        .task(id: "\(tab.rawValue)-\(refresh)", priority: .utility) {
-            guard tab == .git || tab == .checks else { return }
-            await model.monitor(path: context.worktree.path, forceRemote: refresh > 0)
+        .task(id: "\(tab.rawValue)-\(refresh)-\(visibility.isVisible)", priority: .utility) {
+            guard visibility.isVisible, tab == .git || tab == .checks else { return }
+            let changes = await FileEvents.repositoryChanges(at: context.worktree.path)
+            await model.monitor(path: context.worktree.path, forceRemote: refresh > 0, changes: changes)
         }
     }
 }

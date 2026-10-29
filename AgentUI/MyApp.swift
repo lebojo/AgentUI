@@ -56,6 +56,7 @@ struct AgentUIApplication: App {
     @State private var store = WorkspaceStore()
     @State private var usage = UsageStore()
     @State private var settings = SettingsStore()
+    @State private var visibility = AppVisibility()
 
     var body: some Scene {
         Window("AgentUI", id: "workspace") {
@@ -63,6 +64,7 @@ struct AgentUIApplication: App {
                 .environment(store)
                 .environment(usage)
                 .environment(settings)
+                .environment(visibility)
                 .onAppear {
                     delegate.store = store
                     if delegate.closeCommand == nil { delegate.closeCommand = CloseTerminalCommand(store: store) }

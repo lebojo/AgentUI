@@ -20,7 +20,8 @@ struct InspectorHeader: View {
             Spacer()
             if model.loading || previews.isLoading { ProgressView().controlSize(.small) }
             Button { refresh += 1 } label: { Image(systemName: "arrow.clockwise") }
-                .buttonStyle(.borderless).help("Actualiser").accessibilityLabel("Actualiser \(title)")
+                .buttonStyle(.borderless).help("Actualiser (⌘R)").accessibilityLabel("Actualiser \(title)")
+                .keyboardShortcut("r")
         }.padding(Spacing.l)
     }
 }

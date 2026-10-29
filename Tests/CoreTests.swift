@@ -176,6 +176,7 @@ import Foundation
         print("PASS recursive repository import, gitfiles, symlink deduplication and backward compatibility")
         try await InspectorTests.run(root: root, repository: repository, unborn: unborn)
         try await RegressionTests.run(root: root)
+        try await RefreshTests.run(root: root)
         try await UsageTests.run()
         try SettingsTests.run()
         print("All core tests passed.")

@@ -80,9 +80,27 @@ import Foundation
         try CoreTests.require(triggered.isEmpty, "Repository and submodule commands never run during automatic Git reads, got \(triggered)")
         try CoreTests.require(untrustedSnapshot.changes == [modified], "Status still reports real changes with filters disabled, got \(untrustedSnapshot.changes.map(\.path))")
 
-        let listing = Data("global\0filter.lfs.process\0system\0filter.media.clean\0local\0filter.payload.clean\0worktree\0filter.Tree.v2.smudge\0unknown\0filter.other.process\0local\0filter.clean\0command\0filter.cli.clean\0local\0core.bare\0".utf8)
+        let fields: [String] = [
+            "global", "file:/home/.gitconfig", "filter.lfs.process\ngit-lfs filter-process",
+            "system", "file:/etc/gitconfig", "filter.media.clean\nmedia",
+            "local", "file:.git/config", "filter.payload.clean\nrun",
+            "worktree", "file:.git/config.worktree", "filter.Tree.v2.smudge\nrun",
+            "unknown", "file:/opt/gitconfig", "filter.other.process\nrun",
+            "local", "file:.git/config", "filter.clean\nrun",
+            "command", "command line:", "filter.cli.clean\nrun",
+            "local", "file:.git/config", "core.bare\nfalse",
+            "local", "file:.git/config", "include.path\n../shared.cfg",
+            "local", "file:.git/config", "includeif.onbranch:main.path\n~/later.cfg",
+            "local", "file:.git/config", "core.multiline\nfirst\nsecond"
+        ]
+        let listing = GitConfiguration.entries(in: Data((fields.joined(separator: "\0") + "\0").utf8))
+        try CoreTests.require(listing.last?.value == "first\nsecond", "Multi-line values stay attached to their key")
         let drivers = GitConfiguration.untrustedFilterDrivers(in: listing)
         try CoreTests.require(drivers == ["payload", "Tree.v2", "other"], "Only repository-scoped filter drivers are disabled, got \(drivers)")
+        let configFiles = GitConfiguration.files(in: listing, root: "/repo")
+        try CoreTests.require(configFiles == ["/home/.gitconfig", "/etc/gitconfig", "/repo/.git/config", "/repo/.git/config.worktree", "/opt/gitconfig",
+                                              "/repo/shared.cfg", NSHomeDirectory() + "/later.cfg"],
+                              "Configuration files and include targets, even missing ones, are tracked, got \(configFiles.sorted())")
         let disabled = GitConfiguration.disabling(filterDrivers: ["payload"])
         try CoreTests.require(disabled == ["filter.payload.clean": "", "filter.payload.smudge": "", "filter.payload.process": "", "filter.payload.required": "false"],
                               "A disabled driver has no command and is not required")
@@ -143,17 +161,20 @@ import Foundation
 
         let fixture = InspectorFixture()
         let model = InspectorStore(readLocal: { _ in await fixture.local() }, readRemote: { try await fixture.remote($0) })
-        let monitoring = Task { await model.monitor(path: repo.path, localInterval: .milliseconds(10), remoteInterval: .milliseconds(10)) }
+        let (changes, fileEvent) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
+        fileEvent.yield()
+        let monitoring = Task { await model.monitor(path: repo.path, changes: changes, remoteInterval: .milliseconds(10)) }
         for _ in 0..<200 {
             if await fixture.remoteStarted { break }
             try await Task.sleep(for: .milliseconds(5))
         }
         await fixture.changeHead()
+        fileEvent.yield()
         for _ in 0..<200 {
             if model.local?.headSHA == "new" { break }
             try await Task.sleep(for: .milliseconds(5))
         }
-        try CoreTests.require(model.local?.headSHA == "new" && model.github == nil, "Local polling advances while first GitHub request is pending")
+        try CoreTests.require(model.local?.headSHA == "new" && model.github == nil, "A file event refreshes Git while the first GitHub request is pending")
         for _ in 0..<200 {
             if model.github?.repository.nameWithOwner == "new" { break }
             try CoreTests.require(model.github?.repository.nameWithOwner != "old", "Reject late GitHub response for previous HEAD")
@@ -164,10 +185,11 @@ import Foundation
         await monitoring.value
         try CoreTests.require(!model.loading, "Inspector cancellation resets loading state")
         let count = await fixture.localCount
+        fileEvent.yield()
         try await Task.sleep(for: .milliseconds(50))
         let stoppedCount = await fixture.localCount
-        try CoreTests.require(count == stoppedCount, "Hiding inspector stops both loops")
-        print("PASS independent Git/GitHub polling, stale response rejection and lifecycle cancellation")
+        try CoreTests.require(count == stoppedCount, "Hiding inspector stops both loops and ignores later events")
+        print("PASS event-driven Git refresh, periodic GitHub refresh, stale response rejection and lifecycle cancellation")
     }
 }
 

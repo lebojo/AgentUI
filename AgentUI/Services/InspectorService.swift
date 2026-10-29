@@ -46,7 +46,7 @@ enum InspectorService {
         let rootData = try await ReadCommand.run(git, ["rev-parse", "--show-toplevel"], at: path)
         let root = String(decoding: rootData, as: UTF8.self).trimmingCharacters(in: .newlines)
         async let head = try? ReadCommand.run(git, ["rev-parse", "--verify", "HEAD"], at: root)
-        let safety = try await worktreeReadConfiguration(git, at: root)
+        let safety = try await GitFilterGuard.shared.configuration(at: root)
         async let changes = ReadCommand.run(git, ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=dirty"],
                                             at: root, gitConfiguration: safety)
         let branch = GitRepository.containing(root)?.branch
@@ -65,7 +65,7 @@ enum InspectorService {
         let git = URL(fileURLWithPath: "/usr/bin/git")
         let paths = [change.path] + (change.originalPath.map { [$0] } ?? [])
         let flags = ["--literal-pathspecs", "--no-pager", "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--ignore-submodules=dirty"]
-        let safety = try await worktreeReadConfiguration(git, at: root)
+        let safety = try await GitFilterGuard.shared.configuration(at: root)
         async let staged = section(git, flags + ["--cached", "--"] + paths, at: root, kind: .staged, safety: safety)
         async let unstaged = section(git, flags + ["--"] + paths, at: root, kind: .unstaged, safety: safety)
         return GitDiff(path: change.path, sections: try await [staged, unstaged].compactMap { $0 })
@@ -75,11 +75,6 @@ enum InspectorService {
                                             safety: [String: String]) async throws -> GitDiffSection? {
         let patch = String(decoding: try await ReadCommand.run(git, arguments, at: root, limit: 524_288, gitConfiguration: safety), as: UTF8.self)
         return patch.isEmpty ? nil : GitDiffSection(kind: kind, patch: patch)
-    }
-
-    private static func worktreeReadConfiguration(_ git: URL, at root: String) async throws -> [String: String] {
-        let listing = try await ReadCommand.run(git, GitConfiguration.listingArguments, at: root)
-        return GitConfiguration.disabling(filterDrivers: GitConfiguration.untrustedFilterDrivers(in: listing))
     }
 
     @concurrent static func github(at path: String, branch: GitBranch?, headSHA: String?, executable override: URL? = nil) async throws -> GitHubSnapshot {

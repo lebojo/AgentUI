@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AgentConversationList: View {
+    @Environment(AppVisibility.self) private var visibility
+
     @State private var conversations: [AgentConversation]?
 
     @Bindable var store: WorkspaceStore
@@ -21,15 +23,19 @@ struct AgentConversationList: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: refresh, priority: .utility) { await monitor() }
+        .task(id: "\(refresh)-\(visibility.isVisible)", priority: .utility) {
+            guard visibility.isVisible else { return }
+            await monitor()
+        }
     }
 
     private func monitor() async {
-        while !Task.isCancelled {
-            let found = await ConversationIndex.load(at: context.worktree.path)
+        var runningMaximumAge: Duration = .zero
+        for await _ in FileEvents.changes(in: ConversationIndex.watchedDirectories, latency: .seconds(1), every: .seconds(15)) {
+            let found = await ConversationIndex.load(at: context.worktree.path, runningMaximumAge: runningMaximumAge)
+            runningMaximumAge = .seconds(10)
             guard !Task.isCancelled else { return }
             if conversations != found { conversations = found }
-            do { try await Task.sleep(for: .seconds(5)) } catch { return }
         }
     }
 

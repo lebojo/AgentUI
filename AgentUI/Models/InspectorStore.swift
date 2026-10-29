@@ -2,6 +2,10 @@ import Foundation
 import Observation
 
 @MainActor @Observable final class InspectorStore {
+    private enum RemoteTrigger: Sendable {
+        case changed, periodic
+    }
+
     private(set) var local: LocalGitSnapshot?
     private(set) var github: GitHubSnapshot?
     private(set) var localLoading = false
@@ -12,7 +16,8 @@ import Observation
     @ObservationIgnored private var path: String?
     @ObservationIgnored private var generation = UUID()
     @ObservationIgnored private var remoteKey: String?
-    @ObservationIgnored private var remoteDate: Date?
+    @ObservationIgnored private var remoteDate: ContinuousClock.Instant?
+    @ObservationIgnored private var remoteInterval: Duration = .seconds(60)
 
     typealias LocalQuery = @Sendable (String) async throws -> LocalGitSnapshot
     typealias RemoteQuery = @Sendable (LocalGitSnapshot) async throws -> GitHubSnapshot
@@ -29,27 +34,41 @@ import Observation
         local.map { $0.root + "|" + ($0.branch?.name ?? "") + "|" + ($0.headSHA ?? "") }
     }
 
-    /// Both loops are structured children: hiding the inspector cancels queries immediately.
-    /// Local polling never awaits GitHub, even when the network stalls.
-    func monitor(path: String, forceRemote: Bool = false,
-                 localInterval: Duration = .seconds(5), remoteInterval: Duration = .seconds(1)) async {
+    private var remoteIsStale: Bool {
+        remoteDate.map { $0.duration(to: .now) >= remoteInterval } ?? true
+    }
+
+    func monitor(path: String, forceRemote: Bool = false, changes: AsyncStream<Void>,
+                 remoteInterval: Duration = .seconds(60)) async {
         let token = UUID()
         generation = token
+        self.remoteInterval = remoteInterval
         if self.path != path {
             self.path = path
             local = nil; github = nil; localError = nil; githubError = nil
             remoteKey = nil; remoteDate = nil
         }
         localLoading = false; remoteLoading = false
-        if forceRemote { remoteDate = nil }
+        if forceRemote { remoteKey = nil }
+        let (triggers, trigger) = AsyncStream.makeStream(of: RemoteTrigger.self, bufferingPolicy: .bufferingNewest(1))
         await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.localLoop(path: path, token: token, interval: localInterval) }
-            group.addTask { await self.remoteLoop(token: token, interval: remoteInterval) }
+            group.addTask { await self.localLoop(path: path, token: token, changes: changes, trigger: trigger) }
+            group.addTask { await self.remoteLoop(token: token, triggers: triggers) }
+            group.addTask {
+                while !Task.isCancelled {
+                    do { try await Task.sleep(for: remoteInterval) } catch { return }
+                    trigger.yield(.periodic)
+                }
+            }
         }
+        trigger.finish()
+        if generation == token { localLoading = false; remoteLoading = false }
     }
 
-    private func localLoop(path: String, token: UUID, interval: Duration) async {
-        while !Task.isCancelled, generation == token {
+    private func localLoop(path: String, token: UUID, changes: AsyncStream<Void>,
+                           trigger: AsyncStream<RemoteTrigger>.Continuation) async {
+        for await _ in changes {
+            guard !Task.isCancelled, generation == token else { break }
             localLoading = true
             do {
                 let snapshot = try await readLocal(path)
@@ -57,7 +76,8 @@ import Observation
                 let oldKey = currentKey
                 local = snapshot
                 localError = nil
-                if currentKey != oldKey { github = nil; githubError = nil; remoteDate = nil }
+                if currentKey != oldKey { github = nil; githubError = nil }
+                if currentKey != remoteKey || remoteIsStale { trigger.yield(.changed) }
             } catch is CancellationError { break }
             catch {
                 guard generation == token, !Task.isCancelled else { break }
@@ -66,35 +86,32 @@ import Observation
                 localError = error.localizedDescription
             }
             localLoading = false
-            do { try await Task.sleep(for: interval) } catch { break }
         }
         if generation == token { localLoading = false }
     }
 
-    private func remoteLoop(token: UUID, interval: Duration) async {
-        while !Task.isCancelled, generation == token {
-            if let snapshot = local, let key = currentKey,
-               key != remoteKey || Date().timeIntervalSince(remoteDate ?? .distantPast) >= 60 {
-                remoteLoading = true
-                do {
-                    let result = try await readRemote(snapshot)
-                    guard !Task.isCancelled, generation == token else { break }
-                    // A branch/HEAD change while gh was running must never publish stale checks.
-                    if currentKey == key {
-                        github = result; githubError = nil
-                        remoteKey = key; remoteDate = Date()
-                    }
-                } catch is CancellationError { break }
-                catch {
-                    guard generation == token, !Task.isCancelled else { break }
-                    if currentKey == key {
-                        github = nil; githubError = error.localizedDescription
-                        remoteKey = key; remoteDate = Date()
-                    }
+    private func remoteLoop(token: UUID, triggers: AsyncStream<RemoteTrigger>) async {
+        for await reason in triggers {
+            guard !Task.isCancelled, generation == token else { break }
+            guard let snapshot = local, let key = currentKey,
+                  reason == .periodic || key != remoteKey || remoteIsStale else { continue }
+            remoteLoading = true
+            do {
+                let result = try await readRemote(snapshot)
+                guard !Task.isCancelled, generation == token else { break }
+                if currentKey == key {
+                    github = result; githubError = nil
+                    remoteKey = key; remoteDate = .now
                 }
-                remoteLoading = false
+            } catch is CancellationError { break }
+            catch {
+                guard generation == token, !Task.isCancelled else { break }
+                if currentKey == key {
+                    github = nil; githubError = error.localizedDescription
+                    remoteKey = key; remoteDate = .now
+                }
             }
-            do { try await Task.sleep(for: interval) } catch { break }
+            remoteLoading = false
         }
         if generation == token { remoteLoading = false }
     }
