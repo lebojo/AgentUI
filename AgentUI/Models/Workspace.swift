@@ -16,12 +16,36 @@ struct TerminalRecord: Identifiable, Codable, Equatable, Sendable {
     var name: String
 }
 
+struct WorktreeGroup: Identifiable, Codable, Equatable, Sendable {
+    var id = UUID()
+    var name: String
+}
+
 struct Worktree: Identifiable, Codable, Equatable, Sendable {
     var id = UUID()
     var name: String
     var path: String
     var isPrimary = false
     var terminals: [TerminalRecord] = []
+    var groupID: UUID? = nil
+    var layouts: [TerminalLayout] = []
+
+    func layout(containing terminalID: UUID) -> TerminalLayout? {
+        layouts.first { $0.contains(terminalID) }
+    }
+}
+
+extension Worktree {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        path = try container.decode(String.self, forKey: .path)
+        isPrimary = try container.decode(Bool.self, forKey: .isPrimary)
+        terminals = try container.decode([TerminalRecord].self, forKey: .terminals)
+        groupID = try container.decodeIfPresent(UUID.self, forKey: .groupID)
+        layouts = try container.decodeIfPresent([TerminalLayout].self, forKey: .layouts) ?? []
+    }
 }
 
 struct Project: Identifiable, Codable, Equatable, Sendable {
@@ -32,8 +56,13 @@ struct Project: Identifiable, Codable, Equatable, Sendable {
     var worktrees: [Worktree]
     var symbol: SidebarSymbol? = nil
     var tint: SidebarTint? = nil
+    var worktreeGroups: [WorktreeGroup] = []
 
     var appearance: SidebarAppearance { SidebarAppearance(kind: .project, symbol: symbol, tint: tint) }
+
+    func worktrees(in groupID: UUID?) -> [Worktree] {
+        worktrees.filter { !$0.isPrimary && $0.groupID == groupID }
+    }
 
     init(url: URL, folderID: UUID? = nil) {
         let path = WorkspaceDisk.canonicalPath(url)
@@ -42,6 +71,18 @@ struct Project: Identifiable, Codable, Equatable, Sendable {
         self.folderID = folderID
         self.worktrees = [Worktree(name: "Principal", path: path, isPrimary: true,
                                    terminals: [TerminalRecord(name: "Terminal")])]
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        path = try container.decode(String.self, forKey: .path)
+        folderID = try container.decodeIfPresent(UUID.self, forKey: .folderID)
+        worktrees = try container.decode([Worktree].self, forKey: .worktrees)
+        symbol = try container.decodeIfPresent(SidebarSymbol.self, forKey: .symbol)
+        tint = try container.decodeIfPresent(SidebarTint.self, forKey: .tint)
+        worktreeGroups = try container.decodeIfPresent([WorktreeGroup].self, forKey: .worktreeGroups) ?? []
     }
 }
 

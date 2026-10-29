@@ -7,12 +7,12 @@ import Observation
     }
 
     private(set) var local: LocalGitSnapshot?
-    private(set) var github: GitHubSnapshot?
+    private(set) var remote: RemoteSnapshot?
     private(set) var localLoading = false
     private(set) var remoteLoading = false
     var loading: Bool { localLoading || remoteLoading }
     private(set) var localError: String?
-    private(set) var githubError: String?
+    private(set) var remoteError: String?
     @ObservationIgnored private var path: String?
     @ObservationIgnored private var generation = UUID()
     @ObservationIgnored private var remoteKey: String?
@@ -20,12 +20,12 @@ import Observation
     @ObservationIgnored private var remoteInterval: Duration = .seconds(60)
 
     typealias LocalQuery = @Sendable (String) async throws -> LocalGitSnapshot
-    typealias RemoteQuery = @Sendable (LocalGitSnapshot) async throws -> GitHubSnapshot
+    typealias RemoteQuery = @Sendable (LocalGitSnapshot) async throws -> RemoteSnapshot
     @ObservationIgnored private let readLocal: LocalQuery
     @ObservationIgnored private let readRemote: RemoteQuery
 
     init(readLocal: @escaping LocalQuery = { try await InspectorService.localGit(at: $0) },
-         readRemote: @escaping RemoteQuery = { try await InspectorService.github(at: $0.root, branch: $0.branch, headSHA: $0.headSHA) }) {
+         readRemote: @escaping RemoteQuery = { try await InspectorService.remote(for: $0) }) {
         self.readLocal = readLocal
         self.readRemote = readRemote
     }
@@ -45,7 +45,7 @@ import Observation
         self.remoteInterval = remoteInterval
         if self.path != path {
             self.path = path
-            local = nil; github = nil; localError = nil; githubError = nil
+            local = nil; remote = nil; localError = nil; remoteError = nil
             remoteKey = nil; remoteDate = nil
         }
         localLoading = false; remoteLoading = false
@@ -76,12 +76,12 @@ import Observation
                 let oldKey = currentKey
                 local = snapshot
                 localError = nil
-                if currentKey != oldKey { github = nil; githubError = nil }
+                if currentKey != oldKey { remote = nil; remoteError = nil; remoteDate = nil }
                 if currentKey != remoteKey || remoteIsStale { trigger.yield(.changed) }
             } catch is CancellationError { break }
             catch {
                 guard generation == token, !Task.isCancelled else { break }
-                local = nil; github = nil; githubError = nil
+                local = nil; remote = nil; remoteError = nil
                 remoteKey = nil; remoteDate = nil
                 localError = error.localizedDescription
             }
@@ -100,14 +100,14 @@ import Observation
                 let result = try await readRemote(snapshot)
                 guard !Task.isCancelled, generation == token else { break }
                 if currentKey == key {
-                    github = result; githubError = nil
+                    remote = result; remoteError = nil
                     remoteKey = key; remoteDate = .now
                 }
             } catch is CancellationError { break }
             catch {
                 guard generation == token, !Task.isCancelled else { break }
                 if currentKey == key {
-                    github = nil; githubError = error.localizedDescription
+                    remote = nil; remoteError = error.localizedDescription
                     remoteKey = key; remoteDate = .now
                 }
             }

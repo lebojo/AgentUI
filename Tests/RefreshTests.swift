@@ -30,8 +30,8 @@ import Foundation
             await reads.increment()
             return try await InspectorService.localGit(at: path)
         }, readRemote: { local in
-            GitHubSnapshot(repository: GitHubRepository(nameWithOwner: "fixture/app", url: "https://github.com/fixture/app", description: nil),
-                           pullRequest: nil, runs: [], pullRequestError: nil, checksError: nil)
+            RemoteSnapshot(repository: RemoteRepository(nameWithOwner: "fixture/app", url: "https://github.com/fixture/app", description: nil),
+                           changeRequest: nil, runs: [], changeRequestError: nil, checksError: nil)
         })
         let changes = await FileEvents.repositoryChanges(at: repository.path)
         let monitoring = Task { await model.monitor(path: repository.path, changes: changes) }

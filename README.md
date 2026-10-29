@@ -15,7 +15,9 @@ A native macOS app to organize your projects, Git worktrees and coding agents (C
 - **Folder import**: recursive Git repository discovery, idempotent reimport.
 - **Git worktrees**: one branch per worktree, created in one click, each with its own terminals.
 - **Real terminals**: native PTY, the user's shell, and a branch badge that follows the working directory.
-- **Inspector**: files, agents, Git changes, diffs, pull request and GitHub Actions checks.
+- **Split terminals**: split the current terminal to the right or below, as many times as needed.
+- **Worktree groups**: gather a project's worktrees under a named group in the sidebar.
+- **Inspector**: files, agents, Git changes, diffs, pull/merge request and GitHub Actions or GitLab pipeline checks.
 - **`agentui` CLI**: agents can create terminals and worktrees from inside their own terminal.
 - **Agent usage**: remaining Claude and Codex plan limits, with reset countdowns, below the project list.
 - **Persistence**: your organization is restored on relaunch.
@@ -25,6 +27,7 @@ A native macOS app to organize your projects, Git worktrees and coding agents (C
 - macOS 14 or later
 - Xcode 27.1 (Swift 6.4)
 - Optional: [`gh`](https://cli.github.com) installed and authenticated (`gh auth login`) for GitHub data in the inspector
+- Optional: [`glab`](https://gitlab.com/gitlab-org/cli) installed and authenticated (`glab auth login`) for GitLab data in the inspector
 
 ## Download
 
@@ -67,6 +70,7 @@ xcodebuild -project AgentUI.xcodeproj -scheme AgentUI -configuration Debug \
 - Discovery walks subfolders, stops at each repository and skips hidden folders, macOS packages and common dependency directories (`node_modules`, `Pods`, `Carthage`, `DerivedData`, `venv`). Submodules inside a repository stay in that project. An inaccessible folder is reported without blocking the import of other repositories.
 - **Right-click a project → Move To**, or drag and drop onto a virtual folder: group projects without moving files.
 - **+ next to a project**: create a new Git branch from its HEAD in a separate worktree, then open a terminal in it. The repository must have at least one commit and the branch must not already exist. While creating, **Stop** interrupts Git and its hooks. Creation has a 90-second limit; a partial creation stays on disk and is reconciled in the list without opening a terminal. The message shows the branch and path to check before retrying.
+- **Right-click a worktree → Group**, or drag it onto a group: gather worktrees of the same project under a named group. Right-click a project → **New Worktree Group…** creates an empty one. Renaming or dissolving a group never touches the worktrees, their folders or their branches.
 - Terminals of the main folder appear directly under the project. Additional worktrees hold their own terminals. Existing worktrees are discovered when a project is added, then via **Refresh Worktrees**.
 - A **green badge** shows the current branch next to each Git terminal and in its header. A branch change is picked up as soon as Git writes it (FSEvents on the repository metadata), and the shell directory is read every two seconds, without spawning any Git process. Outside a repository it disappears; on a detached HEAD, a neutral badge shows the abbreviated commit.
 - The context menu lets you rename and close a terminal, rename or remove a project, and dissolve a virtual folder.
@@ -82,9 +86,13 @@ Usage comes from the agents' own sign-in, like Orca: Claude reads the `Claude Co
 | Shortcut | Action |
 | --- | --- |
 | ⌘T | Open a terminal in the selected worktree (same as **+ Terminal**) |
+| ⌘D | Split the selected terminal to the right |
+| ⇧⌘D | Split the selected terminal below |
 | ⌘W | Close the selected terminal and stop its process; with no terminal selected, close the window |
 
-After ⌘W, the selection moves to another terminal in the same worktree, then in the same project if any remain. Closing a project's last terminal keeps the project and its worktrees: its name turns secondary with a moon icon, and clicking it reopens a terminal in its main worktree.
+Split panes are regular terminals of the same worktree: they also appear in the sidebar, and selecting any of them shows the whole split. Clicking a pane focuses it; its × button (or ⌘W) closes it, and the last remaining pane takes the whole space again. The layout is restored on relaunch.
+
+After ⌘W, the selection moves to the neighbouring pane of a split, otherwise to another terminal in the same worktree, then in the same project if any remain. Closing a project's last terminal keeps the project and its worktrees: its name turns secondary with a moon icon, and clicking it reopens a terminal in its main worktree.
 
 ### Inspector
 
@@ -94,10 +102,10 @@ The right panel button in the toolbar shows or hides the SwiftUI inspector. Visi
 | --- | --- |
 | **Files** | Folders load on expansion, folders before files, `.git` and `.DS_Store` hidden. Symlinks and packages are not traversed. Read-only preview of UTF-8 text files, limited to 128 KiB. Open in the default app or in Finder. |
 | **Agents** | Claude, Codex, Copilot and OpenCode conversations recorded on disk for the worktree, most recent first: `~/.claude/projects`, `~/.codex/sessions`, `~/.copilot/session-state` and the `session` table of `~/.local/share/opencode/opencode.db` (OpenCode subagent and archived sessions are left out). **Play** resumes one in a new terminal (`claude --resume` / `codex resume` / `copilot --resume` / `opencode --session`). Claude sessions already running (from `claude agents --json`) are marked and cannot be opened twice. |
-| **Git** | Branch, staged, unstaged and untracked changes; read-only diff or preview. Links to the GitHub repository and the branch's pull request. |
-| **Checks** | Pull request checks and up to ten GitHub Actions runs for the local HEAD commit. A message flags PR checks that refer to a different commit. |
+| **Git** | Branch, staged, unstaged and untracked changes; read-only diff or preview. Links to the GitHub or GitLab repository and the branch's pull or merge request. |
+| **Checks** | Pull request checks (or the jobs of the merge request's pipeline) and up to ten GitHub Actions runs or GitLab pipelines for the local HEAD commit. A message flags checks that refer to a different commit. |
 
-GitHub data goes through `gh`. The UI separately reports a missing CLI, access errors, no PR and no runs; local features remain usable without GitHub. The inspector is read-only: no commit, push, or PR creation or merge.
+GitHub data goes through `gh`, GitLab data through `glab api` (gitlab.com and self-hosted instances). The repository is treated as GitLab when the host of its `origin` remote (or its first remote) contains `gitlab`, and as GitHub otherwise. The UI separately reports a missing CLI, access errors, no PR/MR and no runs; local features remain usable without GitHub or GitLab. The inspector is read-only: no commit, push, or PR creation or merge.
 
 Git/Checks reread local state when a file of the worktree or its Git metadata changes (FSEvents, coalesced over one second), independently of GitHub requests; nothing runs while the repository is idle. `git config` is only listed again when a configuration file, one of its include targets or HEAD changes. Remote data is refreshed every sixty seconds, on branch or commit change, and via the Refresh button (⌘R). The Agents tab follows the agents' session folders the same way. Every background refresh pauses while the window is hidden or fully covered. Read commands are cancellable, non-interactive, with a twenty-second limit per command and output limits. A diff is limited to 512 KiB per staged/unstaged part; oversized output is reported.
 
@@ -124,7 +132,7 @@ agentui terminal create --project UUID --worktree UUID --name "Review"
 
 Commands return JSON with `ok`, `projectID`, `worktreeID`, `terminalID` and `path`. A failure returns a non-zero exit code. Programs after `--` receive their arguments verbatim, without shell interpolation. Creations requested by an agent do not change the terminal selected on screen.
 
-The CLI waits for the save before reporting success. If the write fails after creation, it returns `ok: false` with the identifiers already created: retry the save in the app, without recreating the terminal. Claude, Codex, Copilot, OpenCode and other tools must already be installed and authenticated on the Mac.
+The CLI waits for the save before reporting success. If the write fails after creation, it returns `ok: false` with the identifiers already created: retry the save in the app, without recreating the terminal. Claude, Codex, Copilot, OpenCode and other tools must already be installed and authenticated on the Mac. Commands run through your interactive login shell, so a tool installed via npm, nvm, bun or any PATH set in `~/.zshrc` is found like in a regular terminal.
 
 Communication uses a request mailbox private to the app instance, with no network port and no Node/Python dependency. The command runs the same native executable, in CLI mode.
 

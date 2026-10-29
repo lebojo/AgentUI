@@ -18,7 +18,6 @@ struct ContentView: View {
         } detail: {
             if let context = store.selectedContext {
                 TerminalDetail(store: store, context: context)
-                    .id(context.terminal.id)
             } else {
                 WorkspaceWelcomeView(sheet: $sheet, store: store)
             }

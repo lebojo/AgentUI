@@ -174,13 +174,13 @@ import Foundation
             if model.local?.headSHA == "new" { break }
             try await Task.sleep(for: .milliseconds(5))
         }
-        try CoreTests.require(model.local?.headSHA == "new" && model.github == nil, "A file event refreshes Git while the first GitHub request is pending")
+        try CoreTests.require(model.local?.headSHA == "new" && model.remote == nil, "A file event refreshes Git while the first GitHub request is pending")
         for _ in 0..<200 {
-            if model.github?.repository.nameWithOwner == "new" { break }
-            try CoreTests.require(model.github?.repository.nameWithOwner != "old", "Reject late GitHub response for previous HEAD")
+            if model.remote?.repository.nameWithOwner == "new" { break }
+            try CoreTests.require(model.remote?.repository.nameWithOwner != "old", "Reject late GitHub response for previous HEAD")
             try await Task.sleep(for: .milliseconds(5))
         }
-        try CoreTests.require(model.github?.repository.nameWithOwner == "new", "Fetch remote state for new HEAD")
+        try CoreTests.require(model.remote?.repository.nameWithOwner == "new", "Fetch remote state for new HEAD")
         monitoring.cancel()
         await monitoring.value
         try CoreTests.require(!model.loading, "Inspector cancellation resets loading state")
@@ -202,9 +202,9 @@ private actor InspectorFixture {
         localCount += 1
         return LocalGitSnapshot(root: "/fixture", branch: GitBranch(name: "main"), headSHA: head, changes: [])
     }
-    func remote(_ local: LocalGitSnapshot) async throws -> GitHubSnapshot {
+    func remote(_ local: LocalGitSnapshot) async throws -> RemoteSnapshot {
         remoteStarted = true
         try await Task.sleep(for: .milliseconds(local.headSHA == "old" ? 250 : 10))
-        return GitHubSnapshot(repository: GitHubRepository(nameWithOwner: local.headSHA!, url: "https://github.com/fixture/app", description: nil), pullRequest: nil, runs: [], pullRequestError: nil, checksError: nil)
+        return RemoteSnapshot(repository: RemoteRepository(nameWithOwner: local.headSHA!, url: "https://github.com/fixture/app", description: nil), changeRequest: nil, runs: [], changeRequestError: nil, checksError: nil)
     }
 }

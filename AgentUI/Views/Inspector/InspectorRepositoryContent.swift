@@ -11,9 +11,9 @@ struct InspectorRepositoryContent: View {
                     if tab == .git {
                         GitChangeList(root: local.root, branch: local.branch, changes: local.changes)
                         Divider()
-                        GitHubSummary(model: model)
+                        RemoteSummary(model: model)
                     } else {
-                        GitHubChecks(model: model, headSHA: local.headSHA)
+                        RemoteChecks(model: model, headSHA: local.headSHA)
                     }
                 } else if let error = model.localError {
                     InspectorNotice(title: "Git indisponible", message: error, symbol: "folder.badge.questionmark")

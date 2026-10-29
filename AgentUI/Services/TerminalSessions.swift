@@ -36,7 +36,7 @@ import Observation
         if env["LANG"] == nil { env["LANG"] = "en_US.UTF-8" }
         let configuredShell = env["SHELL"] ?? "/bin/zsh"
         let shell = FileManager.default.isExecutableFile(atPath: configuredShell) ? configuredShell : "/bin/zsh"
-        let args = command.isEmpty ? ["-l"] : ["-l", "-c", "exec \"$@\"", "agentui"] + command
+        let args = command.isEmpty ? ["-l"] : ["-l", "-i", "-c", "exec \"$@\"", "agentui"] + command
         view.startProcess(executable: shell, args: args, environment: env.map { "\($0.key)=\($0.value)" }, currentDirectory: path)
         if !view.process.running {
             hasExited = true
@@ -49,7 +49,7 @@ import Observation
     func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
     func processTerminated(source: TerminalView, exitCode: Int32?) {
         hasExited = true
-        self.exitCode = exitCode
+        self.exitCode = exitCode.flatMap { $0 & 0x7f == 0 ? ($0 >> 8) & 0xff : nil }
     }
     func updateRepository(directory: String, branch: GitBranch?) {
         if currentDirectory != directory { currentDirectory = directory }
@@ -143,10 +143,15 @@ struct NativeTerminalView: NSViewRepresentable {
     final class Coordinator {
         var appliedAppearance: TerminalAppearance?
         var appliedColorScheme: ColorScheme?
+        var wasFocused = false
+        var focus: () -> Void = {}
+        var mouseMonitor: Any?
     }
 
     let session: TerminalSession
     let appearance: TerminalAppearance
+    let isFocused: Bool
+    let focus: () -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -164,10 +169,31 @@ struct NativeTerminalView: NSViewRepresentable {
             terminal.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -8)
         ])
         applyAppearance(context: context)
-        DispatchQueue.main.async { terminal.window?.makeFirstResponder(terminal) }
+        let coordinator = context.coordinator
+        coordinator.focus = focus
+        coordinator.wasFocused = isFocused
+        coordinator.mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak host] event in
+            if let host, event.window === host.window, host.bounds.contains(host.convert(event.locationInWindow, from: nil)) {
+                coordinator.focus()
+            }
+            return event
+        }
+        if isFocused { DispatchQueue.main.async { terminal.window?.makeFirstResponder(terminal) } }
         return host
     }
-    func updateNSView(_ nsView: NSView, context: Context) { applyAppearance(context: context) }
+    func updateNSView(_ nsView: NSView, context: Context) {
+        applyAppearance(context: context)
+        context.coordinator.focus = focus
+        if isFocused, !context.coordinator.wasFocused {
+            let terminal = session.view
+            DispatchQueue.main.async { terminal.window?.makeFirstResponder(terminal) }
+        }
+        context.coordinator.wasFocused = isFocused
+    }
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        if let monitor = coordinator.mouseMonitor { NSEvent.removeMonitor(monitor) }
+        coordinator.mouseMonitor = nil
+    }
 
     private func applyAppearance(context: Context) {
         let colorScheme = context.environment.colorScheme

@@ -24,6 +24,8 @@ enum Dimension {
     enum Detail {
         static let headerHeight: CGFloat = 40
         static let footerHeight: CGFloat = 29
+        static let paneTitleHeight: CGFloat = 24
+        static let paneMinLength: CGFloat = 160
     }
 
     enum Badge {

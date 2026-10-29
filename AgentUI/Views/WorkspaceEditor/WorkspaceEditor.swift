@@ -4,11 +4,13 @@ enum WorkspaceSheet: Identifiable {
     case folder(parentID: UUID?)
     case rename(UUID, String)
     case worktree(UUID, String)
+    case worktreeGroup(projectID: UUID, worktreeID: UUID?)
     var id: String {
         switch self {
         case .folder(let parentID): "folder-\(parentID?.uuidString ?? "root")"
         case .rename(let id, _): "rename-\(id)"
         case .worktree(let id, _): "worktree-\(id)"
+        case .worktreeGroup(let projectID, let worktreeID): "worktree-group-\(projectID)-\(worktreeID?.uuidString ?? "empty")"
         }
     }
 }
@@ -35,6 +37,7 @@ struct WorkspaceEditor: View {
         case .folder: "Nouveau sous-dossier"
         case .rename: appearance == nil ? "Renommer" : "Modifier"
         case .worktree: "Nouveau worktree"
+        case .worktreeGroup: "Nouveau groupe de worktrees"
         }
     }
     private var explanation: String {
@@ -42,6 +45,23 @@ struct WorkspaceEditor: View {
         case .folder: "Réunis des projets situés à différents endroits sur ton Mac. Leurs fichiers restent en place."
         case .rename: appearance == nil ? "Ce nom sera affiché dans la barre latérale." : "Ce nom, cette icône et cette couleur seront affichés dans la barre latérale."
         case .worktree(_, let project): "Ouvre la branche dans un dossier de travail séparé. Si elle n’existe pas encore, elle est créée depuis HEAD de \(project). \(worktreeLaunchDescription)"
+        case .worktreeGroup: "Range des worktrees du projet sous un même nom dans la barre latérale. Leurs dossiers et leurs branches ne changent pas."
+        }
+    }
+
+    private var placeholder: String {
+        switch sheet {
+        case .worktree: "feature/ma-tache"
+        case .worktreeGroup: "Revues"
+        case .folder, .rename: "Mes projets"
+        }
+    }
+
+    private var symbol: String {
+        switch sheet {
+        case .worktree: "arrow.triangle.branch"
+        case .worktreeGroup: "rectangle.stack"
+        case .folder, .rename: "pencil"
         }
     }
 
@@ -54,14 +74,14 @@ struct WorkspaceEditor: View {
             Label {
                 Text(title)
             } icon: {
-                Image(systemName: appearance?.displaySymbol.systemName ?? (isWorktree ? "arrow.triangle.branch" : "pencil"))
+                Image(systemName: appearance?.displaySymbol.systemName ?? symbol)
                     .foregroundStyle(appearance?.color ?? Palette.accent)
             }
             .font(Typography.title)
             Text(explanation).foregroundStyle(Palette.textSecondary).font(Typography.body).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: Spacing.s) {
                 Text(isWorktree ? "Branche" : "Nom").font(Typography.label)
-                TextField(isWorktree ? "feature/ma-tache" : "Mes projets", text: $name)
+                TextField(placeholder, text: $name)
                     .textFieldStyle(.roundedBorder).focused($focused)
                     .onSubmit { submit() }.disabled(submitting)
             }
@@ -91,7 +111,7 @@ struct WorkspaceEditor: View {
             case .rename(let id, let current):
                 name = current
                 appearance = store.appearance(of: id)
-            case .worktree: break
+            case .worktree, .worktreeGroup: break
             }
             focused = true
         }
@@ -108,6 +128,9 @@ struct WorkspaceEditor: View {
         case .rename(let id, _):
             store.rename(id, to: trimmed)
             if let appearance { store.setAppearance(appearance, for: id) }
+            dismiss()
+        case .worktreeGroup(let project, let worktree):
+            store.addWorktreeGroup(trimmed, projectID: project, moving: worktree)
             dismiss()
         case .worktree(let project, _):
             submitting = true
