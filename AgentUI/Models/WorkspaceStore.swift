@@ -3,11 +3,17 @@ import Observation
 
 @MainActor @Observable final class WorkspaceStore {
     private(set) var folders: [ProjectFolder] = []
-    private(set) var projects: [Project] = []
+    private(set) var projects: [Project] = [] {
+        didSet { selectedContext = context(for: selection) }
+    }
     private var collapsed: Set<UUID> = []
     var selection: UUID? {
-        didSet { if oldValue != selection { save() } }
+        didSet {
+            selectedContext = context(for: selection)
+            if oldValue != selection { save() }
+        }
     }
+    private(set) var selectedContext: TerminalContext?
     var state: Workspace { Workspace(folders: folders, projects: projects, selection: selection, collapsed: collapsed) }
     private(set) var persistenceError: String?
     private(set) var hasUnsavedChanges = false
@@ -167,9 +173,7 @@ import Observation
         guard !isReadOnly, !isImporting else { return }
         isImporting = true
         defer { isImporting = false }
-        let discovery = try await Task.detached(priority: .userInitiated) {
-            try RepositoryDiscovery.scan(in: url)
-        }.value
+        let discovery = try await RepositoryDiscovery.discover(in: url)
         let repositories = discovery.repositories
         if repositories.isEmpty, let warning = discovery.warning {
             throw WorkspaceError(message: warning)
@@ -190,9 +194,7 @@ import Observation
             let discovery: RepositoryDiscoveryResult
             if let discovered { discovery = discovered }
             else {
-                discovery = try await Task.detached(priority: .userInitiated) {
-                    try RepositoryDiscovery.scan(in: url)
-                }.value
+                discovery = try await RepositoryDiscovery.discover(in: url)
             }
             let repositories = discovery.repositories
             guard !repositories.isEmpty else {
@@ -289,7 +291,7 @@ import Observation
     }
 
     func addTerminalInCurrentContext(name: String, command: [String]) throws {
-        let current = context(for: selection).map { ($0.project.id, $0.worktree.id) }
+        let current = selectedContext.map { ($0.project.id, $0.worktree.id) }
         let fallback = projects.lazy.compactMap { project in
             (project.worktrees.first(where: \.isPrimary) ?? project.worktrees.first).map { (project.id, $0.id) }
         }.first
@@ -368,7 +370,7 @@ import Observation
         try await GitService.removeWorktree(project: project, path: worktree.path)
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
         projects[index].worktrees.removeAll { $0.id == worktreeID }
-        if context(for: selection) == nil {
+        if selectedContext == nil {
             selection = projects[index].worktrees.flatMap(\.terminals).first?.id
             repairSelection()
         }
@@ -398,7 +400,7 @@ import Observation
     }
 
     private func repairSelection() {
-        if context(for: selection) == nil { selection = projects.flatMap(\.worktrees).flatMap(\.terminals).first?.id }
+        if selectedContext == nil { selection = projects.flatMap(\.worktrees).flatMap(\.terminals).first?.id }
     }
 
     private func restore(_ snapshot: Workspace) {

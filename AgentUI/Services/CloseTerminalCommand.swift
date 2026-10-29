@@ -1,6 +1,5 @@
 import AppKit
 
-/// Keep the native Close menu and terminal keyboard handling on the same path.
 @MainActor final class CloseTerminalCommand: NSObject, NSMenuItemValidation {
     private let store: WorkspaceStore
     private var monitor: Any?
@@ -23,7 +22,7 @@ import AppKit
     }
 
     private var canCloseTerminal: Bool {
-        !store.isReadOnly && store.context(for: store.selection) != nil &&
+        !store.isReadOnly && store.selectedContext != nil &&
         NSApp.modalWindow == nil && NSApp.mainWindow?.attachedSheet == nil &&
         NSApp.keyWindow == NSApp.mainWindow
     }
