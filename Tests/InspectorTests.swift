@@ -107,14 +107,62 @@ enum InspectorTests {
         try script.write(to: fake, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fake.path)
         let remote = try await InspectorService.github(at: repository.path, branch: GitBranch(name: "feature/test", isDetached: false), headSHA: "local-sha", executable: fake)
-        try require(remote.pullRequest?.number == 42 && remote.pullRequest?.statusCheckRollup?.count == 2 && remote.runs.first?.headSha == "local-sha", "Decode PR checks, legacy status contexts and commit-filtered runs")
+        try require(remote.changeRequest?.number == 42 && remote.changeRequest?.statusCheckRollup?.count == 2 && remote.runs.first?.headSha == "local-sha", "Decode PR checks, legacy status contexts and commit-filtered runs")
         let noPR = try await InspectorService.github(at: repository.path, branch: GitBranch(name: "none", isDetached: false), headSHA: nil, executable: fake)
-        try require(noPR.pullRequest == nil && noPR.pullRequestError == nil, "No PR is a valid empty state")
+        try require(noPR.changeRequest == nil && noPR.changeRequestError == nil, "No PR is a valid empty state")
         let offline = try await InspectorService.github(at: repository.path, branch: GitBranch(name: "offline", isDetached: false), headSHA: nil, executable: fake)
-        try require(offline.pullRequestError?.contains("connecting") == true, "Network failure is not reported as no PR")
+        try require(offline.changeRequestError?.contains("connecting") == true, "Network failure is not reported as no PR")
         let calls = try String(contentsOf: fake.withExtension("calls"), encoding: .utf8)
         try require(calls.contains("--commit") && calls.contains("local-sha"), "gh Actions query filters current commit")
         print("PASS gh JSON decoding, commit filtering, no PR and network failures")
+
+        let hosts = ["git@gitlab.com:group/app.git", "https://gitlab.example.org/group/app", "ssh://git@gitlab.internal:2222/app.git",
+                     "git@github.com:owner/app.git", "https://github.com/owner/app.git"].map(GitHosting.init(remoteURL:))
+        try require(hosts == [.gitlab, .gitlab, .gitlab, .github, .github], "Detect GitLab and GitHub from remote URLs")
+        _ = try await GitService.run(["remote", "add", "origin", "git@gitlab.com:fixture/app.git"], at: repository.path)
+        let detected = await InspectorService.hosting(at: repository.path)
+        _ = try await GitService.run(["remote", "remove", "origin"], at: repository.path)
+        try require(detected == .gitlab, "Read the hosting from the origin remote")
+
+        let fakeGlab = root.appendingPathComponent("fake-glab")
+        let glabScript = #"""
+        #!/usr/bin/python3
+        import sys,json,pathlib
+        args=sys.argv[1:]
+        with open(pathlib.Path(__file__).with_suffix('.calls'),'a') as f: f.write(json.dumps(args)+'\n')
+        endpoint=args[1] if args[:1]==['api'] else ''
+        if endpoint=='projects/:id':
+            print(json.dumps({'path_with_namespace':'fixture/app','web_url':'https://gitlab.com/fixture/app','description':''}))
+        elif endpoint.startswith('projects/:id/merge_requests?'):
+            if 'source_branch=none' in endpoint: print('[]')
+            elif 'source_branch=offline' in endpoint: print('dial tcp: lookup gitlab.com: no such host',file=sys.stderr);sys.exit(1)
+            else: print(json.dumps([{'iid':6,'title':'Old','web_url':'u','state':'merged','source_branch':'feature/test','target_branch':'main'},
+                                    {'iid':7,'title':'A test MR','web_url':'https://gitlab.com/fixture/app/-/merge_requests/7','state':'opened','source_branch':'feature/test','target_branch':'main'}]))
+        elif endpoint=='projects/:id/merge_requests/7':
+            print(json.dumps({'iid':7,'title':'A test MR','web_url':'https://gitlab.com/fixture/app/-/merge_requests/7','state':'opened','draft':True,'source_branch':'feature/test','target_branch':'main','sha':'remote-sha','head_pipeline':{'id':99,'project_id':5}}))
+        elif endpoint.startswith('projects/5/pipelines/99/jobs'):
+            print(json.dumps([{'name':'unit','stage':'test','status':'failed','web_url':'https://gitlab.com/fixture/app/-/jobs/1'},{'name':'lint','stage':'test','status':'running','web_url':None}]))
+        elif endpoint.startswith('projects/:id/pipelines?sha='):
+            print(json.dumps([{'id':99,'iid':12,'ref':'feature/test','status':'success','sha':endpoint.split('sha=')[1].split('&')[0],'web_url':'https://gitlab.com/fixture/app/-/pipelines/99'}]))
+        else: sys.exit(2)
+        """#
+        try glabScript.write(to: fakeGlab, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fakeGlab.path)
+        let gitlab = try await InspectorService.gitlab(at: repository.path, branch: GitBranch(name: "feature/test", isDetached: false), headSHA: "local-sha", executable: fakeGlab)
+        let checks = gitlab.changeRequest?.statusCheckRollup ?? []
+        try require(gitlab.hosting == .gitlab && gitlab.repository.nameWithOwner == "fixture/app" && gitlab.repository.description == nil, "Decode the GitLab project")
+        try require(gitlab.changeRequest?.number == 7 && gitlab.changeRequest?.isDraft == true && gitlab.changeRequest?.state == "OPEN"
+                    && gitlab.changeRequest?.headRefOid == "remote-sha", "Prefer the open merge request of the branch")
+        try require(checks.map(\.title) == ["test · unit", "test · lint"] && checks.map(\.result) == ["FAILURE", "running"], "Map pipeline jobs to checks")
+        try require(gitlab.runs.first?.headSha == "local-sha" && gitlab.runs.first?.result == "SUCCESS" && gitlab.runs.first?.workflowName == "Pipeline #12", "Decode commit pipelines")
+        let noMR = try await InspectorService.gitlab(at: repository.path, branch: GitBranch(name: "none", isDetached: false), headSHA: nil, executable: fakeGlab)
+        try require(noMR.changeRequest == nil && noMR.changeRequestError == nil, "No merge request is a valid empty state")
+        let offlineMR = try await InspectorService.gitlab(at: repository.path, branch: GitBranch(name: "offline", isDetached: false), headSHA: nil, executable: fakeGlab)
+        try require(offlineMR.changeRequestError?.contains("no such host") == true, "Network failure is not reported as no merge request")
+        _ = try await InspectorService.gitlab(at: repository.path, branch: GitBranch(name: "feature/a&b", isDetached: false), headSHA: nil, executable: fakeGlab)
+        let glabCalls = try String(contentsOf: fakeGlab.withExtension("calls"), encoding: .utf8)
+        try require(glabCalls.contains("source_branch=feature%2Fa%26b"), "Branch names are encoded in GitLab queries")
+        print("PASS GitLab hosting detection, glab JSON decoding, no MR and network failures")
 
         do {
             _ = try await ReadCommand.run(URL(fileURLWithPath: "/bin/sleep"), ["5"], at: root.path, timeout: 0.1)

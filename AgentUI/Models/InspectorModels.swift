@@ -75,13 +75,70 @@ struct LocalGitSnapshot: Equatable, Sendable {
     let changes: [GitChange]
 }
 
-struct GitHubRepository: Decodable, Equatable, Sendable {
+enum GitHosting: String, Sendable {
+    case github, gitlab
+
+    init(remoteURL: String) {
+        self = Self.host(of: remoteURL).contains("gitlab") ? .gitlab : .github
+    }
+
+    var title: String {
+        switch self {
+        case .github: "GitHub"
+        case .gitlab: "GitLab"
+        }
+    }
+
+    var cli: String {
+        switch self {
+        case .github: "gh"
+        case .gitlab: "glab"
+        }
+    }
+
+    var changeRequestTitle: String {
+        switch self {
+        case .github: "Pull request"
+        case .gitlab: "Merge request"
+        }
+    }
+
+    var changeRequestPrefix: String {
+        switch self {
+        case .github: "#"
+        case .gitlab: "!"
+        }
+    }
+
+    var runsTitle: String {
+        switch self {
+        case .github: "Actions"
+        case .gitlab: "Pipelines"
+        }
+    }
+
+    var noRunsMessage: String {
+        switch self {
+        case .github: "Aucune exécution GitHub Actions pour ce commit."
+        case .gitlab: "Aucun pipeline GitLab pour ce commit."
+        }
+    }
+
+    private static func host(of remoteURL: String) -> String {
+        let value = remoteURL.lowercased()
+        if let host = URL(string: value)?.host { return host }
+        let address = value.split(separator: ":").first.map(String.init) ?? value
+        return address.split(separator: "@").last.map(String.init) ?? address
+    }
+}
+
+struct RemoteRepository: Decodable, Equatable, Sendable {
     let nameWithOwner: String
     let url: String
     let description: String?
 }
 
-struct GitHubCheck: Decodable, Identifiable, Equatable, Sendable {
+struct RemoteCheck: Decodable, Identifiable, Equatable, Sendable {
     let name: String?
     let context: String?
     let status: String?
@@ -95,7 +152,7 @@ struct GitHubCheck: Decodable, Identifiable, Equatable, Sendable {
     var id: String { title + (url ?? "") }
 }
 
-struct GitHubPullRequest: Decodable, Equatable, Sendable {
+struct ChangeRequest: Decodable, Equatable, Sendable {
     let number: Int
     let title: String
     let url: String
@@ -105,10 +162,10 @@ struct GitHubPullRequest: Decodable, Equatable, Sendable {
     let headRefOid: String
     let baseRefName: String
     let reviewDecision: String?
-    let statusCheckRollup: [GitHubCheck]?
+    let statusCheckRollup: [RemoteCheck]?
 }
 
-struct GitHubRun: Decodable, Identifiable, Equatable, Sendable {
+struct PipelineRun: Decodable, Identifiable, Equatable, Sendable {
     let databaseId: Int
     let displayTitle: String
     let workflowName: String
@@ -120,11 +177,12 @@ struct GitHubRun: Decodable, Identifiable, Equatable, Sendable {
     var result: String { conclusion.isEmpty ? status : conclusion }
 }
 
-struct GitHubSnapshot: Equatable, Sendable {
-    let repository: GitHubRepository
-    let pullRequest: GitHubPullRequest?
-    let runs: [GitHubRun]
-    let pullRequestError: String?
+struct RemoteSnapshot: Equatable, Sendable {
+    var hosting: GitHosting = .github
+    let repository: RemoteRepository
+    let changeRequest: ChangeRequest?
+    let runs: [PipelineRun]
+    let changeRequestError: String?
     let checksError: String?
 }
 
@@ -147,6 +205,83 @@ enum InspectorPreview: Identifiable {
         switch self {
         case .file(let preview): preview.id
         case .diff(let diff): diff.id
+        }
+    }
+}
+
+struct GitLabProject: Decodable, Sendable {
+    let pathWithNamespace: String
+    let webUrl: String
+    let description: String?
+
+    var repository: RemoteRepository {
+        RemoteRepository(nameWithOwner: pathWithNamespace, url: webUrl, description: description.flatMap { $0.isEmpty ? nil : $0 })
+    }
+}
+
+struct GitLabPipeline: Decodable, Sendable {
+    let id: Int
+    let iid: Int?
+    let name: String?
+    let ref: String?
+    let status: String
+    let sha: String
+    let webUrl: String
+
+    var run: PipelineRun {
+        PipelineRun(databaseId: id, displayTitle: ref ?? "Pipeline", workflowName: name ?? "Pipeline #\(iid ?? id)",
+                    status: status, conclusion: GitLabStatus.conclusion(of: status), headSha: sha, url: webUrl)
+    }
+}
+
+struct GitLabJob: Decodable, Sendable {
+    let name: String
+    let stage: String?
+    let status: String
+    let webUrl: String?
+
+    var check: RemoteCheck {
+        RemoteCheck(name: stage.map { "\($0) · \(name)" } ?? name, context: nil, status: status,
+                    conclusion: GitLabStatus.conclusion(of: status), state: nil, detailsUrl: webUrl, targetUrl: nil)
+    }
+}
+
+struct GitLabMergeRequest: Decodable, Sendable {
+    struct Pipeline: Decodable, Sendable {
+        let id: Int
+        let projectId: Int
+
+        var jobsEndpoint: String { "projects/\(projectId)/pipelines/\(id)/jobs?per_page=100" }
+    }
+
+    let iid: Int
+    let title: String
+    let webUrl: String
+    let state: String
+    let draft: Bool?
+    let workInProgress: Bool?
+    let sourceBranch: String
+    let targetBranch: String
+    let sha: String?
+    let headPipeline: Pipeline?
+
+    var isOpen: Bool { state == "opened" }
+
+    func changeRequest(checks: [RemoteCheck]?) -> ChangeRequest {
+        ChangeRequest(number: iid, title: title, url: webUrl, state: state == "opened" ? "OPEN" : state.uppercased(),
+                      isDraft: draft ?? workInProgress ?? false, headRefName: sourceBranch, headRefOid: sha ?? "",
+                      baseRefName: targetBranch, reviewDecision: nil, statusCheckRollup: checks)
+    }
+}
+
+enum GitLabStatus {
+    static func conclusion(of status: String) -> String {
+        switch status {
+        case "success": "SUCCESS"
+        case "failed": "FAILURE"
+        case "canceled", "canceling": "CANCELLED"
+        case "skipped", "manual": "SKIPPED"
+        default: ""
         }
     }
 }

@@ -2,12 +2,10 @@ import AppKit
 import SwiftUI
 
 struct TerminalDetail: View {
-    @Environment(SettingsStore.self) private var settings
-
-    @State private var session: TerminalSession?
-
     let store: WorkspaceStore
     let context: TerminalContext
+
+    private var layout: TerminalLayout { store.layout(for: context.terminal.id) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,30 +13,14 @@ struct TerminalDetail: View {
 
             Divider()
 
-            if let session {
-                NativeTerminalView(session: session, appearance: settings.terminal)
-                    .id(ObjectIdentifier(session))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if session.hasExited {
-                    HStack {
-                        Label(session.exitCode.map { "Session terminée (\($0))" } ?? "Session terminée", systemImage: "stop.circle")
-                        Spacer()
-                        Button("Rouvrir le terminal") {
-                            store.sessions.close(context.terminal.id)
-                            self.session = store.sessions.start(context)
-                        }
-                    }
-                    .font(Typography.body).padding(Spacing.l).background(Palette.bar)
-                }
-            } else {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+            TerminalLayoutView(store: store, layout: layout, focusedID: context.terminal.id, isSplit: layout.isSplit)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
             Divider()
-            TerminalFooter(session: session, path: context.worktree.path)
+            TerminalFooter(session: store.sessions.session(context.terminal.id), path: context.worktree.path)
         }
         .background(Palette.surface)
         .navigationTitle(context.terminal.name)
-        .task { session = store.sessions.start(context) }
     }
 }
 
@@ -59,6 +41,14 @@ private struct TerminalHeader: View {
                 BranchBadge(branch: branch).frame(maxWidth: Dimension.Badge.detailMaxWidth)
             }
             Spacer()
+            Button { split(.horizontal) } label: { Image(systemName: "rectangle.split.2x1") }
+                .buttonStyle(.borderless).help("Diviser à droite (⌘D)")
+                .accessibilityLabel("Diviser le terminal à droite")
+                .keyboardShortcut("d")
+            Button { split(.vertical) } label: { Image(systemName: "rectangle.split.1x2") }
+                .buttonStyle(.borderless).help("Diviser en bas (⇧⌘D)")
+                .accessibilityLabel("Diviser le terminal en bas")
+                .keyboardShortcut("d", modifiers: [.command, .shift])
             Button(action: addTerminal) { Label("Terminal", systemImage: "plus") }
                 .buttonStyle(.borderless).help("Nouveau terminal dans ce worktree")
                 .keyboardShortcut("t")
@@ -74,6 +64,15 @@ private struct TerminalHeader: View {
         }
         catch { store.errorMessage = error.localizedDescription }
     }
+
+    private func split(_ axis: SplitAxis) {
+        do {
+            _ = try store.splitTerminal(context.terminal.id, axis: axis,
+                                        name: settings.agentLaunch.terminalName(on: .newTerminal),
+                                        command: settings.agentLaunch.command(on: .newTerminal))
+        }
+        catch { store.errorMessage = error.localizedDescription }
+    }
 }
 
 private struct TerminalFooter: View {
@@ -86,7 +85,7 @@ private struct TerminalFooter: View {
             Text((session?.currentDirectory ?? path).replacingOccurrences(of: NSHomeDirectory(), with: "~"))
                 .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
             Spacer(minLength: Spacing.l)
-            Text("⌘T  Nouveau terminal").foregroundStyle(Palette.textSecondary)
+            Text("⌘T  Nouveau terminal   ⌘D  Diviser").foregroundStyle(Palette.textSecondary)
         }
         .font(Typography.s).foregroundStyle(Palette.textSecondary)
         .padding(.horizontal, Spacing.xl).frame(height: Dimension.Detail.footerHeight)

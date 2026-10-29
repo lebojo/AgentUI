@@ -247,6 +247,7 @@ import Observation
         if let index = folders.firstIndex(where: { $0.id == id }) { folders[index].name = name }
         for p in projects.indices {
             if projects[p].id == id { projects[p].name = name }
+            if let g = projects[p].worktreeGroups.firstIndex(where: { $0.id == id }) { projects[p].worktreeGroups[g].name = name }
             for w in projects[p].worktrees.indices {
                 for t in projects[p].worktrees[w].terminals.indices where projects[p].worktrees[w].terminals[t].id == id {
                     projects[p].worktrees[w].terminals[t].name = name
@@ -290,6 +291,28 @@ import Observation
         return context
     }
 
+    @discardableResult func splitTerminal(_ id: UUID, axis: SplitAxis, name: String = "Terminal", command: [String] = []) throws -> TerminalContext {
+        guard let current = context(for: id) else { throw WorkspaceError(message: "Terminal introuvable.") }
+        let added = try addTerminal(projectID: current.project.id, worktreeID: current.worktree.id, name: name, command: command)
+        updateWorktree(current.worktree.id) { worktree in
+            if let index = worktree.layouts.firstIndex(where: { $0.contains(id) }) {
+                worktree.layouts[index] = worktree.layouts[index].splitting(id, with: added.terminal.id, axis: axis)
+            } else {
+                worktree.layouts.append(TerminalLayout.terminal(id).splitting(id, with: added.terminal.id, axis: axis))
+            }
+        }
+        save()
+        return context(for: added.terminal.id) ?? added
+    }
+
+    func layout(for terminalID: UUID) -> TerminalLayout {
+        worktree(containing: terminalID)?.layout(containing: terminalID) ?? .terminal(terminalID)
+    }
+
+    func worktree(containing terminalID: UUID) -> Worktree? {
+        projects.lazy.flatMap(\.worktrees).first { $0.terminals.contains { $0.id == terminalID } }
+    }
+
     func addTerminalInCurrentContext(name: String, command: [String]) throws {
         let current = selectedContext.map { ($0.project.id, $0.worktree.id) }
         let fallback = projects.lazy.compactMap { project in
@@ -303,15 +326,19 @@ import Observation
 
     func closeTerminal(_ id: UUID) {
         let previous = context(for: id)
+        let neighbour = worktree(containing: id)?.layout(containing: id)?.neighbour(of: id)
         sessions.close(id)
         for p in projects.indices {
             for w in projects[p].worktrees.indices {
                 projects[p].worktrees[w].terminals.removeAll { $0.id == id }
+                projects[p].worktrees[w].layouts = projects[p].worktrees[w].layouts
+                    .compactMap { $0.removing(id) }.filter(\.isSplit)
             }
         }
         if selection == id {
             let project = projects.first { $0.id == previous?.project.id }
-            selection = project?.worktrees.first(where: { $0.id == previous?.worktree.id })?.terminals.first?.id
+            selection = neighbour
+                ?? project?.worktrees.first(where: { $0.id == previous?.worktree.id })?.terminals.first?.id
                 ?? project?.worktrees.flatMap(\.terminals).first?.id
         }
         save()
@@ -377,6 +404,36 @@ import Observation
         save()
     }
 
+    @discardableResult func addWorktreeGroup(_ name: String, projectID: UUID, moving worktreeID: UUID? = nil) -> UUID? {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, let index = projects.firstIndex(where: { $0.id == projectID }) else { return nil }
+        let group = WorktreeGroup(name: name)
+        projects[index].worktreeGroups.append(group)
+        if let worktreeID { moveWorktree(worktreeID, to: group.id) }
+        collapsed.remove(group.id)
+        save()
+        return group.id
+    }
+
+    @discardableResult func moveWorktree(_ worktreeID: UUID, to groupID: UUID?) -> Bool {
+        guard let project = projects.first(where: { $0.worktrees.contains { $0.id == worktreeID && !$0.isPrimary } }),
+              groupID == nil || project.worktreeGroups.contains(where: { $0.id == groupID }) else { return false }
+        updateWorktree(worktreeID) { $0.groupID = groupID }
+        if let groupID { collapsed.remove(groupID) }
+        save()
+        return true
+    }
+
+    func removeWorktreeGroup(_ id: UUID) {
+        guard let index = projects.firstIndex(where: { $0.worktreeGroups.contains { $0.id == id } }) else { return }
+        projects[index].worktreeGroups.removeAll { $0.id == id }
+        for w in projects[index].worktrees.indices where projects[index].worktrees[w].groupID == id {
+            projects[index].worktrees[w].groupID = nil
+        }
+        collapsed.remove(id)
+        save()
+    }
+
     func refreshWorktrees(_ id: UUID) async {
         guard !busyProjects.contains(id), let project = projects.first(where: { $0.id == id }) else { return }
         guard let discovered = try? await GitService.existingWorktrees(project: project),
@@ -388,9 +445,18 @@ import Observation
         save()
     }
 
+    private func updateWorktree(_ id: UUID, _ update: (inout Worktree) -> Void) {
+        for p in projects.indices {
+            if let w = projects[p].worktrees.firstIndex(where: { $0.id == id }) { update(&projects[p].worktrees[w]) }
+        }
+    }
+
     private func reveal(projectID: UUID, worktreeID: UUID) {
         collapsed.remove(projectID)
         collapsed.remove(worktreeID)
+        if let groupID = projects.first(where: { $0.id == projectID })?.worktrees.first(where: { $0.id == worktreeID })?.groupID {
+            collapsed.remove(groupID)
+        }
         if let folder = projects.first(where: { $0.id == projectID })?.folderID { revealFolder(folder) }
     }
 

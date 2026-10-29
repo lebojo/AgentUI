@@ -77,20 +77,82 @@ enum InspectorService {
         return patch.isEmpty ? nil : GitDiffSection(kind: kind, patch: patch)
     }
 
-    @concurrent static func github(at path: String, branch: GitBranch?, headSHA: String?, executable override: URL? = nil) async throws -> GitHubSnapshot {
+    @concurrent static func remote(for local: LocalGitSnapshot) async throws -> RemoteSnapshot {
+        switch await hosting(at: local.root) {
+        case .github: try await github(at: local.root, branch: local.branch, headSHA: local.headSHA)
+        case .gitlab: try await gitlab(at: local.root, branch: local.branch, headSHA: local.headSHA)
+        }
+    }
+
+    @concurrent static func hosting(at root: String) async -> GitHosting {
+        let git = URL(fileURLWithPath: "/usr/bin/git")
+        guard let data = try? await ReadCommand.run(git, ["config", "--get-regexp", "^remote\\..*\\.url$"], at: root) else { return .github }
+        let remotes = String(decoding: data, as: UTF8.self).split(separator: "\n").compactMap { line -> (key: String, url: String)? in
+            let parts = line.split(separator: " ", maxSplits: 1).map(String.init)
+            return parts.count == 2 ? (key: parts[0], url: parts[1]) : nil
+        }
+        let preferred = remotes.first { $0.key == "remote.origin.url" } ?? remotes.first
+        return preferred.map { GitHosting(remoteURL: $0.url) } ?? .github
+    }
+
+    @concurrent static func gitlab(at path: String, branch: GitBranch?, headSHA: String?, executable override: URL? = nil) async throws -> RemoteSnapshot {
+        guard let glab = override ?? ReadCommand.executable("glab") else {
+            throw ReadCommandError(message: "GitLab CLI n’est pas installé. Installe glab, puis lance glab auth login dans un terminal.")
+        }
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        func api<Value: Decodable>(_ endpoint: String, as type: Value.Type) async throws -> Value {
+            try decoder.decode(Value.self, from: try await ReadCommand.run(glab, ["api", endpoint], at: path))
+        }
+        let repository = try await api("projects/:id", as: GitLabProject.self).repository
+        var changeRequest: ChangeRequest?
+        var changeRequestError: String?
+        if let branch, !branch.isDetached {
+            do {
+                let requests = try await api("projects/:id/merge_requests?source_branch=\(queryValue(branch.name))&order_by=updated_at&per_page=20",
+                                             as: [GitLabMergeRequest].self)
+                if let summary = requests.first(where: \.isOpen) ?? requests.first {
+                    let request = try await api("projects/:id/merge_requests/\(summary.iid)", as: GitLabMergeRequest.self)
+                    var jobs: [GitLabJob]?
+                    if let pipeline = request.headPipeline {
+                        jobs = try? await api(pipeline.jobsEndpoint, as: [GitLabJob].self)
+                    }
+                    changeRequest = request.changeRequest(checks: jobs?.map(\.check))
+                }
+            } catch is CancellationError { throw CancellationError() }
+            catch { changeRequestError = error.localizedDescription }
+        }
+        var runs: [PipelineRun] = []
+        var checksError: String?
+        if let headSHA {
+            do {
+                runs = try await api("projects/:id/pipelines?sha=\(queryValue(headSHA))&per_page=10", as: [GitLabPipeline].self).map(\.run)
+            } catch is CancellationError { throw CancellationError() }
+            catch { checksError = error.localizedDescription }
+        }
+        return RemoteSnapshot(hosting: .gitlab, repository: repository, changeRequest: changeRequest, runs: runs,
+                              changeRequestError: changeRequestError, checksError: checksError)
+    }
+
+    private static func queryValue(_ value: String) -> String {
+        let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+        return value.addingPercentEncoding(withAllowedCharacters: unreserved) ?? value
+    }
+
+    @concurrent static func github(at path: String, branch: GitBranch?, headSHA: String?, executable override: URL? = nil) async throws -> RemoteSnapshot {
         guard let gh = override ?? ReadCommand.executable("gh") else {
             throw ReadCommandError(message: "GitHub CLI n’est pas installé. Installe gh, puis lance gh auth login dans un terminal.")
         }
         let decoder = JSONDecoder()
         let repoData = try await ReadCommand.run(gh, ["repo", "view", "--json", "nameWithOwner,url,description"], at: path)
-        let repository = try decoder.decode(GitHubRepository.self, from: repoData)
-        var pr: GitHubPullRequest?
+        let repository = try decoder.decode(RemoteRepository.self, from: repoData)
+        var pr: ChangeRequest?
         var prError: String?
         if let branch, !branch.isDetached {
             do {
                 let data = try await ReadCommand.run(gh, ["pr", "view", branch.name, "--repo", repository.url,
                     "--json", "number,title,url,state,isDraft,headRefName,headRefOid,baseRefName,reviewDecision,statusCheckRollup"], at: path)
-                pr = try decoder.decode(GitHubPullRequest.self, from: data)
+                pr = try decoder.decode(ChangeRequest.self, from: data)
             } catch is CancellationError { throw CancellationError() }
             catch {
                 if !error.localizedDescription.lowercased().contains("no pull requests found") {
@@ -98,16 +160,16 @@ enum InspectorService {
                 }
             }
         }
-        var runs: [GitHubRun] = []
+        var runs: [PipelineRun] = []
         var checksError: String?
         if let headSHA {
             do {
                 let data = try await ReadCommand.run(gh, ["run", "list", "--repo", repository.url, "--commit", headSHA, "--limit", "10",
                     "--json", "databaseId,displayTitle,workflowName,status,conclusion,headSha,url"], at: path)
-                runs = try decoder.decode([GitHubRun].self, from: data)
+                runs = try decoder.decode([PipelineRun].self, from: data)
             } catch is CancellationError { throw CancellationError() }
             catch { checksError = error.localizedDescription }
         }
-        return GitHubSnapshot(repository: repository, pullRequest: pr, runs: runs, pullRequestError: prError, checksError: checksError)
+        return RemoteSnapshot(repository: repository, changeRequest: pr, runs: runs, changeRequestError: prError, checksError: checksError)
     }
 }

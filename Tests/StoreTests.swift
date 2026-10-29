@@ -96,5 +96,63 @@ private final class ChangeFlag: @unchecked Sendable {
         let reloaded = try WorkspaceDisk.load(from: nestedFile)
         try require(reloaded.folders == nested.folders, "Nested folders and appearances persist")
         print("PASS nested folders and appearance")
+
+        let splitFile = root.appendingPathComponent("split.json")
+        let split = WorkspaceStore(fileURL: splitFile)
+        let splitRoot = root.appendingPathComponent("split-project")
+        try fm.createDirectory(at: splitRoot, withIntermediateDirectories: true)
+        let splitProject = try split.addProject(splitRoot)
+        let first = splitProject.worktrees[0].terminals[0].id
+        let right = try split.splitTerminal(first, axis: .horizontal).terminal.id
+        let below = try split.splitTerminal(right, axis: .vertical).terminal.id
+        let third = try split.splitTerminal(below, axis: .vertical).terminal.id
+        try require(split.layout(for: first) == .split(.horizontal, [.terminal(first), .split(.vertical, [.terminal(right), .terminal(below), .terminal(third)])]),
+                    "Splitting nests panes and appends along the same axis")
+        try require(split.selection == third && split.worktree(containing: third)?.terminals.count == 4, "Split panes are real terminals of the worktree")
+        split.closeTerminal(third)
+        try require(split.selection == below, "Closing a pane focuses its neighbour")
+        split.closeTerminal(right)
+        split.closeTerminal(below)
+        try require(split.layout(for: first) == .terminal(first) && split.worktree(containing: first)?.layouts.isEmpty == true,
+                    "A layout with a single pane disappears")
+        print("PASS split terminal layouts")
+
+        let gitRoot = root.appendingPathComponent("grouped")
+        try fm.createDirectory(at: gitRoot, withIntermediateDirectories: true)
+        _ = try await GitService.run(["init", "-q", "-b", "main"], at: gitRoot.path)
+        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Initial"], at: gitRoot.path)
+        let grouped = try split.addProject(gitRoot)
+        let worktreesRoot = root.appendingPathComponent("worktrees")
+        let review = try await GitService.createWorktree(project: grouped, branch: "review/one", root: worktreesRoot)
+        let other = try await GitService.createWorktree(project: grouped, branch: "feature/two", root: worktreesRoot)
+        try await split.flushPersistence()
+        var stored = try WorkspaceDisk.load(from: splitFile)
+        let projectIndex = stored.projects.firstIndex { $0.id == grouped.id }!
+        stored.projects[projectIndex].worktrees += [review, other]
+        try WorkspaceDisk.save(stored, to: splitFile)
+        let groups = WorkspaceStore(fileURL: splitFile)
+        let groupID = groups.addWorktreeGroup("  Revues ", projectID: grouped.id, moving: review.id)
+        let groupedProject = { groups.projects.first { $0.id == grouped.id }! }
+        try require(groupID != nil && groupedProject().worktreeGroups.map(\.name) == ["Revues"], "Create a named worktree group")
+        try require(groupedProject().worktrees(in: groupID).map(\.id) == [review.id] && groupedProject().worktrees(in: nil).map(\.id) == [other.id],
+                    "Grouped worktrees leave the ungrouped list")
+        try require(!groups.moveWorktree(groupedProject().worktrees[0].id, to: groupID), "The main folder cannot join a group")
+        try require(!groups.moveWorktree(other.id, to: UUID()), "Unknown groups are refused")
+        groups.rename(groupID!, to: "Relectures")
+        try require(groupedProject().worktreeGroups.map(\.name) == ["Relectures"], "Rename a worktree group")
+        try await groups.flushPersistence()
+        let persistedGroups = try WorkspaceDisk.load(from: splitFile)
+        try require(persistedGroups == groups.state, "Groups persist")
+        try require(SidebarFilterInput(folders: [], projects: groups.projects, query: "Relect").filtered().ungrouped.map(\.id) == [grouped.id],
+                    "Filtering by group name reveals the project")
+        groups.removeWorktreeGroup(groupID!)
+        try require(groupedProject().worktreeGroups.isEmpty && groupedProject().worktrees(in: nil).count == 2, "Dissolving a group keeps its worktrees")
+        print("PASS worktree groups")
+
+        let legacy = Data(#"{"version":1,"folders":[],"collapsed":[],"projects":[{"id":"\#(UUID())","name":"Old","path":"/tmp/old","worktrees":[{"id":"\#(UUID())","name":"Principal","path":"/tmp/old","isPrimary":true,"terminals":[]}]}]}"#.utf8)
+        let decoded = try JSONDecoder().decode(Workspace.self, from: legacy)
+        try require(decoded.projects[0].worktreeGroups.isEmpty && decoded.projects[0].worktrees[0].layouts.isEmpty && decoded.projects[0].worktrees[0].groupID == nil,
+                    "Workspaces saved by older versions still load")
+        print("PASS legacy workspace decoding")
     }
 }
