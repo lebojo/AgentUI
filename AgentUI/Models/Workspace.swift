@@ -12,8 +12,21 @@ struct ProjectFolder: Identifiable, Codable, Equatable, Sendable {
 }
 
 struct TerminalRecord: Identifiable, Codable, Equatable, Sendable {
+    static let defaultName = "Terminal"
+
     var id = UUID()
     var name: String
+    var hasCustomName = false
+}
+
+extension TerminalRecord {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        let automaticNames = [Self.defaultName] + ConversationAgent.allCases.map(\.title)
+        hasCustomName = try container.decodeIfPresent(Bool.self, forKey: .hasCustomName) ?? !automaticNames.contains(name)
+    }
 }
 
 struct WorktreeGroup: Identifiable, Codable, Equatable, Sendable {

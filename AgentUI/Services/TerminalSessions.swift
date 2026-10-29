@@ -123,6 +123,30 @@ import Observation
         return (branches, sessions)
     }
 
+    func conversationTitles() async -> [UUID: String] {
+        let shells = entries.compactMap { id, session in
+            session.hasExited ? nil : (id: id, pid: session.view.process.shellPid, directory: session.currentDirectory)
+        }
+        guard !shells.isEmpty else { return [:] }
+        let processes = await Task.detached(priority: .utility) {
+            var found: [UUID: AgentProcess] = [:]
+            for shell in shells {
+                found[shell.id] = AgentProcess.find(under: shell.pid, fallbackDirectory: shell.directory)
+            }
+            return found
+        }.value
+        var conversations: [String: [AgentConversation]] = [:]
+        for directory in Set(processes.values.map(\.directory)) {
+            conversations[directory] = await ConversationIndex.shared.conversations(at: directory)
+        }
+        let titles = AgentProcess.titles(for: processes, conversations: conversations)
+        let unresolved = processes.filter { titles[$0.key] == nil && $0.value.transcriptPath != nil }
+        guard !unresolved.isEmpty else { return titles }
+        return await Task.detached(priority: .utility) {
+            unresolved.reduce(into: titles) { result, entry in result[entry.key] = entry.value.transcriptTitle }
+        }.value
+    }
+
     var runningCount: Int { entries.values.filter { !$0.hasExited }.count }
 
     func session(_ id: UUID) -> TerminalSession? { entries[id] }

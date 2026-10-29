@@ -9,6 +9,7 @@ struct BridgeRequest: Codable, Sendable {
     var branch: String?
     var path: String?
     var command: [String]
+    var force: Bool?
 }
 
 struct BridgeResponse: Codable, Sendable {

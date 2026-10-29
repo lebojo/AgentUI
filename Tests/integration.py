@@ -148,6 +148,18 @@ try:
     hook.unlink()
     print('PASS concurrent refresh/create does not duplicate a worktree', flush=True)
 
+    disposable = cli('worktree','create','--project',pid,'--branch','feature/disposable')
+    (pathlib.Path(disposable['path']) / 'draft.txt').write_text('work in progress')
+    refused = cli('worktree','delete','--worktree',disposable['worktreeID'],ok=False)
+    assert 'force' in refused['message'] and pathlib.Path(disposable['path']).is_dir()
+    main_worktree = next(w for p in cli('list')['workspace']['projects'] if p['id'] == pid for w in p['worktrees'] if w['isPrimary'])
+    cli('worktree','delete','--worktree',main_worktree['id'],ok=False)
+    deleted = cli('worktree','delete','--worktree',disposable['worktreeID'],'--force')
+    remaining = [w['id'] for p in cli('list')['workspace']['projects'] for w in p['worktrees']]
+    assert deleted['path'] == disposable['path'] and not pathlib.Path(disposable['path']).exists()
+    assert disposable['worktreeID'] not in remaining and git('branch','--list','feature/disposable')
+    print('PASS agent worktree deletion keeps uncommitted work unless forced, never the main folder, and keeps the branch', flush=True)
+
     request('debug.folder',name='Dossier virtuel',projectID=pid)
     snapshot = cli('list')['workspace']
     p = next(x for x in snapshot['projects'] if x['id'] == pid)

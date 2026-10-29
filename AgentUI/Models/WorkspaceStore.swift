@@ -251,6 +251,34 @@ import Observation
             for w in projects[p].worktrees.indices {
                 for t in projects[p].worktrees[w].terminals.indices where projects[p].worktrees[w].terminals[t].id == id {
                     projects[p].worktrees[w].terminals[t].name = name
+                    projects[p].worktrees[w].terminals[t].hasCustomName = true
+                }
+            }
+        }
+        save()
+    }
+
+    func applyConversationTitles(_ titles: [UUID: String]) {
+        var changed = false
+        for p in projects.indices {
+            for w in projects[p].worktrees.indices {
+                for t in projects[p].worktrees[w].terminals.indices {
+                    let terminal = projects[p].worktrees[w].terminals[t]
+                    guard !terminal.hasCustomName, let title = titles[terminal.id], terminal.name != title else { continue }
+                    projects[p].worktrees[w].terminals[t].name = title
+                    changed = true
+                }
+            }
+        }
+        if changed { save() }
+    }
+
+    func useAutomaticName(_ terminalID: UUID) {
+        for p in projects.indices {
+            for w in projects[p].worktrees.indices {
+                for t in projects[p].worktrees[w].terminals.indices where projects[p].worktrees[w].terminals[t].id == terminalID {
+                    projects[p].worktrees[w].terminals[t].hasCustomName = false
+                    projects[p].worktrees[w].terminals[t].name = TerminalRecord.defaultName
                 }
             }
         }
@@ -275,13 +303,13 @@ import Observation
         save()
     }
 
-    @discardableResult func addTerminal(projectID: UUID, worktreeID: UUID, name: String = "Terminal", command: [String] = [], select: Bool = true) throws -> TerminalContext {
+    @discardableResult func addTerminal(projectID: UUID, worktreeID: UUID, name: String = TerminalRecord.defaultName, command: [String] = [], select: Bool = true) throws -> TerminalContext {
         guard let p = projects.firstIndex(where: { $0.id == projectID }),
               let w = projects[p].worktrees.firstIndex(where: { $0.id == worktreeID }) else {
             throw WorkspaceError(message: "Projet ou worktree introuvable.")
         }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let terminal = TerminalRecord(name: trimmed.isEmpty ? "Terminal" : trimmed)
+        let terminal = TerminalRecord(name: trimmed.isEmpty ? TerminalRecord.defaultName : trimmed)
         projects[p].worktrees[w].terminals.append(terminal)
         reveal(projectID: projectID, worktreeID: worktreeID)
         if select { selection = terminal.id }
@@ -291,9 +319,9 @@ import Observation
         return context
     }
 
-    @discardableResult func splitTerminal(_ id: UUID, axis: SplitAxis, name: String = "Terminal", command: [String] = []) throws -> TerminalContext {
+    @discardableResult func splitTerminal(_ id: UUID, axis: SplitAxis, command: [String] = []) throws -> TerminalContext {
         guard let current = context(for: id) else { throw WorkspaceError(message: "Terminal introuvable.") }
-        let added = try addTerminal(projectID: current.project.id, worktreeID: current.worktree.id, name: name, command: command)
+        let added = try addTerminal(projectID: current.project.id, worktreeID: current.worktree.id, command: command)
         updateWorktree(current.worktree.id) { worktree in
             if let index = worktree.layouts.firstIndex(where: { $0.contains(id) }) {
                 worktree.layouts[index] = worktree.layouts[index].splitting(id, with: added.terminal.id, axis: axis)

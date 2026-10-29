@@ -14,11 +14,13 @@ xcrun swiftc "${swift_flags[@]}" \
   AgentUI/Models/InspectorStore.swift AgentUI/Models/InspectorPreviews.swift AgentUI/Services/WorkspaceWriter.swift \
   AgentUI/Models/UsageModels.swift AgentUI/Models/UsageStore.swift AgentUI/Services/UsageService.swift \
   AgentUI/Models/AgentConversation.swift AgentUI/Models/AgentLaunch.swift AgentUI/Models/TerminalTheme.swift AgentUI/Models/TerminalAppearance.swift \
+  AgentUI/Services/AgentProcess.swift AgentUI/Services/ConversationTranscripts.swift \
   Tests/RegressionTests.swift Tests/RefreshTests.swift Tests/InspectorTests.swift Tests/UsageTests.swift Tests/SettingsTests.swift Tests/CoreTests.swift -o "$test_binary"
 "$test_binary"
 
 xcrun swiftc "${swift_flags[@]}" \
   AgentUI/Models/Workspace.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/WorkspaceStore.swift AgentUI/Models/SidebarFilter.swift \
+  AgentUI/Models/AgentConversation.swift \
   AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Services/WorkspaceWriter.swift \
   AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/GitConfiguration.swift \
   Tests/StoreTests.swift -o "$store_binary"

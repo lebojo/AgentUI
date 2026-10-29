@@ -78,6 +78,7 @@ import AppKit
             let project = try store.addProject(URL(fileURLWithPath: path))
             return BridgeResponse(ok: true, projectID: project.id, worktreeID: project.worktrees[0].id, path: project.path)
         }
+        if request.action == "worktree.delete" { return try await deleteWorktree(request) }
         guard let projectID = request.projectID,
               let project = store.projects.first(where: { $0.id == projectID }) else {
             throw WorkspaceError(message: "Projet introuvable. Utilise --project UUID ou exécute la commande dans un terminal AgentUI.")
@@ -86,8 +87,8 @@ import AppKit
         switch request.action {
         case "terminal.create":
             let worktreeID = request.worktreeID ?? project.worktrees[0].id
-            context = try store.addTerminal(projectID: projectID, worktreeID: worktreeID, name: request.name ?? "Terminal",
-                                            command: request.command, select: false)
+            context = try store.addTerminal(projectID: projectID, worktreeID: worktreeID, command: request.command, select: false)
+            if let name = request.name { store.rename(context.terminal.id, to: name) }
         case "worktree.create":
             guard let branch = request.branch else { throw WorkspaceError(message: "Le nom de branche est requis : --branch feature/ma-tache.") }
             context = try await store.createWorktree(projectID: projectID, branch: branch, command: request.command, select: false)
@@ -97,5 +98,21 @@ import AppKit
         }
         return BridgeResponse(ok: true, projectID: context.project.id, worktreeID: context.worktree.id,
                               terminalID: context.terminal.id, path: context.worktree.path)
+    }
+
+    private func deleteWorktree(_ request: BridgeRequest) async throws -> BridgeResponse {
+        guard let worktreeID = request.worktreeID,
+              let project = store.projects.first(where: { $0.worktrees.contains { $0.id == worktreeID } }),
+              let worktree = project.worktrees.first(where: { $0.id == worktreeID }) else {
+            throw WorkspaceError(message: "Worktree introuvable. Récupère son UUID avec agentui list.")
+        }
+        if let projectID = request.projectID, projectID != project.id {
+            throw WorkspaceError(message: "Ce worktree n’appartient pas au projet indiqué.")
+        }
+        if request.force != true, try await GitService.hasLocalChanges(at: worktree.path) {
+            throw WorkspaceError(message: "Le worktree « \(worktree.name) » contient des modifications non commitées ou des fichiers non suivis. Relance avec --force pour les effacer.")
+        }
+        try await store.deleteWorktree(projectID: project.id, worktreeID: worktreeID)
+        return BridgeResponse(ok: true, projectID: project.id, worktreeID: worktreeID, path: worktree.path)
     }
 }

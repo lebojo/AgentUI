@@ -49,6 +49,12 @@ import Foundation
         try require(other.worktreeID == nil, "Explicit project doesn't inherit unrelated worktree")
         do { _ = try AgentCLI.parse(["terminal", "create", "--project", "bad"], environment: env); throw WorkspaceError(message: "FAIL: invalid UUID accepted") }
         catch let error as WorkspaceError { try require(error.message.contains("invalide"), "Reject bad IDs") }
+        let deletion = try AgentCLI.parse(["worktree", "delete", "--force", "--worktree", explicitID.uuidString], environment: env)
+        try require(deletion.action == "worktree.delete" && deletion.worktreeID == explicitID && deletion.force == true, "Parse worktree deletion")
+        do { _ = try AgentCLI.parse(["worktree", "delete"], environment: env); throw WorkspaceError(message: "FAIL: implicit deletion accepted") }
+        catch let error as WorkspaceError { try require(error.message.contains("--worktree UUID"), "Deletion never targets the current worktree implicitly") }
+        do { _ = try AgentCLI.parse(["worktree", "delete", "--worktree", worktreeID.uuidString], environment: env); throw WorkspaceError(message: "FAIL: self deletion accepted") }
+        catch let error as WorkspaceError { try require(error.message.contains("autre worktree"), "A terminal cannot delete its own worktree") }
         print("PASS CLI context, argument boundaries, validation")
 
         let mailbox = root.appendingPathComponent("mailbox")
@@ -69,6 +75,8 @@ import Foundation
             catch {}
         }
         print("PASS bridge mailbox rejects symlinks, FIFOs and oversized requests without blocking")
+
+        try await agentProcessTests(root: root)
 
         let repository = importRoot.appendingPathComponent("API")
         _ = try await GitService.run(["init", "-b", "main"], at: repository.path)
@@ -180,5 +188,63 @@ import Foundation
         try await UsageTests.run()
         try SettingsTests.run()
         print("All core tests passed.")
+    }
+
+    static func agentProcessTests(root: URL) async throws {
+        let rolloutID = "01a17eea-ca62-7da2-ab9b-4fe86e40d6a3"
+        try require(AgentProcess.codexSessionID(inRolloutPath: "/h/sessions/2026/10/27/rollout-2026-10-27T20-51-18-\(rolloutID).jsonl") == rolloutID
+                    && AgentProcess.codexSessionID(inRolloutPath: "/h/sessions/notes.jsonl") == nil, "Read Codex session IDs from rollout paths")
+        try require(AgentProcess.copilotSessionID(inPath: "/Users/me/.copilot/session-state/abc/events.jsonl") == "abc", "Read Copilot session IDs")
+        try require(AgentProcess.agent(named: ["2.1.312", "claude", "--resume"]) == .claude && AgentProcess.agent(named: ["zsh", "-l"]) == nil,
+                    "Recognise agents by process or argument name")
+
+        let start = Date()
+        let exact = AgentProcess(agent: .claude, startedAt: start.addingTimeInterval(-600), directory: "/repo", sessionID: "old")
+        let recent = AgentProcess(agent: .codex, startedAt: start, directory: "/repo", sessionID: nil)
+        let empty = AgentProcess(agent: .codex, startedAt: start.addingTimeInterval(60), directory: "/repo", sessionID: nil)
+        let conversations = ["/repo": [
+            AgentConversation(agent: .claude, sessionID: "new", title: "Autre conversation", updatedAt: start.addingTimeInterval(30)),
+            AgentConversation(agent: .claude, sessionID: "old", title: "Corriger la connexion", updatedAt: start.addingTimeInterval(-300)),
+            AgentConversation(agent: .codex, sessionID: "c1", title: String(repeating: "Long titre ", count: 8), updatedAt: start.addingTimeInterval(10)),
+            AgentConversation(agent: .codex, sessionID: "c0", title: "Avant le lancement", updatedAt: start.addingTimeInterval(-60)),
+        ]]
+        let first = UUID(), second = UUID(), third = UUID()
+        let titles = AgentProcess.titles(for: [first: exact, second: recent, third: empty], conversations: conversations)
+        try require(titles[first] == "Corriger la connexion", "A known session ID picks its own conversation even when another is newer")
+        try require(titles[second]?.count == 40 && titles[second]?.hasSuffix("…") == true, "Without a session ID, the conversation updated since launch is used and shortened")
+        try require(titles[third] == nil, "Conversations older than the process or already claimed are never used")
+
+        let fakeHome = root.appendingPathComponent("agent-home")
+        let bin = root.appendingPathComponent("agent-bin")
+        try FileManager.default.createDirectory(at: fakeHome.appendingPathComponent(".claude/sessions"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        let fakeClaude = bin.appendingPathComponent("claude")
+        try "#!/bin/sh\nsleep 10\n".write(to: fakeClaude, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fakeClaude.path)
+        let shell = Process()
+        shell.executableURL = URL(fileURLWithPath: "/bin/sh")
+        shell.arguments = ["-c", "\"$0\"; true", fakeClaude.path]
+        shell.currentDirectoryURL = root
+        try shell.run()
+        defer { shell.terminate() }
+        var detected: AgentProcess?
+        for _ in 0..<50 {
+            detected = AgentProcess.find(under: shell.processIdentifier, fallbackDirectory: "/", home: fakeHome)
+            if detected != nil { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        guard let detected else { throw WorkspaceError(message: "FAIL: agent child process not found") }
+        try require(detected.agent == .claude && detected.directory == WorkspaceDisk.canonicalPath(root) && detected.sessionID == nil, "Find an agent child process and its directory")
+        let childPID = agentChild(of: shell.processIdentifier)
+        try #"{"pid":\#(childPID),"sessionId":"session-42"}"#.write(to: fakeHome.appendingPathComponent(".claude/sessions/\(childPID).json"), atomically: true, encoding: .utf8)
+        let withSession = AgentProcess.find(under: shell.processIdentifier, fallbackDirectory: "/", home: fakeHome)
+        try require(withSession?.sessionID == "session-42", "Read the Claude session of the agent process")
+        print("PASS agent process detection and conversation titles")
+    }
+
+    static func agentChild(of pid: Int32) -> Int32 {
+        var buffer = [Int32](repeating: 0, count: 16)
+        let bytes = proc_listpids(UInt32(PROC_PPID_ONLY), UInt32(pid), &buffer, Int32(buffer.count * 4))
+        return bytes > 0 ? buffer[0] : 0
     }
 }

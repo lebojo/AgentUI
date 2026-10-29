@@ -8,6 +8,7 @@ enum AgentCLI {
     agentui project add /chemin/du/projet
     agentui terminal create [--name NOM] [--project UUID] [--worktree UUID] [-- COMMANDE ARGUMENTS…]
     agentui worktree create --branch BRANCHE [--name NOM] [--project UUID] [-- COMMANDE ARGUMENTS…]
+    agentui worktree delete --worktree UUID [--force]
 
     Depuis un terminal AgentUI, le projet et le worktree sont implicites.
     Les commandes enfant sont passées comme arguments, sans interprétation shell.
@@ -16,6 +17,9 @@ enum AgentCLI {
       agentui worktree create --branch feature/tests -- codex "Ajoute les tests"
     Chaque création renvoie les identifiants et le chemin au format JSON.
     Une branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.
+    worktree delete ferme ses terminaux et efface son dossier ; la branche et ses commits restent dans le dépôt.
+    Sans --force, un worktree avec des modifications non commitées ou des fichiers non suivis est conservé.
+    Le dossier principal d’un projet et le worktree du terminal courant ne peuvent pas être supprimés.
     """
 
     static func run(arguments: [String]) -> Int32 {
@@ -71,16 +75,20 @@ enum AgentCLI {
             request.path = URL(fileURLWithPath: arguments[2]).standardizedFileURL.path
             return request
         }
-        guard arguments.count >= 2, ["terminal", "worktree"].contains(arguments[0]), arguments[1] == "create" else {
+        let commands = [["terminal", "create"], ["worktree", "create"], ["worktree", "delete"]]
+        guard arguments.count >= 2, commands.contains(Array(arguments[0...1])) else {
             throw WorkspaceError(message: "Commande inconnue. Consulte agentui --help.")
         }
-        request.action = arguments[0] + ".create"
+        request.action = arguments[0] + "." + arguments[1]
+        let isDeletion = request.action == "worktree.delete"
+        let currentWorktreeID = request.worktreeID
         let explicitlyTargetsProject = arguments.prefix(while: { $0 != "--" }).contains("--project")
-        if explicitlyTargetsProject { request.worktreeID = nil }
+        if explicitlyTargetsProject || isDeletion { request.worktreeID = nil }
         var index = 2
         while index < arguments.count {
             let option = arguments[index]
-            if option == "--" { request.command = Array(arguments.dropFirst(index + 1)); break }
+            if option == "--" && !isDeletion { request.command = Array(arguments.dropFirst(index + 1)); break }
+            if option == "--force" && isDeletion { request.force = true; index += 1; continue }
             guard index + 1 < arguments.count else { throw WorkspaceError(message: "Valeur manquante pour \(option).") }
             let value = arguments[index + 1]
             switch option {
@@ -95,6 +103,14 @@ enum AgentCLI {
             default: throw WorkspaceError(message: "Option inconnue : \(option)")
             }
             index += 2
+        }
+        if isDeletion {
+            guard let target = request.worktreeID else {
+                throw WorkspaceError(message: "Indique le worktree à supprimer : --worktree UUID (voir agentui list).")
+            }
+            if target == currentWorktreeID {
+                throw WorkspaceError(message: "Ce terminal appartient au worktree à supprimer. Lance la commande depuis un autre worktree.")
+            }
         }
         return request
     }
