@@ -51,6 +51,25 @@ import Foundation
         catch let error as WorkspaceError { try require(error.message.contains("invalide"), "Reject bad IDs") }
         print("PASS CLI context, argument boundaries, validation")
 
+        let mailbox = root.appendingPathComponent("mailbox")
+        try fm.createDirectory(at: mailbox, withIntermediateDirectories: true)
+        let valid = mailbox.appendingPathComponent("valid.request")
+        try JSONEncoder().encode(request).write(to: valid)
+        let decoded = try await BridgeMailbox.request(at: valid)
+        try require(decoded.id == request.id, "A regular request file is decoded")
+        let linked = mailbox.appendingPathComponent("linked.request")
+        try fm.createSymbolicLink(at: linked, withDestinationURL: valid)
+        let fifo = mailbox.appendingPathComponent("fifo.request")
+        try require(mkfifo(fifo.path, 0o600) == 0, "Create FIFO fixture")
+        let oversized = mailbox.appendingPathComponent("oversized.request")
+        try Data(repeating: 0x20, count: BridgeMailbox.requestLimit + 1).write(to: oversized)
+        for hostile in [linked, fifo, oversized] {
+            do { _ = try await BridgeMailbox.request(at: hostile); throw WorkspaceError(message: "FAIL: hostile request \(hostile.lastPathComponent) accepted") }
+            catch let error as WorkspaceError where error.message.hasPrefix("FAIL") { throw error }
+            catch {}
+        }
+        print("PASS bridge mailbox rejects symlinks, FIFOs and oversized requests without blocking")
+
         let repository = importRoot.appendingPathComponent("API")
         _ = try await GitService.run(["init", "-b", "main"], at: repository.path)
         _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "--allow-empty", "-m", "Fixture"], at: repository.path)
@@ -97,7 +116,6 @@ import Foundation
         }
         print("PASS Git worktree creation, discovery, isolation and failures")
 
-        // Ordinary repos, worktrees, unborn branches and detached HEAD must all work.
         try require(GitRepository.containing(repository.path)?.branch.name == "main", "Read main branch")
         try require(GitRepository.containing(worktree.path)?.branch.name == "feature/agent-tests", "Read worktree gitfile and commondir")
         let source = repository.appendingPathComponent("Sources")
@@ -115,7 +133,6 @@ import Foundation
         try require(GitRepository.containing(importRoot.path) == nil, "No badge outside a repository")
         print("PASS branch metadata, nested cwd, live switch, detached and unborn HEAD")
 
-        // Import containers recursively, but stop at repository boundaries.
         let nested = importRoot.appendingPathComponent("Clients/Mobile")
         try fm.createDirectory(at: nested, withIntermediateDirectories: true)
         _ = try await GitService.run(["init", "-b", "main"], at: nested.path)

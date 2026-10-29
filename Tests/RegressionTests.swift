@@ -27,6 +27,22 @@ import Foundation
         catch is ReadCommandError {}
         print("PASS literal Git paths and UTF-8 truncation across 2/3/4-byte scalars")
 
+        let monitorMarker = root.appendingPathComponent("fsmonitor-ran")
+        let monitor = root.appendingPathComponent("fsmonitor.sh")
+        try "#!/bin/sh\ntouch '\(monitorMarker.path)'\n".write(to: monitor, atomically: true, encoding: .utf8)
+        try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: monitor.path)
+        _ = try await GitService.run(["config", "core.fsmonitor", monitor.path], at: repo.path)
+        _ = try await InspectorService.localGit(at: repo.path)
+        _ = try await InspectorService.diff(change, at: repo.path)
+        _ = try await GitService.existingWorktrees(project: Project(url: repo))
+        try CoreTests.require(!fm.fileExists(atPath: monitorMarker.path), "Repository fsmonitor commands never run during automatic Git reads")
+        _ = try await GitService.run(["config", "--unset", "core.fsmonitor"], at: repo.path)
+        let inherited = CommandRunner.environment(readOnly: true, base: ["GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "user.name", "GIT_CONFIG_VALUE_0": "Tests"])
+        try CoreTests.require(inherited["GIT_CONFIG_COUNT"] == "2" && inherited["GIT_CONFIG_KEY_0"] == "user.name"
+                              && inherited["GIT_CONFIG_KEY_1"] == "core.fsmonitor" && inherited["GIT_CONFIG_VALUE_1"] == "false",
+                              "Hardened Git configuration is appended to inherited command-line configuration")
+        print("PASS repository-controlled fsmonitor commands are disabled")
+
         let hook = repo.appendingPathComponent(".git/hooks/post-checkout")
         let marker = root.appendingPathComponent("hook-pid")
         try "#!/bin/sh\necho $$ > '\(marker.path)'\nexec /bin/sleep 30\n".write(to: hook, atomically: true, encoding: .utf8)
@@ -86,7 +102,6 @@ import Foundation
         try CoreTests.require(model.local?.headSHA == "new" && model.github == nil, "Local polling advances while first GitHub request is pending")
         for _ in 0..<200 {
             if model.github?.repository.nameWithOwner == "new" { break }
-            // Obsolete remote data must never appear for the new HEAD.
             try CoreTests.require(model.github?.repository.nameWithOwner != "old", "Reject late GitHub response for previous HEAD")
             try await Task.sleep(for: .milliseconds(5))
         }

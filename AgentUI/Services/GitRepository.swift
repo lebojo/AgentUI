@@ -10,8 +10,6 @@ struct GitBranch: Equatable, Sendable {
     }
 }
 
-/// Read-only metadata, including gitfiles used by linked worktrees and submodules.
-/// A refresh reads HEAD directly instead of spawning Git for every terminal.
 struct GitRepository: Sendable {
     let root: URL
     let branch: GitBranch
@@ -55,7 +53,6 @@ struct GitRepository: Sendable {
         guard fm.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else { return nil }
         var directory = URL(fileURLWithPath: WorkspaceDisk.canonicalPath(URL(fileURLWithPath: path)))
         while true {
-            // A broken inner repository must not inherit an unrelated outer branch.
             if fm.fileExists(atPath: directory.appendingPathComponent(".git").path) {
                 return atRoot(directory)
             }
@@ -95,13 +92,14 @@ enum RepositoryDiscovery {
         try scan(in: folder).repositories
     }
 
-    /// Search containers recursively, stopping at each repo so vendored code and
-    /// submodules are not imported as independent projects. Never follow folder loops.
+    @concurrent static func discover(in folder: URL) async throws -> RepositoryDiscoveryResult {
+        try scan(in: folder)
+    }
+
     static func scan(in folder: URL) throws -> RepositoryDiscoveryResult {
         let fm = FileManager.default
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isPackageKey, .isSymbolicLinkKey]
         let excluded: Set<String> = ["node_modules", "Pods", "Carthage", "DerivedData", "venv"]
-        // A selected alias is a valid entry point; only descendant aliases are skipped.
         let root = URL(fileURLWithPath: WorkspaceDisk.canonicalPath(folder))
         var pending = [root]
         var visited: Set<String> = []
@@ -141,7 +139,6 @@ enum RepositoryDiscovery {
 }
 
 enum TerminalProcessDirectory {
-    /// Works for ordinary interactive shells without modifying shell configuration.
     static func read(pid: Int32) -> String? {
         guard pid > 0 else { return nil }
         var info = proc_vnodepathinfo()

@@ -1,8 +1,6 @@
 import Foundation
 import AppKit
 
-/// Private, per-app-instance request mailbox. Only processes given its path can use it.
-/// Directory notifications wake the app; JSON responses make the CLI deterministic.
 @MainActor final class AgentBridge {
     let directory: URL
     private let store: WorkspaceStore
@@ -16,7 +14,6 @@ import AppKit
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         let bin = directory.appendingPathComponent("bin")
         try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
-        // The same native executable has a CLI entry point; no Python, Node or daemon required.
         try FileManager.default.createSymbolicLink(at: bin.appendingPathComponent("agentui"), withDestinationURL: Bundle.main.executableURL!)
         store.sessions.environment = [
             "AGENTUI_INSTANCE": directory.path,
@@ -59,9 +56,7 @@ import AppKit
         defer { active.remove(id); try? FileManager.default.removeItem(at: file) }
         let response: BridgeResponse
         do {
-            let data = try Data(contentsOf: file)
-            guard data.count <= 1_048_576 else { throw WorkspaceError(message: "Requête trop volumineuse.") }
-            let request = try JSONDecoder().decode(BridgeRequest.self, from: data)
+            let request = try await BridgeMailbox.request(at: file)
             guard request.id == id else { throw WorkspaceError(message: "Identifiant de requête invalide.") }
             var result = try await execute(request)
             if request.action != "list" && !request.action.hasPrefix("debug.") {
@@ -71,7 +66,7 @@ import AppKit
             response = result
         } catch { response = BridgeResponse(ok: false, message: error.localizedDescription) }
         do {
-            try JSONEncoder().encode(response).write(to: directory.appendingPathComponent("\(id.uuidString).response"), options: .atomic)
+            try await BridgeMailbox.write(response, to: directory.appendingPathComponent("\(id.uuidString).response"))
         } catch { store.errorMessage = "Impossible de répondre à agentui : \(error.localizedDescription)" }
     }
 
@@ -108,4 +103,3 @@ import AppKit
                               terminalID: context.terminal.id, path: context.worktree.path)
     }
 }
-

@@ -38,6 +38,12 @@ struct AgentConversation: Identifiable, Equatable, Sendable {
 
     var id: String { agent.rawValue + ":" + sessionID }
 
+    static func isValidSessionID(_ sessionID: String) -> Bool {
+        guard let first = sessionID.unicodeScalars.first, sessionID.utf8.count <= 128,
+              CharacterSet.alphanumerics.contains(first) else { return false }
+        return sessionID.unicodeScalars.allSatisfy { $0.isASCII && (CharacterSet.alphanumerics.contains($0) || "-_.".unicodeScalars.contains($0)) }
+    }
+
     var resumeCommand: [String] {
         switch agent {
         case .claude: ["claude", "--resume", sessionID]
