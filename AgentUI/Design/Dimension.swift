@@ -31,6 +31,7 @@ enum Dimension {
     enum Badge {
         static let sidebarMaxWidth: CGFloat = 100
         static let detailMaxWidth: CGFloat = 180
+        static let statusDotSize: CGFloat = 6
     }
 
     enum Sheet {

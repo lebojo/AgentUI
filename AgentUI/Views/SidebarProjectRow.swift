@@ -17,7 +17,7 @@ struct SidebarProjectRow: View {
         DisclosureGroup(isExpanded: expanded(project.id)) {
             ForEach(project.worktrees.filter(\.isPrimary)) { worktree in
                 ForEach(worktree.terminals.filter { showAll || matches(project.name) || matches($0.name) }) { terminal in
-                    SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, path: worktree.path)
+                    SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, worktree: worktree)
                 }
                 if worktree.terminals.isEmpty {
                     Button("Ouvrir un terminal") { store.openTerminal(project, worktree, launch: settings.agentLaunch) }
@@ -168,7 +168,7 @@ private struct SidebarWorktreeRow: View {
     var body: some View {
         DisclosureGroup(isExpanded: query.isEmpty ? $store[expanded: worktree.id] : .constant(true)) {
             ForEach(worktree.terminals.filter { showAll || matches(worktree.name) || matches($0.name) }) { terminal in
-                SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, path: worktree.path)
+                SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, worktree: worktree)
             }
             if worktree.terminals.isEmpty {
                 Button("Ouvrir un terminal") { openTerminal() }
@@ -232,17 +232,34 @@ private struct SidebarTerminalRow: View {
 
     let store: WorkspaceStore
     let terminal: TerminalRecord
-    let path: String
+    let worktree: Worktree
+
+    private var session: TerminalSession? { store.sessions.session(terminal.id) }
+    private var branch: GitBranch? { store.sessions.branch(for: terminal.id, initialPath: worktree.path) }
 
     var body: some View {
         HStack(spacing: Spacing.s) {
-            Image(systemName: "terminal").font(Typography.m).foregroundStyle(Palette.textSecondary)
-            Text(terminal.name).lineLimit(1)
-            Spacer(minLength: Spacing.xs)
-            if let branch = store.sessions.branch(for: terminal.id, initialPath: path) {
-                BranchBadge(branch: branch).frame(maxWidth: Dimension.Badge.sidebarMaxWidth)
+            Group {
+                if let agent = session?.agent?.agent {
+                    agent.logo.resizable().scaledToFit().frame(width: IconSize.s, height: IconSize.s)
+                } else {
+                    Image(systemName: "terminal").font(Typography.m).foregroundStyle(Palette.textSecondary)
+                }
             }
-            if let session = store.sessions.session(terminal.id) {
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: Spacing.xxs) {
+                Text(terminal.name).lineLimit(1)
+                HStack(spacing: Spacing.xxs) {
+                    Image(systemName: branch?.isDetached == true ? "point.topleft.down.to.point.bottomright.curvepath" : "arrow.triangle.branch")
+                        .font(Typography.xxs)
+                    Text(branch?.name ?? worktree.name).lineLimit(1).truncationMode(.middle)
+                }
+                .font(Typography.s).foregroundStyle(Palette.textSecondary)
+            }
+            Spacer(minLength: Spacing.xs)
+            if let status = session?.agentStatus {
+                AgentStatusBadge(status: status)
+            } else if let session {
                 Image(systemName: session.hasExited ? "circle" : "circle.fill")
                     .font(Typography.statusDot).foregroundStyle(session.hasExited ? Palette.textSecondary : Palette.success)
                     .accessibilityLabel(session.hasExited ? "Session terminée" : "Terminal ouvert")
