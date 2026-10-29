@@ -80,31 +80,47 @@ import Observation
         refreshingRepositories = true
         defer { refreshingRepositories = false }
         let locations = entries.map { id, session in
-            (id: id, identity: session.identity, pid: session.hasExited ? Int32(0) : session.view.process.shellPid,
-             fallback: session.currentDirectory)
+            Location(id: id, identity: session.identity, pid: session.hasExited ? 0 : session.view.process.shellPid,
+                     fallback: session.currentDirectory)
         }
-        let result = await Task.detached(priority: .utility) {
-            var cache: [String: GitBranch?] = [:]
-            func branch(at path: String) -> GitBranch? {
-                if let cached = cache[path] { return cached }
-                let value = GitRepository.containing(path)?.branch
-                cache[path] = .some(value)
-                return value
-            }
-            var branches: [String: GitBranch] = [:]
-            for path in Set(worktreePaths) { branches[path] = branch(at: path) }
-            let sessions = locations.map { location in
-                let directory = TerminalProcessDirectory.read(pid: location.pid) ?? location.fallback
-                return (id: location.id, identity: location.identity, directory: directory, branch: branch(at: directory))
-            }
-            return (branches: branches, sessions: sessions)
-        }.value
+        let result = await Self.inspect(worktreePaths: worktreePaths, locations: locations)
         guard !Task.isCancelled else { return }
         if branchesByPath != result.branches { branchesByPath = result.branches }
         for value in result.sessions {
             guard let session = entries[value.id], session.identity == value.identity else { continue }
             session.updateRepository(directory: value.directory, branch: value.branch)
         }
+    }
+
+    private struct Location: Sendable {
+        let id: UUID
+        let identity: UUID
+        let pid: Int32
+        let fallback: String
+    }
+
+    private struct SessionRepository: Sendable {
+        let id: UUID
+        let identity: UUID
+        let directory: String
+        let branch: GitBranch?
+    }
+
+    @concurrent nonisolated private static func inspect(worktreePaths: [String], locations: [Location]) async -> (branches: [String: GitBranch], sessions: [SessionRepository]) {
+        var cache: [String: GitBranch?] = [:]
+        func branch(at path: String) -> GitBranch? {
+            if let cached = cache[path] { return cached }
+            let value = GitRepository.containing(path)?.branch
+            cache[path] = .some(value)
+            return value
+        }
+        var branches: [String: GitBranch] = [:]
+        for path in Set(worktreePaths) { branches[path] = branch(at: path) }
+        let sessions = locations.map { location in
+            let directory = TerminalProcessDirectory.read(pid: location.pid) ?? location.fallback
+            return SessionRepository(id: location.id, identity: location.identity, directory: directory, branch: branch(at: directory))
+        }
+        return (branches, sessions)
     }
 
     var runningCount: Int { entries.values.filter { !$0.hasExited }.count }

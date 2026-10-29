@@ -8,7 +8,7 @@ enum UsageService {
         return configuration
     }())
 
-    static func fetch(_ provider: UsageProvider) async throws -> ProviderUsage? {
+    @concurrent static func fetch(_ provider: UsageProvider) async throws -> ProviderUsage? {
         switch provider {
         case .claude: try await fetchClaude()
         case .codex: try await fetchCodex()

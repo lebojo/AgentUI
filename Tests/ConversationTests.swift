@@ -98,6 +98,7 @@ enum ConversationTests {
             INSERT INTO session VALUES ('ses_child', 'ses_root', '\(path)', 'Subagent task', 1, 1798000000000, NULL);
             INSERT INTO session VALUES ('ses_archived', NULL, '\(path)', 'Archived', 1, 1798000000000, 1798000000001);
             INSERT INTO session VALUES ('ses_other', NULL, '\(other.path)', 'Elsewhere', 1, 1798000000000, NULL);
+            INSERT INTO session VALUES ('--dangerously-skip-permissions', NULL, '\(path)', 'Injected flag', 1, 1799000000000, NULL);
             INSERT INTO session VALUES ('ses_accent', NULL, '\(accented.path.uppercased())', 'Accented', 1, 1798000000000, NULL);
             CREATE TABLE session_v2 (id TEXT PRIMARY KEY, directory TEXT NOT NULL, time_updated INTEGER NOT NULL);
             INSERT INTO session_v2 VALUES ('ses_v2', '\(path)', 1797000000000);
@@ -121,6 +122,9 @@ enum ConversationTests {
         ], "Conversations are filtered by cwd and titled, got \(titles)")
         try require(await index.conversations(at: path.uppercased()).count == 11, "Paths match on case-insensitive volumes")
         try require(conversations.map(\.updatedAt) == conversations.map(\.updatedAt).sorted(by: >), "Most recent conversations come first")
+        try require(["0b8e1c2a-4f6d-4d1e-9a3b-7c5d2e1f0a9b", "ses_root", "rollout.v2"].allSatisfy(AgentConversation.isValidSessionID)
+                    && !["--dangerously-skip-permissions", "-r", "", "a b", "a/b", "é"].contains(where: AgentConversation.isValidSessionID),
+                    "Session identifiers that could be parsed as options are rejected")
         try require(conversations.first { $0.id == "claude:titled" }?.resumeCommand == ["claude", "--resume", "titled"], "Claude resume command")
         try require(conversations.first { $0.id == "codex:thread" }?.resumeCommand == ["codex", "resume", "thread"], "Codex resume command")
         try require(conversations.first { $0.id == "copilot:named" }?.resumeCommand == ["copilot", "--resume", "named"], "Copilot resume command")

@@ -1,6 +1,6 @@
 import Foundation
 
-struct BridgeRequest: Codable {
+struct BridgeRequest: Codable, Sendable {
     var id: UUID
     var action: String
     var projectID: UUID?
@@ -11,7 +11,7 @@ struct BridgeRequest: Codable {
     var command: [String]
 }
 
-struct BridgeResponse: Codable {
+struct BridgeResponse: Codable, Sendable {
     var ok: Bool
     var message: String?
     var projectID: UUID?

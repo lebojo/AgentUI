@@ -1,13 +1,13 @@
 import Foundation
 
 enum GitService {
-    static func run(_ arguments: [String], at path: String, timeout: TimeInterval = 90) async throws -> String {
+    @concurrent static func run(_ arguments: [String], at path: String, timeout: TimeInterval = 90) async throws -> String {
         let data = try await CommandRunner.run(URL(fileURLWithPath: "/usr/bin/git"), arguments, at: path,
                                                 timeout: timeout, limit: 4_194_304, readOnly: false)
         return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    static func createWorktree(project: Project, branch: String, root: URL = WorkspaceDisk.worktreesDirectory, timeout: TimeInterval = 90) async throws -> Worktree {
+    @concurrent static func createWorktree(project: Project, branch: String, root: URL = WorkspaceDisk.worktreesDirectory, timeout: TimeInterval = 90) async throws -> Worktree {
         guard !branch.isEmpty, !branch.hasPrefix("-") else {
             throw WorkspaceError(message: "Indique un nom de branche, par exemple feature/interface.")
         }
@@ -29,7 +29,7 @@ enum GitService {
         return Worktree(name: branch, path: WorkspaceDisk.canonicalPath(destination), terminals: [TerminalRecord(name: "Terminal")])
     }
 
-    static func removeWorktree(project: Project, path: String, timeout: TimeInterval = 90) async throws {
+    @concurrent static func removeWorktree(project: Project, path: String, timeout: TimeInterval = 90) async throws {
         guard WorkspaceDisk.canonicalPath(URL(fileURLWithPath: path)) != project.path else {
             throw WorkspaceError(message: "Le dossier principal du projet ne peut pas être supprimé.")
         }
@@ -61,7 +61,7 @@ enum GitService {
         return destination
     }
 
-    static func existingWorktrees(project: Project) async throws -> [Worktree] {
+    @concurrent static func existingWorktrees(project: Project) async throws -> [Worktree] {
         let output = try await run(["worktree", "list", "--porcelain", "-z"], at: project.path, timeout: 10)
         var result: [Worktree] = []
         var path: String?
