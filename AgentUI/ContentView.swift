@@ -4,8 +4,6 @@ import AppKit
 struct ContentView: View {
     @AppStorage("inspectorVisible") private var inspectorVisible = true
 
-    @Environment(UsageStore.self) private var usage
-
     @State private var sheet: WorkspaceSheet?
     @State private var removal: Removal?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -58,14 +56,7 @@ struct ContentView: View {
             }
 
         }
-        .task(priority: .utility) {
-            while !Task.isCancelled {
-                await store.sessions.refreshRepositories(worktreePaths: store.projects.flatMap(\.worktrees).map(\.path))
-                do { try await Task.sleep(for: .seconds(2)) }
-                catch { break }
-            }
-        }
-        .task(priority: .utility) { await usage.monitor() }
+        .modifier(WorkspaceMonitors(store: store))
         .sheet(item: $sheet) { item in
             WorkspaceEditor(store: store, sheet: item)
         }

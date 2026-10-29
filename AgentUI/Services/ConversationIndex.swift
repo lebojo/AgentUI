@@ -19,13 +19,21 @@ actor ConversationIndex {
     private var copilotCache: [String: Cached<CopilotWorkspace?>] = [:]
     private var copilotPromptCache: [String: Cached<String?>] = [:]
     private var openCodeCache: (stamps: [Stamp?], sessions: [OpenCodeSessions.Session])?
+    private var runningCache: [String: (checked: ContinuousClock.Instant, sessions: Set<String>)] = [:]
 
     init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
         self.home = home
     }
 
-    static func load(at path: String) async -> [AgentConversation] {
-        async let running = runningClaudeSessions(at: path)
+    static var watchedDirectories: [String] { shared.watchedDirectories }
+
+    nonisolated var watchedDirectories: [String] {
+        [".claude/projects", ".codex/sessions", ".copilot/session-state", ".local/share/opencode"]
+            .map { home.appendingPathComponent($0, isDirectory: true).path }
+    }
+
+    static func load(at path: String, runningMaximumAge: Duration = .seconds(10)) async -> [AgentConversation] {
+        async let running = shared.runningSessions(at: path, maximumAge: runningMaximumAge)
         let conversations = await shared.conversations(at: path)
         let active = await running
         return conversations.map { conversation in
@@ -146,6 +154,13 @@ actor ConversationIndex {
         guard let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey, .isRegularFileKey]),
               values.isRegularFile == true, let modified = values.contentModificationDate else { return nil }
         return Stamp(modified: modified, size: values.fileSize ?? 0)
+    }
+
+    func runningSessions(at path: String, maximumAge: Duration) async -> Set<String> {
+        if let cached = runningCache[path], cached.checked.duration(to: .now) < maximumAge { return cached.sessions }
+        let sessions = await Self.runningClaudeSessions(at: path)
+        runningCache[path] = (.now, sessions)
+        return sessions
     }
 
     private static func runningClaudeSessions(at path: String) async -> Set<String> {

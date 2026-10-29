@@ -13,6 +13,8 @@ struct GitBranch: Equatable, Sendable {
 struct GitRepository: Sendable {
     let root: URL
     let branch: GitBranch
+    let gitDirectory: URL
+    let commonDirectory: URL
 
     static func atRoot(_ location: URL) -> GitRepository? {
         let url = URL(fileURLWithPath: WorkspaceDisk.canonicalPath(location))
@@ -44,7 +46,7 @@ struct GitRepository: Sendable {
         } else {
             return nil
         }
-        return GitRepository(root: url, branch: branch)
+        return GitRepository(root: url, branch: branch, gitDirectory: gitDirectory, commonDirectory: common)
     }
 
     static func containing(_ path: String) -> GitRepository? {
@@ -60,6 +62,10 @@ struct GitRepository: Sendable {
             if parent.path == directory.path { return nil }
             directory = parent
         }
+    }
+
+    @concurrent static func repositories(containing paths: [String]) async -> [GitRepository] {
+        paths.compactMap(containing)
     }
 
     private static func resolve(_ path: String, relativeTo base: URL) -> URL {
