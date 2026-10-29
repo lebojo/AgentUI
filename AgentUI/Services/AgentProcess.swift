@@ -7,6 +7,7 @@ struct AgentProcess: Equatable, Sendable {
     let directory: String
     let sessionID: String?
     var transcriptPath: String? = nil
+    var claudeStatus: String? = nil
 
     var transcriptTitle: String? {
         guard agent == .codex, let transcriptPath, let sessionID else { return nil }
@@ -27,7 +28,7 @@ struct AgentProcess: Equatable, Sendable {
                 let session = resolveSession(of: agent, in: subtree(of: pid), home: home)
                 return AgentProcess(agent: agent, startedAt: startDate(of: pid) ?? .distantPast,
                                     directory: TerminalProcessDirectory.read(pid: pid) ?? fallbackDirectory,
-                                    sessionID: session.id, transcriptPath: session.path)
+                                    sessionID: session.id, transcriptPath: session.path, claudeStatus: session.status)
             }
             pending += children(of: pid)
         }
@@ -82,25 +83,26 @@ struct AgentProcess: Equatable, Sendable {
         return agent(named: names)
     }
 
-    private static func resolveSession(of agent: ConversationAgent, in pids: [Int32], home: URL) -> (id: String?, path: String?) {
+    private static func resolveSession(of agent: ConversationAgent, in pids: [Int32], home: URL) -> (id: String?, path: String?, status: String?) {
         switch agent {
         case .claude:
             struct Session: Decodable {
                 let sessionId: String
+                let status: String?
             }
             let sessions = home.appendingPathComponent(".claude/sessions", isDirectory: true)
-            let id = pids.lazy.compactMap { pid in
+            let session = pids.lazy.compactMap { pid in
                 (try? Data(contentsOf: sessions.appendingPathComponent("\(pid).json")))
-                    .flatMap { try? JSONDecoder().decode(Session.self, from: $0) }?.sessionId
+                    .flatMap { try? JSONDecoder().decode(Session.self, from: $0) }
             }.first
-            return (id, nil)
+            return (session?.sessionId, nil, session?.status)
         case .codex:
             let rollout = pids.lazy.flatMap(openFiles).first { codexSessionID(inRolloutPath: $0) != nil }
-            return (rollout.flatMap(codexSessionID(inRolloutPath:)), rollout)
+            return (rollout.flatMap(codexSessionID(inRolloutPath:)), rollout, nil)
         case .copilot:
-            return (pids.lazy.flatMap(openFiles).compactMap(copilotSessionID(inPath:)).first, nil)
+            return (pids.lazy.flatMap(openFiles).compactMap(copilotSessionID(inPath:)).first, nil, nil)
         case .openCode:
-            return (nil, nil)
+            return (nil, nil, nil)
         }
     }
 

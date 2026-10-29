@@ -240,6 +240,18 @@ import Foundation
         let withSession = AgentProcess.find(under: shell.processIdentifier, fallbackDirectory: "/", home: fakeHome)
         try require(withSession?.sessionID == "session-42", "Read the Claude session of the agent process")
         print("PASS agent process detection and conversation titles")
+
+        let now = Date()
+        try require(AgentStatus(claudeStatus: "busy") == .working && AgentStatus(claudeStatus: "shell") == .working
+                    && AgentStatus(claudeStatus: "idle") == .ready && AgentStatus(claudeStatus: "waiting") == .waitingForInput
+                    && AgentStatus(claudeStatus: "unknown") == nil, "Map Claude session statuses")
+        try require(AgentStatus(screen: ["  Would you like to run the following command?", "› 1. Yes, proceed"], lastOutput: now, now: now) == .waitingForInput,
+                    "An approval prompt on screen means the agent waits for input")
+        try require(AgentStatus(screen: ["• Working (3s • esc to interrupt)"], lastOutput: now.addingTimeInterval(-0.5), now: now) == .working,
+                    "Recent output means the agent is working")
+        try require(AgentStatus(screen: ["› Ask Codex to do anything"], lastOutput: now.addingTimeInterval(-10), now: now) == .ready,
+                    "A quiet agent without prompt is ready")
+        print("PASS agent status")
     }
 
     static func agentChild(of pid: Int32) -> Int32 {

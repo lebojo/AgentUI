@@ -3,8 +3,22 @@ import SwiftUI
 import SwiftTerm
 import Observation
 
+final class ActivityTerminalView: LocalProcessTerminalView {
+    private(set) var lastOutput = Date.distantPast
+
+    override func dataReceived(slice: ArraySlice<UInt8>) {
+        lastOutput = .now
+        super.dataReceived(slice: slice)
+    }
+
+    var visibleLines: [String] {
+        let terminal = getTerminal()
+        return (0..<terminal.rows).compactMap { terminal.getLine(row: $0)?.translateToString(trimRight: true) }
+    }
+}
+
 @MainActor @Observable final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
-    let view: LocalProcessTerminalView
+    let view: ActivityTerminalView
     private(set) var hasExited = false
     private(set) var exitCode: Int32?
     private(set) var title = ""
@@ -12,11 +26,13 @@ import Observation
     let identity = UUID()
     private(set) var currentDirectory: String
     private(set) var branch: GitBranch?
+    private(set) var agent: AgentProcess?
+    private(set) var agentStatus: AgentStatus?
 
     init(context: TerminalContext, command: [String], environment: [String: String]) {
         path = context.worktree.path
         currentDirectory = context.worktree.path
-        view = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
+        view = ActivityTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
         super.init()
         view.processDelegate = self
         var isDirectory: ObjCBool = false
@@ -56,6 +72,16 @@ import Observation
         if self.branch != branch { self.branch = branch }
     }
 
+    func updateAgent(_ process: AgentProcess?) {
+        let running = hasExited ? nil : process
+        let status = running.map { process in
+            process.claudeStatus.flatMap(AgentStatus.init(claudeStatus:))
+                ?? AgentStatus(screen: view.visibleLines, lastOutput: view.lastOutput)
+        }
+        if agent != running { agent = running }
+        if agentStatus != status { agentStatus = status }
+    }
+
     func stop() {
         guard view.process.running else { return }
         let pid = view.process.shellPid
@@ -69,6 +95,7 @@ import Observation
     var environment: [String: String] = [:]
     private(set) var branchesByPath: [String: GitBranch] = [:]
     @ObservationIgnored private var refreshingRepositories = false
+    @ObservationIgnored private var refreshingAgents = false
 
     func branch(for terminalID: UUID, initialPath: String) -> GitBranch? {
         if let session = entries[terminalID] { return session.branch }
@@ -123,18 +150,25 @@ import Observation
         return (branches, sessions)
     }
 
-    func conversationTitles() async -> [UUID: String] {
+    func refreshAgents() async {
+        guard !refreshingAgents else { return }
+        refreshingAgents = true
+        defer { refreshingAgents = false }
         let shells = entries.compactMap { id, session in
-            session.hasExited ? nil : (id: id, pid: session.view.process.shellPid, directory: session.currentDirectory)
+            session.hasExited ? nil : (id: id, identity: session.identity, pid: session.view.process.shellPid, directory: session.currentDirectory)
         }
-        guard !shells.isEmpty else { return [:] }
-        let processes = await Task.detached(priority: .utility) {
-            var found: [UUID: AgentProcess] = [:]
-            for shell in shells {
-                found[shell.id] = AgentProcess.find(under: shell.pid, fallbackDirectory: shell.directory)
+        let found = await Task.detached(priority: .utility) {
+            shells.reduce(into: [UUID: AgentProcess]()) { result, shell in
+                result[shell.identity] = AgentProcess.find(under: shell.pid, fallbackDirectory: shell.directory)
             }
-            return found
         }.value
+        guard !Task.isCancelled else { return }
+        for session in entries.values { session.updateAgent(found[session.identity]) }
+    }
+
+    func conversationTitles() async -> [UUID: String] {
+        let processes = entries.compactMapValues(\.agent)
+        guard !processes.isEmpty else { return [:] }
         var conversations: [String: [AgentConversation]] = [:]
         for directory in Set(processes.values.map(\.directory)) {
             conversations[directory] = await ConversationIndex.shared.conversations(at: directory)

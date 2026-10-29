@@ -16,6 +16,7 @@ enum Palette {
     static let success = Color.green
     static let warning = Color.orange
     static let danger = Color.red
+    static let agentWorking = Color.yellow
 
     static let branchForeground = Color(.branchForeground)
     static let branchBackground = Color(.branchBackground)
