@@ -40,6 +40,11 @@ enum GitService {
         }
     }
 
+    static func hasLocalChanges(at path: String) async throws -> Bool {
+        guard FileManager.default.fileExists(atPath: path) else { return false }
+        return try await !run(["status", "--porcelain", "--untracked-files=normal"], at: path, timeout: 20).isEmpty
+    }
+
     private enum BranchSource {
         case new, local, remote, checkedOut
     }

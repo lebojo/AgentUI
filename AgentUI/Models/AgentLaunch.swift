@@ -22,8 +22,4 @@ struct AgentLaunch: Codable, Hashable, Sendable {
     func command(on trigger: Trigger) -> [String] {
         launches(on: trigger) ? agent.launchCommand(skippingPermissions: skipsPermissions) : []
     }
-
-    func terminalName(on trigger: Trigger) -> String {
-        launches(on: trigger) ? agent.title : "Terminal"
-    }
 }

@@ -153,6 +153,21 @@ private final class ChangeFlag: @unchecked Sendable {
         let decoded = try JSONDecoder().decode(Workspace.self, from: legacy)
         try require(decoded.projects[0].worktreeGroups.isEmpty && decoded.projects[0].worktrees[0].layouts.isEmpty && decoded.projects[0].worktrees[0].groupID == nil,
                     "Workspaces saved by older versions still load")
+        try require(decoded.projects[0].worktrees[0].terminals.isEmpty, "Legacy fixture has no terminals")
+        let legacyTerminals = try JSONDecoder().decode([TerminalRecord].self, from: Data(#"[{"id":"\#(UUID())","name":"Terminal"},{"id":"\#(UUID())","name":"Claude"},{"id":"\#(UUID())","name":"Mon serveur"}]"#.utf8))
+        try require(legacyTerminals.map(\.hasCustomName) == [false, false, true], "Older default names become automatic, renamed terminals stay custom")
         print("PASS legacy workspace decoding")
+
+        let titled = try split.addTerminal(projectID: splitProject.id, worktreeID: splitProject.worktrees[0].id)
+        let renamed = try split.addTerminal(projectID: splitProject.id, worktreeID: splitProject.worktrees[0].id)
+        split.rename(renamed.terminal.id, to: "Serveur")
+        try require(titled.terminal.name == "Terminal" && !titled.terminal.hasCustomName, "New terminals are named Terminal until a conversation is found")
+        split.applyConversationTitles([titled.terminal.id: "Corriger la connexion", renamed.terminal.id: "Autre"])
+        try require(split.context(for: titled.terminal.id)?.terminal.name == "Corriger la connexion", "A terminal takes the name of its conversation")
+        try require(split.context(for: renamed.terminal.id)?.terminal.name == "Serveur", "A renamed terminal keeps its name")
+        split.useAutomaticName(renamed.terminal.id)
+        split.applyConversationTitles([renamed.terminal.id: "Autre"])
+        try require(split.context(for: renamed.terminal.id)?.terminal.name == "Autre", "A terminal can go back to the conversation name")
+        print("PASS conversation names for terminals")
     }
 }

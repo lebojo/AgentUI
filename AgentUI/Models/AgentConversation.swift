@@ -37,6 +37,7 @@ struct AgentConversation: Identifiable, Equatable, Sendable {
     var isRunning = false
 
     var id: String { agent.rawValue + ":" + sessionID }
+    var shortTitle: String { title.count > 40 ? String(title.prefix(39)) + "…" : title }
 
     static func isValidSessionID(_ sessionID: String) -> Bool {
         guard let first = sessionID.unicodeScalars.first, sessionID.utf8.count <= 128,

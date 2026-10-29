@@ -41,10 +41,9 @@ struct AgentConversationList: View {
 
     private func resume(_ conversation: AgentConversation) {
         guard let command = conversation.resumeCommand else { return }
-        let name = conversation.title.count > 40 ? String(conversation.title.prefix(39)) + "…" : conversation.title
         do {
             _ = try store.addTerminal(projectID: context.project.id, worktreeID: context.worktree.id,
-                                      name: name, command: command)
+                                      name: conversation.shortTitle, command: command)
         } catch { store.errorMessage = error.localizedDescription }
     }
 }

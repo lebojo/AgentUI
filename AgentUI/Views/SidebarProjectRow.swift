@@ -220,8 +220,7 @@ private struct SidebarWorktreeRow: View {
 private extension WorkspaceStore {
     func openTerminal(_ project: Project, _ worktree: Worktree, launch: AgentLaunch) {
         do {
-            _ = try addTerminal(projectID: project.id, worktreeID: worktree.id,
-                                name: launch.terminalName(on: .newTerminal), command: launch.command(on: .newTerminal))
+            _ = try addTerminal(projectID: project.id, worktreeID: worktree.id, command: launch.command(on: .newTerminal))
         }
         catch { errorMessage = error.localizedDescription }
     }
@@ -254,6 +253,9 @@ private struct SidebarTerminalRow: View {
         .help(terminal.name)
         .contextMenu {
             Button("Renommer…", systemImage: "pencil") { sheet = .rename(terminal.id, terminal.name) }
+            if terminal.hasCustomName {
+                Button("Utiliser le nom de la conversation", systemImage: "bubble.left") { store.useAutomaticName(terminal.id) }
+            }
             Divider()
             Button("Fermer le terminal…", systemImage: "xmark", role: .destructive) { removal = .terminal(terminal.id) }
         }

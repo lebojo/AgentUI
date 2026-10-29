@@ -73,7 +73,8 @@ xcodebuild -project AgentUI.xcodeproj -scheme AgentUI -configuration Debug \
 - **Right-click a worktree → Group**, or drag it onto a group: gather worktrees of the same project under a named group. Right-click a project → **New Worktree Group…** creates an empty one. Renaming or dissolving a group never touches the worktrees, their folders or their branches.
 - Terminals of the main folder appear directly under the project. Additional worktrees hold their own terminals. Existing worktrees are discovered when a project is added, then via **Refresh Worktrees**.
 - A **green badge** shows the current branch next to each Git terminal and in its header. A branch change is picked up as soon as Git writes it (FSEvents on the repository metadata), and the shell directory is read every two seconds, without spawning any Git process. Outside a repository it disappears; on a detached HEAD, a neutral badge shows the abbreviated commit.
-- The context menu lets you rename and close a terminal, rename or remove a project, and dissolve a virtual folder.
+- A terminal is named after the agent conversation running in it (Claude, Codex, Copilot or OpenCode, the same titles as the **Agents** tab), otherwise **Terminal**. AgentUI finds the agent among the terminal's processes and its session (`~/.claude/sessions`, the Codex rollout or Copilot session it has open), and falls back to the conversation of that agent updated in the same folder since it started. The name follows the conversation every five seconds and is kept after the agent exits.
+- The context menu lets you rename and close a terminal, rename or remove a project, and dissolve a virtual folder. A renamed terminal keeps its name; **Use the conversation name** gives it back its automatic name.
 
 ### Agent usage
 
@@ -128,9 +129,14 @@ agentui terminal create --name "Shell"
 
 # Explicitly target another context (IDs returned by agentui list)
 agentui terminal create --project UUID --worktree UUID --name "Review"
+
+# Delete a worktree (IDs returned by agentui list); --force also erases uncommitted changes
+agentui worktree delete --worktree UUID
 ```
 
 Commands return JSON with `ok`, `projectID`, `worktreeID`, `terminalID` and `path`. A failure returns a non-zero exit code. Programs after `--` receive their arguments verbatim, without shell interpolation. Creations requested by an agent do not change the terminal selected on screen.
+
+`worktree delete` closes the worktree's terminals and removes its folder, like **Delete Worktree…** in the sidebar; the branch and its commits stay in the repository. It always needs an explicit `--worktree`, refuses the project's main folder and the worktree of the calling terminal, and keeps a worktree with uncommitted changes or untracked files unless `--force` is given.
 
 The CLI waits for the save before reporting success. If the write fails after creation, it returns `ok: false` with the identifiers already created: retry the save in the app, without recreating the terminal. Claude, Codex, Copilot, OpenCode and other tools must already be installed and authenticated on the Mac. Commands run through your interactive login shell, so a tool installed via npm, nvm, bun or any PATH set in `~/.zshrc` is found like in a regular terminal.
 

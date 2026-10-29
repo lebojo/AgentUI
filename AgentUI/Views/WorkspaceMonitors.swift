@@ -22,6 +22,10 @@ struct WorkspaceMonitors: ViewModifier {
                 guard visibility.isVisible else { return }
                 await usage.monitor()
             }
+            .task(id: visibility.isVisible, priority: .utility) {
+                guard visibility.isVisible else { return }
+                await watchConversationTitles()
+            }
     }
 
     private func watchRepositories(_ watch: RepositoryWatch) async {
@@ -30,6 +34,14 @@ struct WorkspaceMonitors: ViewModifier {
         let metadata = Array(Set(repositories.map(\.commonDirectory.path)))
         for await _ in FileEvents.changes(in: metadata, latency: .milliseconds(300), every: .seconds(2)) {
             await store.sessions.refreshRepositories(worktreePaths: watch.worktreePaths)
+        }
+    }
+
+    private func watchConversationTitles() async {
+        while !Task.isCancelled {
+            store.applyConversationTitles(await store.sessions.conversationTitles())
+            do { try await Task.sleep(for: .seconds(5)) }
+            catch { break }
         }
     }
 }

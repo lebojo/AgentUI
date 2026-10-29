@@ -59,7 +59,6 @@ private struct TerminalHeader: View {
     private func addTerminal() {
         do {
             _ = try store.addTerminal(projectID: context.project.id, worktreeID: context.worktree.id,
-                                      name: settings.agentLaunch.terminalName(on: .newTerminal),
                                       command: settings.agentLaunch.command(on: .newTerminal))
         }
         catch { store.errorMessage = error.localizedDescription }
@@ -67,9 +66,7 @@ private struct TerminalHeader: View {
 
     private func split(_ axis: SplitAxis) {
         do {
-            _ = try store.splitTerminal(context.terminal.id, axis: axis,
-                                        name: settings.agentLaunch.terminalName(on: .newTerminal),
-                                        command: settings.agentLaunch.command(on: .newTerminal))
+            _ = try store.splitTerminal(context.terminal.id, axis: axis, command: settings.agentLaunch.command(on: .newTerminal))
         }
         catch { store.errorMessage = error.localizedDescription }
     }

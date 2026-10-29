@@ -4,10 +4,8 @@ enum SettingsTests {
     static func run() throws {
         var launch = AgentLaunch()
         try CoreTests.require(launch.command(on: .newTerminal).isEmpty && launch.command(on: .newWorktree).isEmpty, "Agents are not launched by default")
-        try CoreTests.require(launch.terminalName(on: .newTerminal) == "Terminal", "A plain terminal keeps its default name")
         launch.onNewWorktree = true
         try CoreTests.require(launch.command(on: .newWorktree) == ["claude"] && launch.command(on: .newTerminal).isEmpty, "Each trigger is independent")
-        try CoreTests.require(launch.terminalName(on: .newWorktree) == "Claude", "An agent terminal is named after the agent")
         launch.skipsPermissions = true
         try CoreTests.require(launch.command(on: .newWorktree) == ["claude", "--dangerously-skip-permissions"], "Claude permission bypass flag")
         launch.agent = .codex
