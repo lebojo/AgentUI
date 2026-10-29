@@ -4,9 +4,8 @@ import AppKit
 @MainActor final class AgentBridge {
     let directory: URL
     private let store: WorkspaceStore
-    private var source: DispatchSourceFileSystemObject?
+    private var watcher: DirectoryWatcher?
     private var active: Set<UUID> = []
-    private var descriptor: Int32 = -1
 
     init(store: WorkspaceStore) throws {
         self.store = store
@@ -20,14 +19,11 @@ import AppKit
             "AGENTUI_CLI": bin.appendingPathComponent("agentui").path,
             "PATH": bin.path + ":" + (ProcessInfo.processInfo.environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin")
         ]
-        descriptor = open(directory.path, O_EVTONLY)
-        guard descriptor >= 0 else { throw WorkspaceError(message: "Impossible d’initialiser la commande agentui.") }
-        let watcher = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor, eventMask: .write, queue: .main)
-        watcher.setEventHandler { [weak self] in self?.drain() }
-        let fd = descriptor
-        watcher.setCancelHandler { close(fd) }
-        source = watcher
-        watcher.resume()
+        do {
+            watcher = try DirectoryWatcher(directory, queue: .main) { [weak self] in
+                MainActor.assumeIsolated { self?.drain() }
+            }
+        } catch { throw WorkspaceError(message: "Impossible d’initialiser la commande agentui.") }
         #if DEBUG
         if ProcessInfo.processInfo.environment["AGENTUI_STATE_DIRECTORY"] != nil {
             let stateDirectory = WorkspaceDisk.applicationDirectory
@@ -38,8 +34,8 @@ import AppKit
     }
 
     func stop() {
-        source?.cancel()
-        source = nil
+        watcher?.cancel()
+        watcher = nil
         try? FileManager.default.removeItem(at: directory)
     }
 

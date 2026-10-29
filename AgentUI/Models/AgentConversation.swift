@@ -44,8 +44,11 @@ struct AgentConversation: Identifiable, Equatable, Sendable {
         return sessionID.unicodeScalars.allSatisfy { $0.isASCII && (CharacterSet.alphanumerics.contains($0) || "-_.".unicodeScalars.contains($0)) }
     }
 
-    var resumeCommand: [String] {
-        switch agent {
+    var canResume: Bool { Self.isValidSessionID(sessionID) }
+
+    var resumeCommand: [String]? {
+        guard canResume else { return nil }
+        return switch agent {
         case .claude: ["claude", "--resume", sessionID]
         case .codex: ["codex", "resume", sessionID]
         case .copilot: ["copilot", "--resume", sessionID]

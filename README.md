@@ -139,7 +139,7 @@ Saves are coalesced during interactions, then written off the UI thread. A banne
 
 Sessions stay alive when switching terminals; their content stays in memory. Quitting the app stops the processes, after confirmation. On relaunch, names and the hierarchy come back; shells restart on selection, without automatically replaying previous agent commands.
 
-The macOS sandbox is disabled so the real shell can reach developer tools and repositories, like a regular terminal. The UI grants no extra permissions to agents. Every Git command started by the app, including those run by `gh`, disables the repository's `core.fsmonitor` setting, so opening an untrusted repository cannot run a program it configures.
+The macOS sandbox is disabled so the real shell can reach developer tools and repositories, like a regular terminal. The UI grants no extra permissions to agents. Git commands started by the app, including those run by `gh`, ignore the repository's `core.fsmonitor` setting. The inspector's automatic reads (`git status`, `git diff`) also disable the filter drivers configured by the repository and skip submodule work trees, so displaying an untrusted repository does not run the programs it configures. Actions you start yourself, such as creating a worktree, behave like Git in a terminal: hooks and filters such as Git LFS still run.
 
 ## Project structure
 

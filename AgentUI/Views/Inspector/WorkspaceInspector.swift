@@ -59,7 +59,7 @@ private struct InspectorContents: View {
         }
         .environment(previews)
         .modifier(InspectorPreviewPresenter(previews: previews))
-        .task(id: "\(tab.rawValue)-\(refresh)") {
+        .task(id: "\(tab.rawValue)-\(refresh)", priority: .utility) {
             guard tab == .git || tab == .checks else { return }
             await model.monitor(path: context.worktree.path, forceRemote: refresh > 0)
         }

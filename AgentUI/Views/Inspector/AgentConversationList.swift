@@ -21,7 +21,7 @@ struct AgentConversationList: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: refresh) { await monitor() }
+        .task(id: refresh, priority: .utility) { await monitor() }
     }
 
     private func monitor() async {
@@ -34,10 +34,11 @@ struct AgentConversationList: View {
     }
 
     private func resume(_ conversation: AgentConversation) {
+        guard let command = conversation.resumeCommand else { return }
         let name = conversation.title.count > 40 ? String(conversation.title.prefix(39)) + "…" : conversation.title
         do {
             _ = try store.addTerminal(projectID: context.project.id, worktreeID: context.worktree.id,
-                                      name: name, command: conversation.resumeCommand)
+                                      name: name, command: command)
         } catch { store.errorMessage = error.localizedDescription }
     }
 }
@@ -45,6 +46,11 @@ struct AgentConversationList: View {
 private struct AgentConversationRow: View {
     let conversation: AgentConversation
     let resume: () -> Void
+
+    private var resumeHelp: String {
+        if !conversation.canResume { return "Identifiant de session non pris en charge" }
+        return conversation.isRunning ? "Cette conversation est déjà ouverte" : "Reprendre dans un nouveau terminal"
+    }
 
     var body: some View {
         HStack(spacing: Spacing.m) {
@@ -70,8 +76,8 @@ private struct AgentConversationRow: View {
             Spacer(minLength: Spacing.xs)
             Button(action: resume) { Image(systemName: "play.fill") }
                 .buttonStyle(.borderless)
-                .disabled(conversation.isRunning)
-                .help(conversation.isRunning ? "Cette conversation est déjà ouverte" : "Reprendre dans un nouveau terminal")
+                .disabled(conversation.isRunning || !conversation.canResume)
+                .help(resumeHelp)
                 .accessibilityLabel("Reprendre \(conversation.title)")
         }
         .padding(.vertical, Spacing.xxs)

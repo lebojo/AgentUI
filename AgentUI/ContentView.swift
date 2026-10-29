@@ -58,14 +58,14 @@ struct ContentView: View {
             }
 
         }
-        .task {
+        .task(priority: .utility) {
             while !Task.isCancelled {
                 await store.sessions.refreshRepositories(worktreePaths: store.projects.flatMap(\.worktrees).map(\.path))
                 do { try await Task.sleep(for: .seconds(2)) }
                 catch { break }
             }
         }
-        .task { await usage.monitor() }
+        .task(priority: .utility) { await usage.monitor() }
         .sheet(item: $sheet) { item in
             WorkspaceEditor(store: store, sheet: item)
         }

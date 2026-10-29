@@ -25,7 +25,7 @@ import Observation
 
     func watchSignIn(_ provider: UsageProvider) {
         signInTasks[provider]?.cancel()
-        signInTasks[provider] = Task { await waitForSignIn(provider) }
+        signInTasks[provider] = Task(priority: .utility) { await waitForSignIn(provider) }
     }
 
     func waitForSignIn(_ provider: UsageProvider, interval: Duration = .seconds(5), timeout: Duration = .seconds(600)) async {

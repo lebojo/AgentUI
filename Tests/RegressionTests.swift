@@ -27,21 +27,75 @@ import Foundation
         catch is ReadCommandError {}
         print("PASS literal Git paths and UTF-8 truncation across 2/3/4-byte scalars")
 
-        let monitorMarker = root.appendingPathComponent("fsmonitor-ran")
-        let monitor = root.appendingPathComponent("fsmonitor.sh")
-        try "#!/bin/sh\ntouch '\(monitorMarker.path)'\n".write(to: monitor, atomically: true, encoding: .utf8)
-        try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: monitor.path)
-        _ = try await GitService.run(["config", "core.fsmonitor", monitor.path], at: repo.path)
-        _ = try await InspectorService.localGit(at: repo.path)
-        _ = try await InspectorService.diff(change, at: repo.path)
-        _ = try await GitService.existingWorktrees(project: Project(url: repo))
-        try CoreTests.require(!fm.fileExists(atPath: monitorMarker.path), "Repository fsmonitor commands never run during automatic Git reads")
-        _ = try await GitService.run(["config", "--unset", "core.fsmonitor"], at: repo.path)
+        let previewFile = root.appendingPathComponent("preview.txt")
+        try "hello\n".write(to: previewFile, atomically: true, encoding: .utf8)
+        let previews = InspectorPreviews()
+        previews.open(previewFile)
+        previews.diff(change, at: repo.path)
+        try CoreTests.require(previews.isLoading && previews.request == .file(previewFile), "A second preview request is ignored while one is loading")
+        await previews.load()
+        guard case .file(let loadedFile)? = previews.current else { throw WorkspaceError(message: "FAIL: file preview not loaded") }
+        try CoreTests.require(loadedFile.text == "hello\n" && !previews.isLoading && previews.error == nil, "A loaded preview is presented and clears the request")
+        previews.open(root.appendingPathComponent("missing.txt"))
+        await previews.load()
+        try CoreTests.require(previews.error != nil && !previews.isLoading, "A failed preview reports its error and clears the request")
+        previews.error = nil
+        previews.diff(change, at: repo.path)
+        let cancelled = Task { await previews.load() }
+        cancelled.cancel()
+        await cancelled.value
+        try CoreTests.require(previews.error == nil && previews.request == .diff(change, root: repo.path), "A cancelled preview is neither reported as an error nor forgotten")
+        print("PASS preview loading, deduplication, failure and cancellation")
+
+        let untrusted = root.appendingPathComponent("untrusted-repo")
+        let markers = root.appendingPathComponent("untrusted-markers")
+        try fm.createDirectory(at: markers, withIntermediateDirectories: true)
+        let payload = root.appendingPathComponent("payload.sh")
+        try "#!/bin/sh\ntouch '\(markers.path)'/\"$1\"\ncase \"$1\" in *-process) exit 1 ;; esac\ncat\n".write(to: payload, atomically: true, encoding: .utf8)
+        try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: payload.path)
+        let submodule = root.appendingPathComponent("untrusted-submodule")
+        for (repository, driver) in [(untrusted, "payload"), (submodule, "nestedpayload")] {
+            try fm.createDirectory(at: repository, withIntermediateDirectories: true)
+            _ = try await GitService.run(["init", "-b", "main"], at: repository.path)
+            try "* filter=\(driver)\n".write(to: repository.appendingPathComponent(".gitattributes"), atomically: true, encoding: .utf8)
+            try "before\n".write(to: repository.appendingPathComponent("file.txt"), atomically: true, encoding: .utf8)
+            _ = try await GitService.run(["add", "."], at: repository.path)
+            _ = try await GitService.run(["-c", "user.name=Tests", "-c", "user.email=tests@example.invalid", "commit", "-m", "fixture"], at: repository.path)
+        }
+        _ = try await GitService.run(["-c", "protocol.file.allow=always", "submodule", "add", submodule.path, "nested"], at: untrusted.path)
+        _ = try await GitService.run(["-c", "user.name=Tests", "-c", "user.email=tests@example.invalid", "commit", "-m", "submodule"], at: untrusted.path)
+        let nested = untrusted.appendingPathComponent("nested")
+        for (repository, name, driver) in [(untrusted, "parent", "payload"), (nested, "submodule", "nestedpayload")] {
+            _ = try await GitService.run(["config", "core.fsmonitor", "\(payload.path) \(name)-fsmonitor"], at: repository.path)
+            _ = try await GitService.run(["config", "filter.\(driver).clean", "\(payload.path) \(name)-clean"], at: repository.path)
+            _ = try await GitService.run(["config", "filter.\(driver).process", "\(payload.path) \(name)-process"], at: repository.path)
+            try "after!\n".write(to: repository.appendingPathComponent("file.txt"), atomically: true, encoding: .utf8)
+        }
+        let untrustedSnapshot = try await InspectorService.localGit(at: untrusted.path)
+        let modified = GitChange(path: "file.txt", originalPath: nil, indexStatus: " ", worktreeStatus: "M")
+        _ = try await InspectorService.diff(modified, at: untrusted.path)
+        _ = try await InspectorService.diff(GitChange(path: "nested", originalPath: nil, indexStatus: " ", worktreeStatus: "M"), at: untrusted.path)
+        _ = try await GitService.existingWorktrees(project: Project(url: untrusted))
+        let triggered = try fm.contentsOfDirectory(atPath: markers.path).sorted()
+        try CoreTests.require(triggered.isEmpty, "Repository and submodule commands never run during automatic Git reads, got \(triggered)")
+        try CoreTests.require(untrustedSnapshot.changes == [modified], "Status still reports real changes with filters disabled, got \(untrustedSnapshot.changes.map(\.path))")
+
+        let listing = Data("global\0filter.lfs.process\0system\0filter.media.clean\0local\0filter.payload.clean\0worktree\0filter.Tree.v2.smudge\0unknown\0filter.other.process\0local\0filter.clean\0command\0filter.cli.clean\0local\0core.bare\0".utf8)
+        let drivers = GitConfiguration.untrustedFilterDrivers(in: listing)
+        try CoreTests.require(drivers == ["payload", "Tree.v2", "other"], "Only repository-scoped filter drivers are disabled, got \(drivers)")
+        let disabled = GitConfiguration.disabling(filterDrivers: ["payload"])
+        try CoreTests.require(disabled == ["filter.payload.clean": "", "filter.payload.smudge": "", "filter.payload.process": "", "filter.payload.required": "false"],
+                              "A disabled driver has no command and is not required")
         let inherited = CommandRunner.environment(readOnly: true, base: ["GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "user.name", "GIT_CONFIG_VALUE_0": "Tests"])
         try CoreTests.require(inherited["GIT_CONFIG_COUNT"] == "2" && inherited["GIT_CONFIG_KEY_0"] == "user.name"
                               && inherited["GIT_CONFIG_KEY_1"] == "core.fsmonitor" && inherited["GIT_CONFIG_VALUE_1"] == "false",
                               "Hardened Git configuration is appended to inherited command-line configuration")
-        print("PASS repository-controlled fsmonitor commands are disabled")
+        for bogus in ["-1", "many"] {
+            let environment = CommandRunner.environment(readOnly: true, base: ["GIT_CONFIG_COUNT": bogus])
+            try CoreTests.require(environment["GIT_CONFIG_COUNT"] == "1" && environment["GIT_CONFIG_KEY_0"] == "core.fsmonitor",
+                                  "An invalid inherited GIT_CONFIG_COUNT (\(bogus)) cannot cancel the hardening")
+        }
+        print("PASS repository-controlled fsmonitor, filter and submodule commands are disabled")
 
         let hook = repo.appendingPathComponent(".git/hooks/post-checkout")
         let marker = root.appendingPathComponent("hook-pid")
