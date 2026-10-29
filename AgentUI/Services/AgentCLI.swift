@@ -36,13 +36,15 @@ enum AgentCLI {
             let requestURL = directory.appendingPathComponent("\(request.id.uuidString).request")
             let responseURL = directory.appendingPathComponent("\(request.id.uuidString).response")
             defer { try? FileManager.default.removeItem(at: responseURL) }
-            let changes = DirectoryChanges(directory)
-            defer { changes.cancel() }
+            let changes = DispatchSemaphore(value: 0)
+            let watcher = try? DirectoryWatcher(directory, queue: .global(qos: .userInitiated)) { changes.signal() }
+            defer { watcher?.cancel() }
+            let recheck: DispatchTimeInterval = watcher == nil ? .milliseconds(50) : .seconds(1)
             try JSONEncoder().encode(request).write(to: requestURL, options: .atomic)
             let deadline = DispatchTime.now() + 120
             while DispatchTime.now() < deadline {
                 if FileManager.default.fileExists(atPath: responseURL.path) {
-                    let data = try BridgeMailbox.boundedContents(of: responseURL, limit: 67_108_864)
+                    let data = try BridgeMailbox.contents(of: responseURL, as: .response)
                     let response = try JSONDecoder().decode(BridgeResponse.self, from: data)
                     print(String(decoding: data, as: UTF8.self))
                     return response.ok ? 0 : 1
@@ -50,7 +52,7 @@ enum AgentCLI {
                 if !FileManager.default.fileExists(atPath: directory.path) {
                     throw WorkspaceError(message: "L’application a été fermée avant la réponse.")
                 }
-                changes.wait(until: min(deadline, .now() + 1))
+                _ = changes.wait(timeout: min(deadline, .now() + recheck))
             }
             throw WorkspaceError(message: "AgentUI n’a pas répondu sous 120 secondes. L’opération peut continuer ; vérifie agentui list avant de réessayer.")
         } catch {
@@ -96,30 +98,4 @@ enum AgentCLI {
         }
         return request
     }
-}
-
-private final class DirectoryChanges: Sendable {
-    private let signal = DispatchSemaphore(value: 0)
-    private let source: DispatchSourceFileSystemObject?
-
-    init(_ directory: URL) {
-        let descriptor = open(directory.path, O_EVTONLY | O_CLOEXEC)
-        guard descriptor >= 0 else {
-            source = nil
-            return
-        }
-        let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor, eventMask: [.write, .delete, .rename],
-                                                               queue: .global(qos: .userInitiated))
-        let signal = signal
-        source.setEventHandler { signal.signal() }
-        source.setCancelHandler { close(descriptor) }
-        source.resume()
-        self.source = source
-    }
-
-    func wait(until deadline: DispatchTime) {
-        _ = signal.wait(timeout: source == nil ? min(deadline, .now() + .milliseconds(50)) : deadline)
-    }
-
-    func cancel() { source?.cancel() }
 }

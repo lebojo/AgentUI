@@ -137,7 +137,7 @@ import Observation
         projects.append(project)
         if selection == nil { selection = project.worktrees.first?.terminals.first?.id }
         save()
-        Task { await refreshWorktrees(project.id) }
+        Task(priority: .utility) { await refreshWorktrees(project.id) }
         return project
     }
 
@@ -173,7 +173,7 @@ import Observation
         guard !isReadOnly, !isImporting else { return }
         isImporting = true
         defer { isImporting = false }
-        let discovery = try await RepositoryDiscovery.discover(in: url)
+        let discovery = try await RepositoryDiscovery.scan(in: url)
         let repositories = discovery.repositories
         if repositories.isEmpty, let warning = discovery.warning {
             throw WorkspaceError(message: warning)
@@ -194,7 +194,7 @@ import Observation
             let discovery: RepositoryDiscoveryResult
             if let discovered { discovery = discovered }
             else {
-                discovery = try await RepositoryDiscovery.discover(in: url)
+                discovery = try await RepositoryDiscovery.scan(in: url)
             }
             let repositories = discovery.repositories
             guard !repositories.isEmpty else {

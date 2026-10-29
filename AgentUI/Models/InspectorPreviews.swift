@@ -2,25 +2,38 @@ import Foundation
 import Observation
 
 @MainActor @Observable final class InspectorPreviews {
+    enum Request: Equatable, Sendable {
+        case file(URL)
+        case diff(GitChange, root: String)
+
+        func load() async throws -> InspectorPreview {
+            switch self {
+            case .file(let url): .file(TextPreview(title: url.lastPathComponent, text: try await InspectorService.textFile(url), url: url))
+            case .diff(let change, let root): .diff(try await InspectorService.diff(change, at: root))
+            }
+        }
+    }
+
     var current: InspectorPreview?
     var error: String?
-    private(set) var isLoading = false
+    private(set) var request: Request?
 
-    func open(_ url: URL) {
-        load { .file(TextPreview(title: url.lastPathComponent, text: try await InspectorService.textFile(url), url: url)) }
+    var isLoading: Bool { request != nil }
+
+    func open(_ url: URL) { submit(.file(url)) }
+
+    func diff(_ change: GitChange, at root: String) { submit(.diff(change, root: root)) }
+
+    func load() async {
+        guard let request else { return }
+        do { current = try await request.load() }
+        catch is CancellationError { return }
+        catch { self.error = error.localizedDescription }
+        self.request = nil
     }
 
-    func diff(_ change: GitChange, at root: String) {
-        load { .diff(try await InspectorService.diff(change, at: root)) }
-    }
-
-    private func load(_ preview: @escaping @Sendable () async throws -> InspectorPreview) {
-        guard !isLoading else { return }
-        isLoading = true
-        Task {
-            defer { isLoading = false }
-            do { current = try await preview() }
-            catch { self.error = error.localizedDescription }
-        }
+    private func submit(_ request: Request) {
+        guard self.request == nil else { return }
+        self.request = request
     }
 }

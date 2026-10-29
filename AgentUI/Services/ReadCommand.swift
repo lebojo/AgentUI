@@ -6,8 +6,6 @@ struct ReadCommandError: LocalizedError {
     var errorDescription: String? { message }
 }
 
-/// Bounded, cancellable subprocesses for read-only inspector queries.
-/// Arguments are passed directly; stdout and stderr remain separate for JSON/NUL parsing.
 enum ReadCommand {
     static func executable(_ name: String) -> URL? {
         let paths = (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":").map(String.init)
@@ -17,7 +15,8 @@ enum ReadCommand {
     }
 
     static func run(_ executable: URL, _ arguments: [String], at path: String,
-                    timeout: TimeInterval = 20, limit: Int = 2_097_152) async throws -> Data {
-        try await CommandRunner.run(executable, arguments, at: path, timeout: timeout, limit: limit, readOnly: true)
+                    timeout: TimeInterval = 20, limit: Int = 2_097_152, gitConfiguration: [String: String] = [:]) async throws -> Data {
+        try await CommandRunner.run(executable, arguments, at: path, timeout: timeout, limit: limit, readOnly: true,
+                                    gitConfiguration: gitConfiguration)
     }
 }

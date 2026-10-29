@@ -88,15 +88,11 @@ struct RepositoryDiscoveryResult: Sendable {
 }
 
 enum RepositoryDiscovery {
-    static func repositories(in folder: URL) throws -> [URL] {
-        try scan(in: folder).repositories
+    static func repositories(in folder: URL) async throws -> [URL] {
+        try await scan(in: folder).repositories
     }
 
-    @concurrent static func discover(in folder: URL) async throws -> RepositoryDiscoveryResult {
-        try scan(in: folder)
-    }
-
-    static func scan(in folder: URL) throws -> RepositoryDiscoveryResult {
+    @concurrent static func scan(in folder: URL) async throws -> RepositoryDiscoveryResult {
         let fm = FileManager.default
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isPackageKey, .isSymbolicLinkKey]
         let excluded: Set<String> = ["node_modules", "Pods", "Carthage", "DerivedData", "venv"]

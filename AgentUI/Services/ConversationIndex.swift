@@ -37,7 +37,6 @@ actor ConversationIndex {
 
     func conversations(at path: String) -> [AgentConversation] {
         (claudeConversations(at: path) + codexConversations(at: path) + copilotConversations(at: path) + openCodeConversations(at: path))
-            .filter { AgentConversation.isValidSessionID($0.sessionID) }
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 

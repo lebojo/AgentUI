@@ -4,24 +4,25 @@ import os
 
 enum CommandRunner {
     private static let registry = Registry()
-    private static let hardenedGitConfiguration = ["core.fsmonitor": "false"]
 
     static func cancelAll() { registry.cancelAll() }
 
     static func run(_ executable: URL, _ arguments: [String], at path: String,
-                    timeout: TimeInterval, limit: Int, readOnly: Bool) async throws -> Data {
+                    timeout: TimeInterval, limit: Int, readOnly: Bool,
+                    gitConfiguration: [String: String] = [:]) async throws -> Data {
         let job = Job()
         let id = UUID()
         registry.add(job, id: id)
         defer { registry.remove(id) }
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
-            return try await execute(job, executable: executable, arguments: arguments, at: path,
-                                     timeout: timeout, limit: limit, readOnly: readOnly)
+            return try await execute(job, executable: executable, arguments: arguments, at: path, timeout: timeout, limit: limit,
+                                     readOnly: readOnly, gitConfiguration: gitConfiguration)
         } onCancel: { job.stop(.cancelled) }
     }
 
-    static func environment(readOnly: Bool, base: [String: String] = ProcessInfo.processInfo.environment) -> [String: String] {
+    static func environment(readOnly: Bool, gitConfiguration: [String: String] = [:],
+                            base: [String: String] = ProcessInfo.processInfo.environment) -> [String: String] {
         var environment = base
         environment["GIT_TERMINAL_PROMPT"] = "0"
         if readOnly { environment["GIT_OPTIONAL_LOCKS"] = "0" }
@@ -29,18 +30,12 @@ enum CommandRunner {
         environment["GH_PAGER"] = "cat"
         environment["NO_COLOR"] = "1"
         environment.removeValue(forKey: "GH_DEBUG")
-        var count = environment["GIT_CONFIG_COUNT"].flatMap(Int.init) ?? 0
-        for (key, value) in hardenedGitConfiguration.sorted(by: { $0.key < $1.key }) {
-            environment["GIT_CONFIG_KEY_\(count)"] = key
-            environment["GIT_CONFIG_VALUE_\(count)"] = value
-            count += 1
-        }
-        environment["GIT_CONFIG_COUNT"] = String(count)
-        return environment
+        return GitConfiguration.appending(gitConfiguration.merging(GitConfiguration.hardened) { $1 }, to: environment)
     }
 
     @concurrent private static func execute(_ job: Job, executable: URL, arguments: [String], at path: String,
-                                            timeout: TimeInterval, limit: Int, readOnly: Bool) async throws -> Data {
+                                            timeout: TimeInterval, limit: Int, readOnly: Bool,
+                                            gitConfiguration: [String: String]) async throws -> Data {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("agentui-command-\(UUID())")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -49,7 +44,8 @@ enum CommandRunner {
         FileManager.default.createFile(atPath: errURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
         let output = try FileHandle(forWritingTo: outURL), error = try FileHandle(forWritingTo: errURL)
         defer { try? output.close(); try? error.close() }
-        let pid = try job.start(executable: executable.path, arguments: arguments, environment: environment(readOnly: readOnly),
+        let pid = try job.start(executable: executable.path, arguments: arguments,
+                                environment: environment(readOnly: readOnly, gitConfiguration: gitConfiguration),
                                 directory: path, output: output.fileDescriptor, error: error.fileDescriptor)
         let queue = DispatchQueue(label: "AgentUI.command", qos: .utility)
         let timer = DispatchSource.makeTimerSource(queue: queue)

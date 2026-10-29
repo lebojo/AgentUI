@@ -62,7 +62,7 @@ import Foundation
         let fifo = mailbox.appendingPathComponent("fifo.request")
         try require(mkfifo(fifo.path, 0o600) == 0, "Create FIFO fixture")
         let oversized = mailbox.appendingPathComponent("oversized.request")
-        try Data(repeating: 0x20, count: BridgeMailbox.requestLimit + 1).write(to: oversized)
+        try Data(repeating: 0x20, count: BridgeMailbox.Envelope.request.limit + 1).write(to: oversized)
         for hostile in [linked, fifo, oversized] {
             do { _ = try await BridgeMailbox.request(at: hostile); throw WorkspaceError(message: "FAIL: hostile request \(hostile.lastPathComponent) accepted") }
             catch let error as WorkspaceError where error.message.hasPrefix("FAIL") { throw error }
@@ -144,7 +144,7 @@ import Foundation
         let alias = importRoot.appendingPathComponent("API alias")
         try fm.createSymbolicLink(at: alias, withDestinationURL: repository)
         try fm.createSymbolicLink(at: importRoot.appendingPathComponent("loop"), withDestinationURL: importRoot)
-        let repositories = try RepositoryDiscovery.repositories(in: importRoot)
+        let repositories = try await RepositoryDiscovery.repositories(in: importRoot)
         try require(Set(repositories.map(\.path)) == Set([repository, unborn, nested].map(WorkspaceDisk.canonicalPath)),
                     "Discover exactly repository roots, deduplicate symlinks, skip loops and repo contents")
         let relative = importRoot.appendingPathComponent("Relative gitfile")
@@ -154,19 +154,19 @@ import Foundation
         try require(GitRepository.containing(relative.path)?.branch.name == "relative", "Relative gitfile")
         let containerAlias = root.appendingPathComponent("Studio alias")
         try fm.createSymbolicLink(at: containerAlias, withDestinationURL: importRoot)
-        let fromAlias = try RepositoryDiscovery.repositories(in: containerAlias)
-        let fromOriginal = try RepositoryDiscovery.repositories(in: importRoot)
+        let fromAlias = try await RepositoryDiscovery.repositories(in: containerAlias)
+        let fromOriginal = try await RepositoryDiscovery.repositories(in: importRoot)
         try require(fromAlias.map(\.path) == fromOriginal.map(\.path), "A selected symlink to a container imports its repositories")
         if geteuid() != 0 {
             let unreadable = importRoot.appendingPathComponent("Private folder")
             try fm.createDirectory(at: unreadable, withIntermediateDirectories: true)
             try fm.setAttributes([.posixPermissions: 0o000], ofItemAtPath: unreadable.path)
             defer { try? fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: unreadable.path) }
-            let partial = try RepositoryDiscovery.scan(in: importRoot)
+            let partial = try await RepositoryDiscovery.scan(in: importRoot)
             try require(partial.repositories.map(\.path) == fromOriginal.map(\.path), "Unreadable sibling must not discard accessible repositories")
             try require(partial.skippedDirectories.contains(WorkspaceDisk.canonicalPath(unreadable)), "Report skipped directories")
             do {
-                _ = try RepositoryDiscovery.scan(in: unreadable)
+                _ = try await RepositoryDiscovery.scan(in: unreadable)
                 throw WorkspaceError(message: "FAIL: unreadable root should throw")
             } catch is CocoaError {}
         }
