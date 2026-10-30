@@ -61,10 +61,3 @@ import Observation
     func clipboardCopy(source: TerminalView, content: Data) {}
     func rangeChanged(source: TerminalView, startY: Int, endY: Int) {}
 }
-
-struct MobileTerminalView: UIViewRepresentable {
-    let terminal: TerminalView
-
-    func makeUIView(context: Context) -> TerminalView { terminal }
-    func updateUIView(_ uiView: TerminalView, context: Context) {}
-}

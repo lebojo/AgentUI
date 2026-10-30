@@ -36,7 +36,7 @@ import Observation
     }
 
     func useJournal(_ messages: [SessionMessage], from source: SessionChatSource) {
-        self.source = source
+        if self.source != source { self.source = source }
         if self.messages != messages { self.messages = messages }
     }
 

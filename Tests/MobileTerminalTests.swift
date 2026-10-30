@@ -41,7 +41,7 @@ private struct Viewport: View {
         let view = session.view!
         let terminal = view.getTerminal()
         func apply(_ text: String, columns: Int = 90, rows: Int = 35) {
-            session.apply(RemoteTerminalSnapshot(identity: session.identity, isChat: false, output: Data(text.utf8), offset: 0, reset: false,
+            session.apply(RemoteTerminalSnapshot(identity: session.identity, isChat: false, output: Data(text.utf8), reset: false,
                                                 columns: columns, rows: rows, transcript: [], transcriptDropped: 0, transcriptStart: 0, transcriptAppend: nil,
                                                 hasExited: false, exitCode: nil))
         }

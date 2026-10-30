@@ -53,8 +53,7 @@ enum UsageService {
            let token = ClaudeCredentials.accessToken(in: data) {
             return token
         }
-        let directory = ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"].map(URL.init(fileURLWithPath:))
-            ?? home.appendingPathComponent(".claude")
+        let directory = ClaudeTranscript.configDirectory(home: home)
         return (try? Data(contentsOf: directory.appendingPathComponent(".credentials.json"))).flatMap(ClaudeCredentials.accessToken)
     }
 

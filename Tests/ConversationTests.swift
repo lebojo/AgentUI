@@ -104,7 +104,7 @@ enum ConversationTests {
             INSERT INTO session_v2 VALUES ('ses_v2', '\(path)', 1797000000000);
             """)
 
-        let index = ConversationIndex(home: home)
+        let index = ConversationIndex(home: home, environment: [:])
         let conversations = await index.conversations(at: path)
         let titles = Dictionary(uniqueKeysWithValues: conversations.map { ($0.id, $0.title) })
         try require(titles == [

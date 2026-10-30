@@ -81,7 +81,6 @@ enum RemoteRequest: Codable, Sendable {
     case watch(version: Int, terminal: UUID?, prefersChat: Bool)
     case streamInput(request: UUID, terminal: UUID, data: Data, message: String?)
     case workspace(version: Int)
-    case terminal(id: UUID, offset: Int)
     case input(id: UUID, data: Data, message: String?)
     case newTerminal(project: UUID, worktree: UUID)
     case children(terminal: UUID, path: String)

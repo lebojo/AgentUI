@@ -46,7 +46,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         path = context.worktree.path
         currentDirectory = context.worktree.path
         runsShell = command.isEmpty
-        claudeConfig = Self.claudeConfig(environment: environment)
+        claudeConfig = ClaudeTranscript.configDirectory()
         view = ActivityTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
         super.init()
         view.processDelegate = self
@@ -78,11 +78,6 @@ final class ActivityTerminalView: SharedProcessTerminalView {
             hasExited = true
             view.feed(text: "Impossible de démarrer le terminal.\r\n")
         }
-    }
-
-    private static func claudeConfig(environment: [String: String]) -> URL {
-        let directory = environment["CLAUDE_CONFIG_DIR"] ?? ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"]
-        return directory.map { URL(fileURLWithPath: $0) } ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude")
     }
 
     func acquireChat() {
@@ -174,7 +169,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         let messages = chat ? transcript.messages : []
         let delta = SessionTranscriptDelta(previous: previousMessages, current: messages)
         let terminal = view.getTerminal()
-        return RemoteTerminalSnapshot(identity: identity, isChat: chat, output: chat ? Data() : bytes.data, offset: outputRevision, reset: bytes.reset,
+        return RemoteTerminalSnapshot(identity: identity, isChat: chat, output: chat ? Data() : bytes.data, reset: bytes.reset,
                                       columns: terminal.cols, rows: terminal.rows,
                                       transcript: delta.messages, transcriptDropped: delta.dropped, transcriptStart: delta.start,
                                       transcriptAppend: delta.append,
@@ -195,7 +190,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     }
 
     func updateAgent(_ process: AgentProcess?) {
-        let running = hasExited ? nil : process
+        let running = hasExited ? nil : process?.keepingTranscript(of: agent)
         let status = running.map { process in
             process.claudeStatus.flatMap(AgentStatus.init(claudeStatus:))
                 ?? AgentStatus(screen: view.visibleLines, lastOutput: view.lastOutput)

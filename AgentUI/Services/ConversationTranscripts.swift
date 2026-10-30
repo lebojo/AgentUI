@@ -78,6 +78,11 @@ struct ClaudeTranscript: Equatable, Sendable {
         let content: MessageContent?
     }
 
+    static func configDirectory(home: URL = FileManager.default.homeDirectoryForCurrentUser,
+                                environment: [String: String] = ProcessInfo.processInfo.environment) -> URL {
+        environment["CLAUDE_CONFIG_DIR"].map { URL(fileURLWithPath: $0) } ?? home.appendingPathComponent(".claude")
+    }
+
     static func directoryName(for path: String) -> String {
         String(path.unicodeScalars.map { $0.isASCII && CharacterSet.alphanumerics.contains($0) ? Character($0) : "-" })
     }

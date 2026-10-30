@@ -87,6 +87,25 @@ private final class Delegate: TerminalDelegate {
         sync()
         print("PASS alternate-screen exit, independent scroll position and host resize")
 
+        let wide = Terminal(delegate: Delegate()), widePeer = Terminal(delegate: Delegate())
+        wide.resize(cols: 300, rows: 120)
+        widePeer.resize(cols: 300, rows: 120)
+        var colorful = ""
+        for row in 0..<180 {
+            for column in 0..<300 {
+                colorful += "\u{1b}[1;3;4:3;38;2;\(row % 256);\(column % 256);7;48;2;\(column % 256);\(row % 256);9;58;5;\((row + column) % 256)m#"
+            }
+            if row < 179 { colorful += "\r\n" }
+        }
+        wide.feed(text: colorful)
+        let checkpoint = TerminalScreen(terminal: wide, modes: TerminalMirrorModes()).output(after: nil)
+        require(checkpoint.data.count <= TerminalScreen.outputLimit, "A checkpoint stays within the frame budget")
+        widePeer.feed(byteArray: Array(checkpoint.data))
+        let mirrored = TerminalScreen(terminal: widePeer, modes: TerminalMirrorModes())
+        require(mirrored.history.isEmpty, "The oversized checkpoint drops its scrollback")
+        require(mirrored.lines == TerminalScreen(terminal: wide, modes: TerminalMirrorModes()).lines, "Dropping scrollback keeps the live screen exact")
+        print("PASS oversized checkpoint keeps the live screen within the frame budget")
+
         var scanner = TerminalMirrorModes()
         for fragment in ["\u{1b}]0;fake \u{1b}[?66h", "\u{1b}\\", "\u{1b}[?", "66;1006h", "\u{1b}[?25l"] {
             scanner.append(Data(fragment.utf8))

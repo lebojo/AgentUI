@@ -17,8 +17,16 @@ struct AgentProcess: Equatable, Sendable {
         return title.map { AgentConversation(agent: agent, sessionID: sessionID, title: $0, updatedAt: .now).shortTitle }
     }
 
+    func keepingTranscript(of previous: AgentProcess?) -> AgentProcess {
+        guard transcriptPath == nil, let previous, previous.agent == agent, previous.startedAt == startedAt,
+              previous.sessionID == sessionID else { return self }
+        var process = self
+        process.transcriptPath = previous.transcriptPath
+        return process
+    }
+
     static func find(under shellPID: Int32, fallbackDirectory: String,
-                     claudeConfig: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude")) -> AgentProcess? {
+                     claudeConfig: URL = ClaudeTranscript.configDirectory()) -> AgentProcess? {
         var pending = [shellPID]
         var visited: Set<Int32> = []
         while !pending.isEmpty, visited.count < 128 {

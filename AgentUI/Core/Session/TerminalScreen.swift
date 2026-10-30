@@ -2,6 +2,8 @@ import Foundation
 import SwiftTerm
 
 struct TerminalScreen {
+    static let outputLimit = 2_000_000
+
     let columns: Int
     let rows: Int
     let alternate: Bool
@@ -101,11 +103,18 @@ struct TerminalScreen {
             }
         }
         if !reset, previous?.lines == lines, previous?.state == state, previousEnd == historyEnd { return (Data(), false) }
+        let appended = reset ? historyStart : max(historyStart, previousEnd)
+        let result = render(reset: reset, from: appended, previous: previous)
+        guard result.utf8.count > Self.outputLimit, appended < historyEnd else { return (Data(result.utf8), reset) }
+        return (Data(render(reset: reset, from: historyEnd, previous: previous).utf8), reset)
+    }
+
+    private func render(reset: Bool, from appended: Int, previous: TerminalScreen?) -> String {
+        let historyEnd = historyStart + history.count
         var result = ""
         if reset { result += "\u{1b}[?1047\(alternate ? "h" : "l")" }
         result += "\u{1b}[?6;69;7l\u{1b}[r\u{1b}[4l\u{1b}(B\u{f}"
         if reset { result += "\u{1b}[0m\u{1b}[3J\u{1b}[2J" }
-        let appended = reset ? historyStart : max(historyStart, previousEnd)
         for row in appended..<historyEnd {
             result += "\u{1b}[1;1H\u{1b}[0m\u{1b}[2K" + history[row - historyStart]
             result += "\u{1b}[\(rows);1H\n"
@@ -114,7 +123,7 @@ struct TerminalScreen {
             result += "\u{1b}[\(row + 1);1H\u{1b}[0m\u{1b}[2K" + lines[row]
         }
         result += state
-        return (Data(result.utf8), reset)
+        return result
     }
 
     private static func sgr(_ attribute: Attribute) -> String {

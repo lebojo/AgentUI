@@ -4,7 +4,6 @@ struct RemoteTerminalSnapshot: Codable, Sendable {
     let identity: UUID
     let isChat: Bool
     let output: Data
-    let offset: Int
     let reset: Bool
     let columns: Int
     let rows: Int

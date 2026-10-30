@@ -14,6 +14,7 @@ actor ConversationIndex {
     }
 
     private let home: URL
+    private let claudeConfig: URL
     private var claudeCache: [String: Cached<ClaudeTranscript>] = [:]
     private var codexCache: [String: Cached<CodexRollout?>] = [:]
     private var copilotCache: [String: Cached<CopilotWorkspace?>] = [:]
@@ -21,15 +22,17 @@ actor ConversationIndex {
     private var openCodeCache: (stamps: [Stamp?], sessions: [OpenCodeSessions.Session])?
     private var runningCache: [String: (checked: ContinuousClock.Instant, sessions: Set<String>)] = [:]
 
-    init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
+    init(home: URL = FileManager.default.homeDirectoryForCurrentUser,
+         environment: [String: String] = ProcessInfo.processInfo.environment) {
         self.home = home
+        claudeConfig = ClaudeTranscript.configDirectory(home: home, environment: environment)
     }
 
     static var watchedDirectories: [String] { shared.watchedDirectories }
 
     nonisolated var watchedDirectories: [String] {
-        [".claude/projects", ".codex/sessions", ".copilot/session-state", ".local/share/opencode"]
-            .map { home.appendingPathComponent($0, isDirectory: true).path }
+        [claudeConfig.appendingPathComponent("projects", isDirectory: true).path]
+            + [".codex/sessions", ".copilot/session-state", ".local/share/opencode"].map { home.appendingPathComponent($0, isDirectory: true).path }
     }
 
     static func load(at path: String, runningMaximumAge: Duration = .seconds(10)) async -> [AgentConversation] {
@@ -53,7 +56,7 @@ actor ConversationIndex {
     }
 
     private func claudeConversations(at path: String) -> [AgentConversation] {
-        ClaudeTranscript.directories(for: path, in: home.appendingPathComponent(".claude/projects", isDirectory: true)).flatMap { directory in
+        ClaudeTranscript.directories(for: path, in: claudeConfig.appendingPathComponent("projects", isDirectory: true)).flatMap { directory in
             Self.contents(of: directory).filter { $0.pathExtension == "jsonl" }.compactMap { url -> AgentConversation? in
                 guard let stamp = Self.stamp(url) else { return nil }
                 let transcript = cached(url, stamp: stamp, in: &claudeCache) { ClaudeTranscript.read(url) }

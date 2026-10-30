@@ -20,6 +20,8 @@ import Observation
     @ObservationIgnored private var installedAgents: InstalledAgents?
     @ObservationIgnored private var listener: NWListener?
     @ObservationIgnored private var listenerRetry: Task<Void, Never>?
+    @ObservationIgnored private var watchers = 0
+    @ObservationIgnored private var agentRefresh: Task<Void, Never>?
     @ObservationIgnored private var jobs: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var connections: [UUID: (connection: NWConnection, peer: String)] = [:]
 
@@ -163,6 +165,8 @@ import Observation
             return
         }
         _ = terminal.flatMap { store.context(for: $0) }.map { store.sessions.start($0) }
+        beginWatching(store)
+        defer { endWatching() }
         let notifications = Task { await notifyInspectorChanges(on: connection, terminal: terminal) }
         defer { notifications.cancel() }
         var sessionIdentity: UUID?
@@ -214,7 +218,9 @@ import Observation
                 _ = installedAgents?.agents
             } onChange: { continuation.yield(()) }
             try await Task.sleep(for: .milliseconds(100))
-            let workspace = store.state
+            var workspace = store.state
+            workspace.selection = nil
+            workspace.collapsed = []
             if previousWorkspace != workspace {
                 try await RemoteChannel.send(RemoteEvent.workspace(workspace), on: connection)
                 previousWorkspace = workspace
@@ -262,6 +268,24 @@ import Observation
         }
     }
 
+    private func beginWatching(_ store: WorkspaceStore) {
+        watchers += 1
+        guard watchers == 1 else { return }
+        agentRefresh = Task { [weak store] in
+            while !Task.isCancelled {
+                await store?.sessions.refreshAgents()
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            }
+        }
+    }
+
+    private func endWatching() {
+        watchers -= 1
+        guard watchers == 0 else { return }
+        agentRefresh?.cancel()
+        agentRefresh = nil
+    }
+
     private func notifyInspectorChanges(on connection: NWConnection, terminal: UUID?) async {
         guard let path = terminal.flatMap({ store?.context(for: $0) })?.worktree.path else { return }
         let repository = await FileEvents.repositoryChanges(at: path)
@@ -283,8 +307,6 @@ import Observation
         case .workspace(let version):
             guard version == RemoteProtocol.version else { throw RemoteError(message: "Versions incompatibles.") }
             return try .success(store.state)
-        case .terminal(let id, _):
-            return try .success(store.sessions.start(try context(id)).snapshot(previousMessages: [], chat: true))
         case .input(let id, let data, let message):
             try requireWritable()
             guard data.count <= 65_536, (message?.utf8.count ?? 0) <= 65_536 else { throw RemoteError(message: "Message trop long.") }
