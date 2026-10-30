@@ -1,16 +1,15 @@
 import SwiftUI
-import AppKit
 
 enum Palette {
     static let accent = Color.accentColor
 
     static let textPrimary = Color.primary
     static let textSecondary = Color.secondary
-    static let textTertiary = Color(nsColor: .tertiaryLabelColor)
+    static let textTertiary = Color.systemTertiaryLabel
 
-    static let surface = Color(nsColor: .textBackgroundColor)
-    static let control = Color(nsColor: .controlBackgroundColor)
-    static let fill = Color(nsColor: .quaternaryLabelColor)
+    static let surface = Color.systemSurface
+    static let control = Color.systemControl
+    static let fill = Color.systemFill
     static let bar = Material.bar
 
     static let success = Color.green

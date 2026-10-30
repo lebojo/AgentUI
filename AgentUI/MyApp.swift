@@ -16,6 +16,7 @@ import AppKit
     var store: WorkspaceStore?
     var bridge: AgentBridge?
     var closeCommand: CloseTerminalCommand?
+    var host: LocalHost?
 
     private var finishingTermination = false
 
@@ -48,6 +49,7 @@ import AppKit
         CommandRunner.cancelAll()
         store?.sessions.stopAll()
         bridge?.stop()
+        host?.stop()
     }
 }
 
@@ -57,6 +59,8 @@ struct AgentUIApplication: App {
     @State private var usage = UsageStore()
     @State private var settings = SettingsStore()
     @State private var visibility = AppVisibility()
+    @State private var host = LocalHost()
+    @State private var installedAgents = InstalledAgents()
 
     var body: some Scene {
         Window("AgentUI", id: "workspace") {
@@ -65,8 +69,12 @@ struct AgentUIApplication: App {
                 .environment(usage)
                 .environment(settings)
                 .environment(visibility)
+                .environment(installedAgents)
+                .task { await installedAgents.refresh() }
                 .onAppear {
                     delegate.store = store
+                    delegate.host = host
+                    host.configure(store: store, settings: settings, installedAgents: installedAgents)
                     if delegate.closeCommand == nil { delegate.closeCommand = CloseTerminalCommand(store: store) }
                     if delegate.bridge == nil {
                         do { delegate.bridge = try AgentBridge(store: store) }
@@ -93,6 +101,7 @@ struct AgentUIApplication: App {
         Settings {
             SettingsView()
                 .environment(settings)
+                .environment(host)
         }
     }
 }

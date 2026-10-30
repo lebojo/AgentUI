@@ -153,7 +153,7 @@ import Foundation
         try fm.createSymbolicLink(at: alias, withDestinationURL: repository)
         try fm.createSymbolicLink(at: importRoot.appendingPathComponent("loop"), withDestinationURL: importRoot)
         let repositories = try await RepositoryDiscovery.repositories(in: importRoot)
-        try require(Set(repositories.map(\.path)) == Set([repository, unborn, nested].map(WorkspaceDisk.canonicalPath)),
+        try require(Set(repositories.map(\.path)) == Set([repository, unborn, nested].map(WorkspacePath.canonical)),
                     "Discover exactly repository roots, deduplicate symlinks, skip loops and repo contents")
         let relative = importRoot.appendingPathComponent("Relative gitfile")
         try fm.createDirectory(at: relative, withIntermediateDirectories: true)
@@ -172,7 +172,7 @@ import Foundation
             defer { try? fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: unreadable.path) }
             let partial = try await RepositoryDiscovery.scan(in: importRoot)
             try require(partial.repositories.map(\.path) == fromOriginal.map(\.path), "Unreadable sibling must not discard accessible repositories")
-            try require(partial.skippedDirectories.contains(WorkspaceDisk.canonicalPath(unreadable)), "Report skipped directories")
+            try require(partial.skippedDirectories.contains(WorkspacePath.canonical(unreadable)), "Report skipped directories")
             do {
                 _ = try await RepositoryDiscovery.scan(in: unreadable)
                 throw WorkspaceError(message: "FAIL: unreadable root should throw")
@@ -229,16 +229,21 @@ import Foundation
         defer { shell.terminate() }
         var detected: AgentProcess?
         for _ in 0..<50 {
-            detected = AgentProcess.find(under: shell.processIdentifier, fallbackDirectory: "/", home: fakeHome)
+            detected = AgentProcess.find(under: shell.processIdentifier, fallbackDirectory: "/", claudeConfig: fakeHome.appendingPathComponent(".claude"))
             if detected != nil { break }
             try await Task.sleep(for: .milliseconds(50))
         }
         guard let detected else { throw WorkspaceError(message: "FAIL: agent child process not found") }
-        try require(detected.agent == .claude && detected.directory == WorkspaceDisk.canonicalPath(root) && detected.sessionID == nil, "Find an agent child process and its directory")
+        try require(detected.agent == .claude && detected.directory == WorkspacePath.canonical(root) && detected.sessionID == nil, "Find an agent child process and its directory")
         let childPID = agentChild(of: shell.processIdentifier)
         try #"{"pid":\#(childPID),"sessionId":"session-42"}"#.write(to: fakeHome.appendingPathComponent(".claude/sessions/\(childPID).json"), atomically: true, encoding: .utf8)
-        let withSession = AgentProcess.find(under: shell.processIdentifier, fallbackDirectory: "/", home: fakeHome)
-        try require(withSession?.sessionID == "session-42", "Read the Claude session of the agent process")
+        let withSession = AgentProcess.find(under: shell.processIdentifier, fallbackDirectory: "/", claudeConfig: fakeHome.appendingPathComponent(".claude"))
+        try require(withSession?.sessionID == "session-42" && withSession?.transcriptPath == nil, "Read the Claude session of the agent process")
+        let sessionID = UUID().uuidString
+        try #"{"pid":\#(childPID),"sessionId":"\#(sessionID)","cwd":"/Users/me/My Project"}"#.write(to: fakeHome.appendingPathComponent(".claude/sessions/\(childPID).json"), atomically: true, encoding: .utf8)
+        let withTranscript = AgentProcess.find(under: shell.processIdentifier, fallbackDirectory: "/", claudeConfig: fakeHome.appendingPathComponent(".claude"))
+        try require(withTranscript?.transcriptPath == fakeHome.appendingPathComponent(".claude/projects/-Users-me-My-Project/\(sessionID).jsonl").path,
+                    "Locate the Claude transcript of the agent session")
         print("PASS agent process detection and conversation titles")
 
         let now = Date()

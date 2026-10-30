@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 struct ExplorerDirectory: View {
     @State private var entries: [ExplorerEntry] = []
@@ -7,6 +6,7 @@ struct ExplorerDirectory: View {
     @State private var loaded = false
 
     let url: URL
+    let source: any InspectorSource
 
     var body: some View {
         Group {
@@ -14,12 +14,12 @@ struct ExplorerDirectory: View {
             else if !loaded { ProgressView().controlSize(.small) }
             else if entries.isEmpty { Text("Dossier vide").font(Typography.caption).foregroundStyle(Palette.textSecondary) }
             ForEach(entries) { entry in
-                ExplorerRow(entry: entry)
+                ExplorerRow(entry: entry, source: source)
             }
         }
         .task(id: url) {
             do {
-                let result = try await InspectorService.children(at: url)
+                let result = try await source.children(at: url)
                 guard !Task.isCancelled else { return }
                 entries = result; loaded = true; error = nil
             } catch { self.error = error.localizedDescription; loaded = true }
@@ -33,12 +33,13 @@ private struct ExplorerRow: View {
     @State private var expanded = false
 
     let entry: ExplorerEntry
+    let source: any InspectorSource
 
     var body: some View {
         Group {
             if entry.isDirectory {
                 DisclosureGroup(isExpanded: $expanded) {
-                    if expanded { ExplorerDirectory(url: entry.url) }
+                    if expanded { ExplorerDirectory(url: entry.url, source: source) }
                 } label: { Label(entry.name, systemImage: "folder").lineLimit(1) }
             } else {
                 Button { previews.open(entry.url) } label: {
@@ -49,8 +50,10 @@ private struct ExplorerRow: View {
         }
         .font(Typography.body).help(entry.url.path)
         .contextMenu {
-            Button("Ouvrir dans l’application par défaut") { NSWorkspace.shared.open(entry.url) }
-            Button("Afficher dans le Finder") { NSWorkspace.shared.activateFileViewerSelecting([entry.url]) }
+            if source.canOpenLocalFiles {
+                Button("Ouvrir dans l’application par défaut") { source.openLocalFile(entry.url) }
+                Button("Afficher dans le Finder") { source.revealLocalFile(entry.url) }
+            }
         }
     }
 }
@@ -59,14 +62,15 @@ struct TextPreviewSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let preview: TextPreview
+    let source: any InspectorSource
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 Text(preview.title).font(Typography.headline).lineLimit(1).truncationMode(.middle)
                 Spacer()
-                if let url = preview.url {
-                    Button("Ouvrir") { NSWorkspace.shared.open(url) }
+                if source.canOpenLocalFiles, let url = preview.url {
+                    Button("Ouvrir") { source.openLocalFile(url) }
                 }
                 Button("Fermer") { dismiss() }.keyboardShortcut(.cancelAction)
             }.padding()
@@ -75,6 +79,6 @@ struct TextPreviewSheet: View {
                 Text(preview.text).font(Typography.code)
                     .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .topLeading).padding()
             }.background(Palette.surface)
-        }.frame(minWidth: Dimension.PreviewSheet.minWidth, idealWidth: Dimension.PreviewSheet.idealWidth, minHeight: Dimension.PreviewSheet.minHeight, idealHeight: Dimension.PreviewSheet.idealHeight)
+        }.previewSheetFrame(idealWidth: Dimension.PreviewSheet.idealWidth, idealHeight: Dimension.PreviewSheet.idealHeight)
     }
 }

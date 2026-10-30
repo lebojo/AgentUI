@@ -4,28 +4,26 @@ import AppKit
 struct ContentView: View {
     @AppStorage("inspectorVisible") private var inspectorVisible = true
 
+    @Environment(AppVisibility.self) private var visibility
+
     @State private var sheet: WorkspaceSheet?
     @State private var removal: Removal?
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     @Bindable var store: WorkspaceStore
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
+        WorkspaceSplitView(inspectorVisible: $inspectorVisible) {
             WorkspaceSidebar(sheet: $sheet, removal: $removal, store: store)
-                .navigationSplitViewColumnWidth(min: Dimension.Sidebar.minWidth, ideal: Dimension.Sidebar.idealWidth, max: Dimension.Sidebar.maxWidth)
-                .navigationTitle("AgentUI")
         } detail: {
             if let context = store.selectedContext {
                 TerminalDetail(store: store, context: context)
             } else {
                 WorkspaceWelcomeView(sheet: $sheet, store: store)
             }
+        } inspector: {
+            WorkspaceInspector(context: store.selectedContext, source: LocalInspectorSource(store: store))
         }
-        .inspector(isPresented: $inspectorVisible) {
-            WorkspaceInspector(store: store)
-                .inspectorColumnWidth(min: Dimension.Inspector.minWidth, ideal: Dimension.Inspector.idealWidth, max: Dimension.Inspector.maxWidth)
-        }
+        .environment(\.workspaceVisible, visibility.isVisible)
         .disabled(store.isReadOnly)
         .safeAreaInset(edge: .top, spacing: 0) {
             if store.isReadOnly {
@@ -45,16 +43,7 @@ struct ContentView: View {
                 .font(Typography.body).padding(Spacing.l).background(Palette.bar)
             }
         }
-        .navigationSplitViewStyle(.balanced)
         .frame(minWidth: Dimension.Window.minWidth, minHeight: Dimension.Window.minHeight)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { inspectorVisible.toggle() } label: { Image(systemName: "sidebar.right") }
-                    .help(inspectorVisible ? "Masquer le panneau de droite" : "Afficher le panneau de droite")
-                    .accessibilityLabel("Afficher ou masquer le panneau de droite")
-            }
-
-        }
         .modifier(WorkspaceMonitors(store: store))
         .sheet(item: $sheet) { item in
             WorkspaceEditor(store: store, sheet: item)

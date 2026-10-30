@@ -48,16 +48,12 @@ actor ConversationIndex {
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    static func claudeDirectoryName(for path: String) -> String {
-        String(path.unicodeScalars.map { $0.isASCII && CharacterSet.alphanumerics.contains($0) ? Character($0) : "-" })
-    }
-
     static func samePath(_ recorded: String?, _ path: String) -> Bool {
         recorded?.compare(path, options: .caseInsensitive) == .orderedSame
     }
 
     private func claudeConversations(at path: String) -> [AgentConversation] {
-        claudeDirectories(for: path).flatMap { directory in
+        ClaudeTranscript.directories(for: path, in: home.appendingPathComponent(".claude/projects", isDirectory: true)).flatMap { directory in
             Self.contents(of: directory).filter { $0.pathExtension == "jsonl" }.compactMap { url -> AgentConversation? in
                 guard let stamp = Self.stamp(url) else { return nil }
                 let transcript = cached(url, stamp: stamp, in: &claudeCache) { ClaudeTranscript.read(url) }
@@ -66,16 +62,6 @@ actor ConversationIndex {
                                          title: title, updatedAt: stamp.modified)
             }
         }
-    }
-
-    private func claudeDirectories(for path: String) -> [URL] {
-        let projects = home.appendingPathComponent(".claude/projects", isDirectory: true)
-        let name = Self.claudeDirectoryName(for: path)
-        let exact = projects.appendingPathComponent(name, isDirectory: true)
-        if FileManager.default.fileExists(atPath: exact.path) { return [exact] }
-        guard name.count > 200 else { return [] }
-        let prefix = String(name.prefix(200))
-        return Self.contents(of: projects).filter { $0.lastPathComponent.hasPrefix(prefix) }
     }
 
     private func codexConversations(at path: String) -> [AgentConversation] {

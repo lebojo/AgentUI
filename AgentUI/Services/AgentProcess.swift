@@ -18,14 +18,14 @@ struct AgentProcess: Equatable, Sendable {
     }
 
     static func find(under shellPID: Int32, fallbackDirectory: String,
-                     home: URL = FileManager.default.homeDirectoryForCurrentUser) -> AgentProcess? {
+                     claudeConfig: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude")) -> AgentProcess? {
         var pending = [shellPID]
         var visited: Set<Int32> = []
         while !pending.isEmpty, visited.count < 128 {
             let pid = pending.removeFirst()
             guard pid > 0, visited.insert(pid).inserted else { continue }
             if let agent = agent(of: pid) {
-                let session = resolveSession(of: agent, in: subtree(of: pid), home: home)
+                let session = resolveSession(of: agent, in: subtree(of: pid), claudeConfig: claudeConfig)
                 return AgentProcess(agent: agent, startedAt: startDate(of: pid) ?? .distantPast,
                                     directory: TerminalProcessDirectory.read(pid: pid) ?? fallbackDirectory,
                                     sessionID: session.id, transcriptPath: session.path, claudeStatus: session.status)
@@ -83,19 +83,16 @@ struct AgentProcess: Equatable, Sendable {
         return agent(named: names)
     }
 
-    private static func resolveSession(of agent: ConversationAgent, in pids: [Int32], home: URL) -> (id: String?, path: String?, status: String?) {
+    private static func resolveSession(of agent: ConversationAgent, in pids: [Int32], claudeConfig: URL) -> (id: String?, path: String?, status: String?) {
         switch agent {
         case .claude:
-            struct Session: Decodable {
-                let sessionId: String
-                let status: String?
-            }
-            let sessions = home.appendingPathComponent(".claude/sessions", isDirectory: true)
+            let sessions = claudeConfig.appendingPathComponent("sessions", isDirectory: true)
             let session = pids.lazy.compactMap { pid in
                 (try? Data(contentsOf: sessions.appendingPathComponent("\(pid).json")))
-                    .flatMap { try? JSONDecoder().decode(Session.self, from: $0) }
+                    .flatMap { try? JSONDecoder().decode(ClaudeSession.self, from: $0) }
             }.first
-            return (session?.sessionId, nil, session?.status)
+            let projects = claudeConfig.appendingPathComponent("projects", isDirectory: true)
+            return (session?.sessionId, session?.transcript(in: projects)?.path, session?.status)
         case .codex:
             let rollout = pids.lazy.flatMap(openFiles).first { codexSessionID(inRolloutPath: $0) != nil }
             return (rollout.flatMap(codexSessionID(inRolloutPath:)), rollout, nil)
@@ -103,6 +100,17 @@ struct AgentProcess: Equatable, Sendable {
             return (pids.lazy.flatMap(openFiles).compactMap(copilotSessionID(inPath:)).first, nil, nil)
         case .openCode:
             return (nil, nil, nil)
+        }
+    }
+
+    private struct ClaudeSession: Decodable {
+        let sessionId: String
+        let status: String?
+        let cwd: String?
+
+        func transcript(in projects: URL) -> URL? {
+            guard let cwd, UUID(uuidString: sessionId) != nil else { return nil }
+            return ClaudeTranscript.url(sessionID: sessionId, cwd: cwd, projects: projects)
         }
     }
 

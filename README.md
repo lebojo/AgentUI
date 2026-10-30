@@ -63,6 +63,30 @@ xcodebuild -project AgentUI.xcodeproj -scheme AgentUI -configuration Debug \
 
 ## Usage
 
+### iPhone and iPad companion
+
+Select an iPhone or iPad destination with the same **AgentUI** scheme to build the companion (iOS/iPadOS 17+).
+On the Mac, enable **Settings → Accès local**. On the mobile device, open **Réglages**, enter the Mac's local IP address and the pairing code shown on the Mac, then connect. Keep the Mac awake with AgentUI running. Both apps must be built from compatible sources.
+
+The companion shares the Mac's projects and running sessions. **Settings → Affichage des sessions** chooses Chat or Terminal for every session on that device; the same preference is available on macOS under **Settings → Affichage**. Changing it preserves the process and mounts only the chosen renderer. The inspector button stays in the detail toolbar: SwiftUI presents a sheet on iPhone and a trailing inspector when the iPad has room. Files, conversations, Git diffs and checks use the shared inspector views.
+
+The local transport uses TCP port **52741** with TLS 1.2 (`TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256`). The pre-shared key is derived from the pairing code with PBKDF2-SHA256, and the ephemeral key exchange keeps recorded sessions private even if the code leaks later. Devices without the code cannot connect, and traffic is encrypted. Both devices keep the code in the Keychain. **Générer un nouveau code** on the Mac revokes every paired device. Sharing is off by default. Do not forward the port to the internet.
+
+For Claude Code, Chat follows the native JSONL transcript of the exact process running in the terminal. User messages, Markdown replies and collapsible tool results are distinct; terminal menus, spinners and shell echoes are not assistant messages. Association uses Claude's live session registry and process ancestry, including `CLAUDE_CONFIG_DIR`, rather than choosing the latest conversation in the worktree. This requires a Claude version publishing the `sessions/<pid>.json` registry (the installed CLI supports it). Ordinary shells and other agents retain the explicitly labelled terminal-output fallback. Authentication, approvals and interactive agent menus remain available in Terminal; this is not a full structured-agent RPC adapter.
+
+Transcript reads are incremental and file-event driven, shared between local and remote Chat viewers and released when unused. The first read is bounded to 2 MiB; displayed history to 200 rows / 256 KiB. Multiline prompts use bracketed paste followed by a separate submit key. The mobile terminal fits the host grid to the screen width and supports pinch zoom; changing the viewport or keyboard never independently resizes the emulator.
+
+The workspace and session use a persistent, bidirectional connection. Changes are coalesced at most ten times per second, unchanged workspaces aren't transmitted, Chat doesn't transfer raw terminal bytes, and Terminal doesn't transfer chat messages. The Mac interprets terminal output once: the companion receives changed screen rows and keyboard modes, with a complete checkpoint on reconnect. Scrollback checkpoints retain at most 200 lines / 16,384 cells; Chat history is capped at 256 KiB. Mobile layout never changes the Mac’s terminal grid. The terminal mirror carries styled text and input modes; inline terminal images and OSC hyperlink metadata are not transported. Backgrounding the mobile app cancels its connection and inspector queries; the Mac's processes continue running.
+
+The navigation shell, inspector, diff views and Chat UI are shared. Platform adapters live under `AgentUI/Platforms`; SDK-specific source exclusions in the Xcode target keep AppKit and UIKit out of shared views.
+
+To validate the local protocol against an isolated Debug Mac app (the fixture binds only to loopback):
+
+```sh
+bash Tests/run.sh
+python3 Tests/remote-integration.py /path/to/AgentUI.app/Contents/MacOS/AgentUI
+```
+
 ### Organization
 
 - **+ in the project list header**: add projects, import a folder, create a virtual folder.
@@ -178,9 +202,16 @@ AgentUI/
 
 # Integration tests against a Debug app built in /tmp/agentui-build
 python3 Tests/integration.py
+
+# Companion integration (isolated Mac host, real TCP + PTY)
+python3 Tests/remote-integration.py /tmp/agentui-mobile-build/Build/Products/Debug/AgentUI.app/Contents/MacOS/AgentUI
+
+# Terminal checkpoints + UIKit regression app in a disposable simulator.
+# First build macOS and iOS Simulator Debug into these derived-data directories.
+bash Tests/run-terminal-mirror.sh /tmp/agentui-mobile-build /tmp/agentui-ios-build
 ```
 
-Integration tests launch a Debug instance with temporary state and repositories, never the user's data. They check the real PTY, delegation from a terminal, paths, Git and persistence. Regression tests also cover write failures, save ordering, Observation isolation, stopping a stuck Git hook, partial worktree recovery and local reads during a slow GitHub request.
+Integration tests launch a Debug instance with temporary state and repositories, never the user's data. Companion integration tests use a dynamically allocated loopback port and verify the fixture path before sending input, so an already-running Mac host is never used. With `Tests/remote-integration.py --hold` (app path before `--hold`), launch a disposable iPhone simulator with `SIMCTL_CHILD_AGENTUI_TEST_HOST_PORT` set to the printed port, and pass `-remoteHost 127.0.0.1 -remotePairingCode <printed code>` as launch arguments. `AGENTUI_SIM=<UDID> SERVE_SIM_ROOT=<serve-sim/dist> node Tests/mobile-navigation.cjs` checks project/worktree expansion, terminal navigation and back navigation through real UI taps. They check the real PTY, delegation from a terminal, paths, Git and persistence. Regression tests also cover write failures, save ordering, Observation isolation, stopping a stuck Git hook, partial worktree recovery and local reads during a slow GitHub request.
 
 If the macOS session cannot focus the test window, `AGENTUI_SKIP_WINDOW_TESTS=1 python3 Tests/integration.py` runs the other scenarios and explicitly reports the skipped keyboard/window tests. Automated captures do not validate the native appearance under Stage Manager; visual inspection still has to be done in a normal window.
 
@@ -196,7 +227,7 @@ Every pull request and every push to `main` triggers the [CI](.github/workflows/
 
 ## Current limitations
 
-No scrollback restoration, semantic agent state tracking, or worktree merging or deletion yet.
+No scrollback restoration after quitting the app, semantic agent state tracking, or worktree merging or deletion yet.
 
 ## License
 

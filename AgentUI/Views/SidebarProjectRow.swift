@@ -157,6 +157,8 @@ private struct SidebarWorktreeGroupRow: View {
 private struct SidebarWorktreeRow: View {
     @Environment(SettingsStore.self) private var settings
 
+    @State private var isInserted = false
+
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
 
@@ -168,9 +170,13 @@ private struct SidebarWorktreeRow: View {
     let showAll: Bool
 
     private var worktreeRemoval: Removal { .worktree(projectID: project.id, worktreeID: worktree.id, name: worktree.name) }
+    private var isExpanded: Binding<Bool> {
+        guard isInserted else { return .constant(false) }
+        return query.isEmpty ? $store[expanded: worktree.id] : .constant(true)
+    }
 
     var body: some View {
-        DisclosureGroup(isExpanded: query.isEmpty ? $store[expanded: worktree.id] : .constant(true)) {
+        DisclosureGroup(isExpanded: isExpanded) {
             ForEach(worktree.terminals.filter { showAll || matches(worktree.name) || matches($0.name) }) { terminal in
                 SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, worktree: worktree)
             }
@@ -209,6 +215,7 @@ private struct SidebarWorktreeRow: View {
                 RemovalButton(pending: $removal, removal: worktreeRemoval, placement: .swipe)
             }
         }
+        .task { isInserted = true }
     }
 
     private func matches(_ value: String) -> Bool { query.isEmpty || value.localizedStandardContains(query) }

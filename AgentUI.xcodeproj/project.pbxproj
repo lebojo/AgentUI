@@ -269,7 +269,79 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*]" = (
+					AgentProcess.swift,
+					AppVisibility.swift,
+					BridgeMailbox.swift,
+					DirectoryWatcher.swift,
+					FileEvents.swift,
+					GitConfiguration.swift,
+					GitFilterGuard.swift,
+					TerminalPane.swift,
+					TerminalLayoutView.swift,
+					WorkspaceMonitors.swift,
+					AgentBridge.swift,
+					AgentCLI.swift,
+					AgentJournalMonitor.swift,
+					AgentLaunch.swift,
+					AgentSettingsPane.swift,
+					BridgeProtocol.swift,
+					CloseTerminalCommand.swift,
+					CommandRunner.swift,
+					ContentView.swift,
+					ConversationIndex.swift,
+					ConversationTranscripts.swift,
+					DevelopmentCapture.swift,
+					FileWatch.swift,
+					GitRepository.swift,
+					GitService.swift,
+					HostSettingsPane.swift,
+					InspectorService.swift,
+					InstalledAgents.swift,
+					LocalHost.swift,
+					LocalInspectorSource.swift,
+					LocalSessionChat.swift,
+					MonospacedFonts.swift,
+					MyApp.swift,
+					OpenCodeSessions.swift,
+					Platform.swift,
+					ReadCommand.swift,
+					SettingsStore.swift,
+					SettingsView.swift,
+					GeneralSettingsPane.swift,
+					Removal.swift,
+					RemovalButton.swift,
+					RemovalConfirmation.swift,
+					RemovalConfirmations.swift,
+					SharedProcessTerminalView.swift,
+					SidebarAppearancePicker.swift,
+					SidebarFolderRow.swift,
+					SidebarProjectRow.swift,
+					"TerminalColor+Color.swift",
+					TerminalDetail.swift,
+					TerminalPaletteEditor.swift,
+					TerminalPreview.swift,
+					TerminalSessions.swift,
+					TerminalSettingsPane.swift,
+					TerminalThemeGrid.swift,
+					"TerminalView+Appearance.swift",
+					UsageBar.swift,
+					UsageGauge.swift,
+					UsageModels.swift,
+					UsageProviderLogo.swift,
+					UsageService.swift,
+					UsageSheet.swift,
+					UsageSignInButton.swift,
+					UsageStore.swift,
+					WorkspaceDisk.swift,
+					WorkspaceEditor.swift,
+					WorkspaceSidebar.swift,
+					WorkspaceStore.swift,
+					WorkspaceWriter.swift,
+				);
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "Mobile*.swift";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "AgentUI se connecte à votre Mac sur le réseau local pour reprendre vos sessions.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -280,6 +352,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MARKETING_VERSION = 0.2.0;
@@ -288,13 +361,14 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -309,7 +383,79 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*]" = (
+					AgentProcess.swift,
+					AppVisibility.swift,
+					BridgeMailbox.swift,
+					DirectoryWatcher.swift,
+					FileEvents.swift,
+					GitConfiguration.swift,
+					GitFilterGuard.swift,
+					TerminalPane.swift,
+					TerminalLayoutView.swift,
+					WorkspaceMonitors.swift,
+					AgentBridge.swift,
+					AgentCLI.swift,
+					AgentJournalMonitor.swift,
+					AgentLaunch.swift,
+					AgentSettingsPane.swift,
+					BridgeProtocol.swift,
+					CloseTerminalCommand.swift,
+					CommandRunner.swift,
+					ContentView.swift,
+					ConversationIndex.swift,
+					ConversationTranscripts.swift,
+					DevelopmentCapture.swift,
+					FileWatch.swift,
+					GitRepository.swift,
+					GitService.swift,
+					HostSettingsPane.swift,
+					InspectorService.swift,
+					InstalledAgents.swift,
+					LocalHost.swift,
+					LocalInspectorSource.swift,
+					LocalSessionChat.swift,
+					MonospacedFonts.swift,
+					MyApp.swift,
+					OpenCodeSessions.swift,
+					Platform.swift,
+					ReadCommand.swift,
+					SettingsStore.swift,
+					SettingsView.swift,
+					GeneralSettingsPane.swift,
+					Removal.swift,
+					RemovalButton.swift,
+					RemovalConfirmation.swift,
+					RemovalConfirmations.swift,
+					SharedProcessTerminalView.swift,
+					SidebarAppearancePicker.swift,
+					SidebarFolderRow.swift,
+					SidebarProjectRow.swift,
+					"TerminalColor+Color.swift",
+					TerminalDetail.swift,
+					TerminalPaletteEditor.swift,
+					TerminalPreview.swift,
+					TerminalSessions.swift,
+					TerminalSettingsPane.swift,
+					TerminalThemeGrid.swift,
+					"TerminalView+Appearance.swift",
+					UsageBar.swift,
+					UsageGauge.swift,
+					UsageModels.swift,
+					UsageProviderLogo.swift,
+					UsageService.swift,
+					UsageSheet.swift,
+					UsageSignInButton.swift,
+					UsageStore.swift,
+					WorkspaceDisk.swift,
+					WorkspaceEditor.swift,
+					WorkspaceSidebar.swift,
+					WorkspaceStore.swift,
+					WorkspaceWriter.swift,
+				);
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "Mobile*.swift";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "AgentUI se connecte à votre Mac sur le réseau local pour reprendre vos sessions.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -320,6 +466,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MARKETING_VERSION = 0.2.0;
@@ -328,13 +475,14 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

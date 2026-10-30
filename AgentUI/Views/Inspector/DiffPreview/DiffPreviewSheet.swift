@@ -43,8 +43,7 @@ struct DiffPreviewSheet: View {
                 }.background(Palette.surface)
             }
         }
-        .frame(minWidth: Dimension.PreviewSheet.minWidth, idealWidth: Dimension.DiffSheet.idealWidth,
-               minHeight: Dimension.PreviewSheet.minHeight, idealHeight: Dimension.DiffSheet.idealHeight)
+        .previewSheetFrame(idealWidth: Dimension.DiffSheet.idealWidth, idealHeight: Dimension.DiffSheet.idealHeight)
     }
 
     @ViewBuilder private func rows(_ section: GitDiffSection) -> some View {

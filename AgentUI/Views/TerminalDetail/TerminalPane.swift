@@ -1,14 +1,17 @@
 import SwiftUI
 
 struct TerminalPane: View {
-    @Environment(SettingsStore.self) private var settings
+    @AppStorage("sessionDisplayMode") private var displayMode: SessionDisplayMode = .terminal
 
-    @State private var session: TerminalSession?
+    @Environment(SettingsStore.self) private var settings
+    @Environment(InstalledAgents.self) private var installedAgents
 
     let store: WorkspaceStore
     let context: TerminalContext
     let isFocused: Bool
     let isSplit: Bool
+
+    private var session: TerminalSession? { store.sessions.session(context.terminal.id) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,18 +35,27 @@ struct TerminalPane: View {
                 Divider()
             }
             if let session {
-                NativeTerminalView(session: session, appearance: settings.terminal, isFocused: isFocused) {
-                    if store.selection != context.terminal.id { store.selection = context.terminal.id }
+                if displayMode == .chat, session.agent != nil {
+                    LocalSessionChat(session: session)
+                        .simultaneousGesture(TapGesture().onEnded { store.selection = context.terminal.id })
+                } else {
+                    NativeTerminalView(session: session, appearance: settings.terminal, isFocused: isFocused) {
+                        if store.selection != context.terminal.id { store.selection = context.terminal.id }
+                    }
+                    .id(ObjectIdentifier(session))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if displayMode == .chat, !session.hasExited, !installedAgents.agents.isEmpty {
+                        AgentShortcutBar(agents: installedAgents.agents) { agent in launch(agent, in: session) }
+                            .disabled(session.isLaunchingAgent)
+                    }
                 }
-                .id(ObjectIdentifier(session))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 if session.hasExited {
                     HStack {
                         Label(exitDescription(session.exitCode), systemImage: "stop.circle")
                         Spacer()
                         Button("Rouvrir le terminal") {
                             store.sessions.close(context.terminal.id)
-                            self.session = store.sessions.start(context)
+                            store.sessions.start(context)
                         }
                     }
                     .font(Typography.body).padding(Spacing.l).background(Palette.bar)
@@ -52,7 +64,15 @@ struct TerminalPane: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task { session = store.sessions.start(context) }
+        .task(id: context.terminal.id) { store.sessions.start(context) }
+    }
+
+    private func launch(_ agent: ConversationAgent, in session: TerminalSession) {
+        store.selection = context.terminal.id
+        Task {
+            do { try await session.launch(agent, skippingPermissions: settings.agentLaunch.skipsPermissions) }
+            catch { store.errorMessage = error.localizedDescription }
+        }
     }
 
     private func exitDescription(_ code: Int32?) -> String {

@@ -78,6 +78,27 @@ struct ClaudeTranscript: Equatable, Sendable {
         let content: MessageContent?
     }
 
+    static func directoryName(for path: String) -> String {
+        String(path.unicodeScalars.map { $0.isASCII && CharacterSet.alphanumerics.contains($0) ? Character($0) : "-" })
+    }
+
+    static func directories(for path: String, in projects: URL) -> [URL] {
+        let name = directoryName(for: path)
+        let exact = projects.appendingPathComponent(name, isDirectory: true)
+        if FileManager.default.fileExists(atPath: exact.path) { return [exact] }
+        guard name.count > 200 else { return [] }
+        let prefix = String(name.prefix(200))
+        let folders = (try? FileManager.default.contentsOfDirectory(at: projects, includingPropertiesForKeys: nil)) ?? []
+        return folders.filter { $0.lastPathComponent.hasPrefix(prefix) }
+    }
+
+    static func url(sessionID: String, cwd: String, projects: URL) -> URL {
+        let file = sessionID + ".jsonl"
+        let candidates = directories(for: cwd, in: projects).map { $0.appendingPathComponent(file) }
+        return candidates.first { FileManager.default.fileExists(atPath: $0.path) }
+            ?? projects.appendingPathComponent(directoryName(for: cwd), isDirectory: true).appendingPathComponent(file)
+    }
+
     static func read(_ url: URL, limit: Int = 8_388_608) -> ClaudeTranscript {
         var transcript = ClaudeTranscript()
         JSONLines.forEach(url, limit: limit) { line in

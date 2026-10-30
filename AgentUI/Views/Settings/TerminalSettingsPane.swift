@@ -1,11 +1,14 @@
 import SwiftUI
 
 struct TerminalSettingsPane: View {
+    @AppStorage("sessionDisplayMode") private var displayMode: SessionDisplayMode = .terminal
+
     @Environment(SettingsStore.self) private var settings
 
     var body: some View {
         @Bindable var settings = settings
         Form {
+            SessionDisplaySettingsSection(mode: $displayMode)
             Section("Thème") {
                 TerminalPreview(appearance: settings.terminal)
                 TerminalThemeGrid(appearance: $settings.terminal)

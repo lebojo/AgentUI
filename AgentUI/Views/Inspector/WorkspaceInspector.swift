@@ -3,12 +3,13 @@ import SwiftUI
 struct WorkspaceInspector: View {
     @AppStorage("inspectorTab") private var tab: InspectorTab = .files
 
-    @Bindable var store: WorkspaceStore
+    let context: TerminalContext?
+    let source: any InspectorSource
 
     var body: some View {
         Group {
-            if let context = store.selectedContext {
-                InspectorContents(store: store, context: context, tab: tab)
+            if let context {
+                InspectorContents(context: context, tab: tab, source: source)
                     .id(context.worktree.id)
             } else {
                 ContentUnavailableView("Aucun terminal sélectionné", systemImage: tab.symbol,
@@ -28,21 +29,24 @@ struct WorkspaceInspector: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .padding(.horizontal, Spacing.m)
+            .padding(.top, Spacing.xl)
+            .padding(.bottom, Spacing.s)
         }
     }
 }
 
 private struct InspectorContents: View {
-    @Environment(AppVisibility.self) private var visibility
+    @Environment(\.workspaceVisible) private var workspaceVisible
+    @Environment(\.scenePhase) private var scenePhase
 
-    @State private var model = InspectorStore()
-    @State private var previews = InspectorPreviews()
+    @State private var model: InspectorStore
+    @State private var previews: InspectorPreviews
     @State private var refresh = 0
-
-    @Bindable var store: WorkspaceStore
 
     let context: TerminalContext
     let tab: InspectorTab
+    let source: any InspectorSource
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,20 +57,31 @@ private struct InspectorContents: View {
             switch tab {
             case .files:
                 List {
-                    ExplorerDirectory(url: URL(fileURLWithPath: context.worktree.path))
+                    ExplorerDirectory(url: URL(fileURLWithPath: context.worktree.path), source: source)
                 }.listStyle(.plain).id(refresh)
-            case .agents: AgentConversationList(store: store, context: context, refresh: refresh)
+            case .agents: AgentConversationList(context: context, refresh: refresh, source: source)
             case .git, .checks: InspectorRepositoryContent(model: model, tab: tab)
             }
         }
         .environment(previews)
-        .modifier(InspectorPreviewPresenter(previews: previews))
-        .task(id: "\(tab.rawValue)-\(refresh)-\(visibility.isVisible)", priority: .utility) {
-            guard visibility.isVisible, tab == .git || tab == .checks else { return }
-            let changes = await FileEvents.repositoryChanges(at: context.worktree.path)
+        .modifier(InspectorPreviewPresenter(previews: previews, source: source))
+        .task(id: "\(tab.rawValue)-\(refresh)-\(workspaceVisible)-\(scenePhase == .background)", priority: .utility) {
+            guard workspaceVisible, scenePhase != .background, tab == .git || tab == .checks else { return }
+            let changes = await source.repositoryChanges(at: context.worktree.path)
             await model.monitor(path: context.worktree.path, forceRemote: refresh > 0, changes: changes)
         }
     }
+
+    init(context: TerminalContext, tab: InspectorTab, source: any InspectorSource) {
+        self.context = context
+        self.tab = tab
+        self.source = source
+        _model = State(initialValue: InspectorStore(readLocal: { try await source.localGit(at: $0) },
+                                                    readRemote: { try await source.remote($0) }))
+        _previews = State(initialValue: InspectorPreviews(readFile: { try await source.textFile($0) },
+                                                         readDiff: { try await source.diff($0, at: $1) }))
+    }
+
 }
 
 struct InspectorNotice: View {
@@ -79,5 +94,16 @@ struct InspectorNotice: View {
             Label(title, systemImage: symbol).font(Typography.label)
             Text(message).font(Typography.caption).foregroundStyle(Palette.textSecondary).textSelection(.enabled)
         }
+    }
+}
+
+private struct WorkspaceVisibleKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    var workspaceVisible: Bool {
+        get { self[WorkspaceVisibleKey.self] }
+        set { self[WorkspaceVisibleKey.self] = newValue }
     }
 }

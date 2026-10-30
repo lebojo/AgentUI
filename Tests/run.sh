@@ -4,12 +4,14 @@ cd "$(dirname "$0")/.."
 test_binary="$(mktemp -t agentui-core-tests)"
 store_binary="$(mktemp -t agentui-store-tests)"
 conversation_binary="$(mktemp -t agentui-conversation-tests)"
+remote_binary="$(mktemp -t agentui-remote-tests)"
+claude_binary="$(mktemp -t agentui-claude-tests)"
 swift_flags=(-parse-as-library -swift-version 6 -enable-upcoming-feature NonisolatedNonsendingByDefault
   -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature MemberImportVisibility)
-trap 'rm -f "$test_binary" "$store_binary" "$conversation_binary"' EXIT
+trap 'rm -f "$test_binary" "$store_binary" "$conversation_binary" "$remote_binary" "$claude_binary"' EXIT
 xcrun swiftc "${swift_flags[@]}" \
-  AgentUI/Models/Workspace.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/BridgeProtocol.swift \
-  AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Services/AgentCLI.swift AgentUI/Services/BridgeMailbox.swift AgentUI/Services/DirectoryWatcher.swift \
+  AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/BridgeProtocol.swift \
+  AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Models/GitBranch.swift AgentUI/Services/AgentCLI.swift AgentUI/Services/BridgeMailbox.swift AgentUI/Services/DirectoryWatcher.swift \
   AgentUI/Models/InspectorModels.swift AgentUI/Models/GitDiff.swift AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/GitConfiguration.swift AgentUI/Services/GitFilterGuard.swift AgentUI/Services/FileEvents.swift AgentUI/Services/InspectorService.swift \
   AgentUI/Models/InspectorStore.swift AgentUI/Models/InspectorPreviews.swift AgentUI/Services/WorkspaceWriter.swift \
   AgentUI/Models/UsageModels.swift AgentUI/Models/UsageStore.swift AgentUI/Services/UsageService.swift \
@@ -19,9 +21,9 @@ xcrun swiftc "${swift_flags[@]}" \
 "$test_binary"
 
 xcrun swiftc "${swift_flags[@]}" \
-  AgentUI/Models/Workspace.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/WorkspaceStore.swift AgentUI/Models/SidebarFilter.swift AgentUI/Models/Removal.swift \
+  AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/WorkspaceStore.swift AgentUI/Models/SidebarFilter.swift AgentUI/Models/Removal.swift \
   AgentUI/Models/AgentConversation.swift \
-  AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Services/WorkspaceWriter.swift \
+  AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Models/GitBranch.swift AgentUI/Services/WorkspaceWriter.swift \
   AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/GitConfiguration.swift \
   Tests/StoreTests.swift -o "$store_binary"
 "$store_binary"
@@ -31,3 +33,20 @@ xcrun swiftc "${swift_flags[@]}" \
   AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/GitConfiguration.swift \
   Tests/ConversationTests.swift -o "$conversation_binary"
 "$conversation_binary"
+
+
+xcrun swiftc "${swift_flags[@]}" \
+  AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/GitBranch.swift \
+  AgentUI/Models/InspectorModels.swift AgentUI/Models/GitDiff.swift AgentUI/Models/AgentConversation.swift \
+  AgentUI/Models/Data/RemoteProtocol.swift AgentUI/Models/Data/RemoteTerminalSnapshot.swift AgentUI/Models/Data/SessionMessage.swift \
+  AgentUI/Core/Session/SessionTranscript.swift \
+  Tests/RemoteTests.swift -o "$remote_binary"
+"$remote_binary"
+
+
+xcrun swiftc "${swift_flags[@]}" \
+  AgentUI/Models/Data/SessionMessage.swift AgentUI/Core/Session/SessionTranscript.swift \
+  AgentUI/Core/Session/ChatMessageLog.swift AgentUI/Core/Session/ClaudeChatDecoder.swift AgentUI/Core/Session/CodexChatDecoder.swift \
+  AgentUI/Core/Session/CopilotChatDecoder.swift AgentUI/Core/Session/ChatJournalReader.swift AgentUI/Platforms/macOS/FileWatch.swift \
+  AgentUI/Platforms/macOS/AgentJournalMonitor.swift Tests/ChatJournalTests.swift -o "$claude_binary"
+"$claude_binary"

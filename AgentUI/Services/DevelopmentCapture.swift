@@ -1,5 +1,6 @@
 #if DEBUG
 import AppKit
+import SwiftUI
 import SwiftTerm
 
 /// Test-only operations, enabled only for an explicitly isolated workspace.
@@ -33,7 +34,7 @@ import SwiftTerm
                 NSApp.activate(ignoringOtherApps: true)
                 window.makeKeyAndOrderFront(nil)
                 window.makeMain()
-                return BridgeResponse(ok: true, message: NSApp.keyWindow == window ? "key" : "waiting")
+                return BridgeResponse(ok: true, message: NSApp.keyWindow == window ? "key" : "waiting", path: String(window.windowNumber))
             }
             throw WorkspaceError(message: "No workspace window to activate")
         case "debug.closeShortcut":
@@ -58,6 +59,24 @@ import SwiftTerm
             }
             return BridgeResponse(ok: true, message: store.sessions.branch(for: id, initialPath: context.worktree.path)?.name,
                                   path: store.sessions.session(id)?.currentDirectory)
+        case "debug.createWorktree":
+            guard let projectID = request.projectID, let branch = request.branch else { throw WorkspaceError(message: "Missing worktree fixture") }
+            let context = try await store.createWorktree(projectID: projectID, branch: branch)
+            return BridgeResponse(ok: true, projectID: projectID, worktreeID: context.worktree.id, terminalID: context.terminal.id)
+        case "debug.closeTerminal":
+            guard let id = request.name.flatMap(UUID.init(uuidString:)) else { throw WorkspaceError(message: "Missing terminal") }
+            withAnimation { store.closeTerminal(id) }
+        case "debug.reopen":
+            guard let id = request.name.flatMap(UUID.init(uuidString:)), let context = store.context(for: id) else {
+                throw WorkspaceError(message: "Unknown test terminal")
+            }
+            store.sessions.close(id)
+            store.sessions.start(context)
+        case "debug.transcript":
+            guard let id = request.name.flatMap(UUID.init(uuidString:)), let session = store.sessions.session(id) else {
+                throw WorkspaceError(message: "Unknown test terminal")
+            }
+            return BridgeResponse(ok: true, message: session.transcript.messages.map(\.text).joined(separator: "\n"))
         case "debug.send":
             guard let id = request.name.flatMap(UUID.init(uuidString:)), let session = store.sessions.session(id) else {
                 throw WorkspaceError(message: "Test terminal is not running")

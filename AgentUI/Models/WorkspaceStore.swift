@@ -22,6 +22,7 @@ import Observation
     @ObservationIgnored private var failedRevision: UInt64 = 0
     @ObservationIgnored private var pendingSave: Task<Void, Never>?
     @ObservationIgnored private var restoring = false
+    @ObservationIgnored private var recentResumes: [String: (terminal: UUID, at: ContinuousClock.Instant)] = [:]
     private let writer: WorkspaceWriter
     var errorMessage: String?
     var busyProjects: Set<UUID> = []
@@ -123,7 +124,7 @@ import Observation
     }
 
     @discardableResult func addProject(_ url: URL, folderID: UUID? = nil) throws -> Project {
-        let canonical = URL(fileURLWithPath: WorkspaceDisk.canonicalPath(url))
+        let canonical = URL(fileURLWithPath: WorkspacePath.canonical(url))
         var directory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: canonical.path, isDirectory: &directory), directory.boolValue else {
             throw WorkspaceError(message: "Ce dossier n’est plus accessible : \(canonical.path)")
@@ -179,7 +180,7 @@ import Observation
             throw WorkspaceError(message: warning)
         }
         isImporting = false
-        if repositories.isEmpty || (repositories.count == 1 && repositories[0].path == WorkspaceDisk.canonicalPath(url)) {
+        if repositories.isEmpty || (repositories.count == 1 && repositories[0].path == WorkspacePath.canonical(url)) {
             _ = try addProject(url, folderID: folderID)
         } else {
             await importFolder(url, discovery: discovery, into: folderID)
@@ -200,7 +201,7 @@ import Observation
             guard !repositories.isEmpty else {
                 throw WorkspaceError(message: discovery.warning ?? "Aucun dépôt Git trouvé dans ce dossier. Choisis le dossier qui contient tes dépôts, ou utilise Ajouter un projet pour un dossier sans Git.")
             }
-            let sourcePath = WorkspaceDisk.canonicalPath(url)
+            let sourcePath = WorkspacePath.canonical(url)
             let folderID: UUID
             if let targetFolderID, folders.contains(where: { $0.id == targetFolderID }) {
                 folderID = targetFolderID
@@ -213,7 +214,7 @@ import Observation
             }
             var addedIDs: [UUID] = []
             for repository in repositories {
-                let path = WorkspaceDisk.canonicalPath(repository)
+                let path = WorkspacePath.canonical(repository)
                 if let index = projects.firstIndex(where: { $0.path == path }) {
                     projects[index].folderID = folderID
                 } else {
@@ -336,6 +337,16 @@ import Observation
         save()
         let context = context(for: terminal.id)!
         sessions.start(context, command: command)
+        return context
+    }
+
+    @discardableResult func resume(_ conversation: AgentConversation, projectID: UUID, worktreeID: UUID, select: Bool = true) throws -> TerminalContext {
+        guard let command = conversation.resumeCommand else { throw WorkspaceError(message: "Identifiant de session non pris en charge.") }
+        if let recent = recentResumes[conversation.id], ContinuousClock.now - recent.at < .seconds(30), context(for: recent.terminal) != nil {
+            throw WorkspaceError(message: "Cette conversation vient d’être reprise dans un autre terminal.")
+        }
+        let context = try addTerminal(projectID: projectID, worktreeID: worktreeID, name: conversation.shortTitle, command: command, select: select)
+        recentResumes[conversation.id] = (context.terminal.id, .now)
         return context
     }
 

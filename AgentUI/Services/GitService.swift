@@ -24,13 +24,13 @@ enum GitService {
             _ = try await run(arguments, at: project.path, timeout: timeout)
         } catch {
             let reason = error is CancellationError ? "Création annulée." : error.localizedDescription
-            throw WorktreeCreationError(path: WorkspaceDisk.canonicalPath(destination), branch: branch, reason: reason)
+            throw WorktreeCreationError(path: WorkspacePath.canonical(destination), branch: branch, reason: reason)
         }
-        return Worktree(name: branch, path: WorkspaceDisk.canonicalPath(destination), terminals: [TerminalRecord(name: "Terminal")])
+        return Worktree(name: branch, path: WorkspacePath.canonical(destination), terminals: [TerminalRecord(name: "Terminal")])
     }
 
     @concurrent static func removeWorktree(project: Project, path: String, timeout: TimeInterval = 90) async throws {
-        guard WorkspaceDisk.canonicalPath(URL(fileURLWithPath: path)) != project.path else {
+        guard WorkspacePath.canonical(URL(fileURLWithPath: path)) != project.path else {
             throw WorkspaceError(message: "Le dossier principal du projet ne peut pas être supprimé.")
         }
         if FileManager.default.fileExists(atPath: path) {
@@ -80,7 +80,7 @@ enum GitService {
         for field in output.components(separatedBy: "\0") {
             if field.hasPrefix("worktree ") {
                 append()
-                path = WorkspaceDisk.canonicalPath(URL(fileURLWithPath: String(field.dropFirst(9))))
+                path = WorkspacePath.canonical(URL(fileURLWithPath: String(field.dropFirst(9))))
                 branch = nil
             } else if field.hasPrefix("branch refs/heads/") {
                 branch = String(field.dropFirst(18))

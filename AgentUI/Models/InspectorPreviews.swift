@@ -6,12 +6,15 @@ import Observation
         case file(URL)
         case diff(GitChange, root: String)
 
-        func load() async throws -> InspectorPreview {
-            switch self {
-            case .file(let url): .file(TextPreview(title: url.lastPathComponent, text: try await InspectorService.textFile(url), url: url))
-            case .diff(let change, let root): .diff(try await InspectorService.diff(change, at: root))
-            }
-        }
+    }
+
+    @ObservationIgnored private let readFile: @Sendable (URL) async throws -> String
+    @ObservationIgnored private let readDiff: @Sendable (GitChange, String) async throws -> GitDiff
+
+    init(readFile: @escaping @Sendable (URL) async throws -> String,
+         readDiff: @escaping @Sendable (GitChange, String) async throws -> GitDiff) {
+        self.readFile = readFile
+        self.readDiff = readDiff
     }
 
     var current: InspectorPreview?
@@ -26,7 +29,12 @@ import Observation
 
     func load() async {
         guard let request else { return }
-        do { current = try await request.load() }
+        do {
+            switch request {
+            case .file(let url): current = .file(TextPreview(title: url.lastPathComponent, text: try await readFile(url), url: url))
+            case .diff(let change, let root): current = .diff(try await readDiff(change, root))
+            }
+        }
         catch is CancellationError { return }
         catch { self.error = error.localizedDescription }
         self.request = nil

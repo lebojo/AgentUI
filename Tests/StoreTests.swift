@@ -177,5 +177,17 @@ private final class ChangeFlag: @unchecked Sendable {
         split.applyConversationTitles([renamed.terminal.id: "Autre"])
         try require(split.context(for: renamed.terminal.id)?.terminal.name == "Autre", "A terminal can go back to the conversation name")
         print("PASS conversation names for terminals")
+
+        let conversation = AgentConversation(agent: .claude, sessionID: "resume-twice", title: "Reprise", updatedAt: Date())
+        let resumed = try split.resume(conversation, projectID: splitProject.id, worktreeID: splitProject.worktrees[0].id)
+        do {
+            try split.resume(conversation, projectID: splitProject.id, worktreeID: splitProject.worktrees[0].id)
+            throw WorkspaceError(message: "FAIL: a conversation was resumed twice")
+        } catch let error as WorkspaceError {
+            try require(!error.message.hasPrefix("FAIL:"), error.message)
+        }
+        split.closeTerminal(resumed.terminal.id)
+        try split.resume(conversation, projectID: splitProject.id, worktreeID: splitProject.worktrees[0].id)
+        print("PASS a conversation is not resumed twice")
     }
 }

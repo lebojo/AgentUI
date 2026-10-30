@@ -33,7 +33,7 @@ struct GitDiff: Identifiable, Sendable {
 }
 
 struct GitDiffSection: Identifiable, Sendable {
-    enum Kind: Sendable {
+    enum Kind: String, Codable, Sendable {
         case staged, unstaged, untracked
         var title: String {
             switch self {

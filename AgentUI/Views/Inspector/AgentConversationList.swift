@@ -1,14 +1,16 @@
 import SwiftUI
 
 struct AgentConversationList: View {
-    @Environment(AppVisibility.self) private var visibility
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.workspaceVisible) private var workspaceVisible
 
     @State private var conversations: [AgentConversation]?
-
-    @Bindable var store: WorkspaceStore
+    @State private var error: String?
+    @State private var resumeError: String?
 
     let context: TerminalContext
     let refresh: Int
+    let source: any InspectorSource
 
     var body: some View {
         Group {
@@ -16,6 +18,8 @@ struct AgentConversationList: View {
                 List(conversations) { conversation in
                     AgentConversationRow(conversation: conversation) { resume(conversation) }
                 }.listStyle(.plain)
+            } else if let error {
+                InspectorNotice(title: "Conversations indisponibles", message: error)
             } else if conversations != nil {
                 ContentUnavailableView("Aucune conversation", systemImage: "bubble.left.and.bubble.right",
                                        description: Text("Les conversations Claude, Codex, Copilot et OpenCode lancées dans ce dossier apparaîtront ici."))
@@ -23,28 +27,33 @@ struct AgentConversationList: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: "\(refresh)-\(visibility.isVisible)", priority: .utility) {
-            guard visibility.isVisible else { return }
+        .task(id: "\(refresh)-\(scenePhase == .background)-\(workspaceVisible)") {
+            guard workspaceVisible, scenePhase != .background else { return }
             await monitor()
         }
+        .alert("Reprise impossible", isPresented: Binding(get: { resumeError != nil }, set: { if !$0 { resumeError = nil } })) {
+            Button("OK") { resumeError = nil }
+        } message: { Text(resumeError ?? "") }
     }
 
     private func monitor() async {
-        var runningMaximumAge: Duration = .zero
-        for await _ in FileEvents.changes(in: ConversationIndex.watchedDirectories, latency: .seconds(1), every: .seconds(15)) {
-            let found = await ConversationIndex.load(at: context.worktree.path, runningMaximumAge: runningMaximumAge)
-            runningMaximumAge = .seconds(10)
-            guard !Task.isCancelled else { return }
-            if conversations != found { conversations = found }
+        var fresh = true
+        for await _ in await source.conversationChanges() {
+            do {
+                let found = try await source.conversations(at: context.worktree.path, fresh: fresh)
+                fresh = false
+                guard !Task.isCancelled else { return }
+                if conversations != found { conversations = found }
+                error = nil
+            } catch { self.error = error.localizedDescription }
         }
     }
 
     private func resume(_ conversation: AgentConversation) {
-        guard let command = conversation.resumeCommand else { return }
-        do {
-            _ = try store.addTerminal(projectID: context.project.id, worktreeID: context.worktree.id,
-                                      name: conversation.shortTitle, command: command)
-        } catch { store.errorMessage = error.localizedDescription }
+        Task {
+            do { try await source.resume(conversation, context: context) }
+            catch { resumeError = error.localizedDescription }
+        }
     }
 }
 

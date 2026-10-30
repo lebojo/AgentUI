@@ -24,8 +24,7 @@ import Observation
     @ObservationIgnored private let readLocal: LocalQuery
     @ObservationIgnored private let readRemote: RemoteQuery
 
-    init(readLocal: @escaping LocalQuery = { try await InspectorService.localGit(at: $0) },
-         readRemote: @escaping RemoteQuery = { try await InspectorService.remote(for: $0) }) {
+    init(readLocal: @escaping LocalQuery, readRemote: @escaping RemoteQuery) {
         self.readLocal = readLocal
         self.readRemote = readRemote
     }

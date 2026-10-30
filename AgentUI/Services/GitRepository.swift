@@ -1,15 +1,6 @@
 import Foundation
 import Darwin
 
-struct GitBranch: Equatable, Sendable {
-    let name: String
-    var isDetached = false
-
-    var accessibilityLabel: String {
-        isDetached ? "HEAD détachée, commit \(name)" : "Branche Git : \(name)"
-    }
-}
-
 struct GitRepository: Sendable {
     let root: URL
     let branch: GitBranch
@@ -17,7 +8,7 @@ struct GitRepository: Sendable {
     let commonDirectory: URL
 
     static func atRoot(_ location: URL) -> GitRepository? {
-        let url = URL(fileURLWithPath: WorkspaceDisk.canonicalPath(location))
+        let url = URL(fileURLWithPath: WorkspacePath.canonical(location))
         let fm = FileManager.default
         let marker = url.appendingPathComponent(".git")
         var isDirectory: ObjCBool = false
@@ -53,7 +44,7 @@ struct GitRepository: Sendable {
         let fm = FileManager.default
         var isDirectory: ObjCBool = false
         guard fm.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else { return nil }
-        var directory = URL(fileURLWithPath: WorkspaceDisk.canonicalPath(URL(fileURLWithPath: path)))
+        var directory = URL(fileURLWithPath: WorkspacePath.canonical(URL(fileURLWithPath: path)))
         while true {
             if fm.fileExists(atPath: directory.appendingPathComponent(".git").path) {
                 return atRoot(directory)
@@ -102,14 +93,14 @@ enum RepositoryDiscovery {
         let fm = FileManager.default
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isPackageKey, .isSymbolicLinkKey]
         let excluded: Set<String> = ["node_modules", "Pods", "Carthage", "DerivedData", "venv"]
-        let root = URL(fileURLWithPath: WorkspaceDisk.canonicalPath(folder))
+        let root = URL(fileURLWithPath: WorkspacePath.canonical(folder))
         var pending = [root]
         var visited: Set<String> = []
         var found: [URL] = []
         var skipped: Set<String> = []
         while let directory = pending.popLast() {
             try Task.checkCancellation()
-            let canonical = WorkspaceDisk.canonicalPath(directory)
+            let canonical = WorkspacePath.canonical(directory)
             guard !visited.contains(canonical) else { continue }
             if GitRepository.atRoot(directory) != nil {
                 visited.insert(canonical)

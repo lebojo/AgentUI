@@ -29,7 +29,7 @@ enum ConversationAgent: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
-struct AgentConversation: Identifiable, Equatable, Sendable {
+struct AgentConversation: Codable, Identifiable, Equatable, Sendable {
     let agent: ConversationAgent
     let sessionID: String
     let title: String

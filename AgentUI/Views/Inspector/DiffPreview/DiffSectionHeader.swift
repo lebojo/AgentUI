@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct DiffSectionHeader: View {
@@ -20,7 +19,6 @@ struct DiffSectionHeader: View {
     }
 
     private func copyPatch() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(section.patch, forType: .string)
+        PlatformClipboard.copy(section.patch)
     }
 }

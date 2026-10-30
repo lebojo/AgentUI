@@ -20,9 +20,9 @@ enum ConversationTests {
         try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
         let path = project.path
 
-        try require(ConversationIndex.claudeDirectoryName(for: "/Users/me/My Project.v2") == "-Users-me-My-Project-v2", "Claude directory encoding")
+        try require(ClaudeTranscript.directoryName(for: "/Users/me/My Project.v2") == "-Users-me-My-Project-v2", "Claude directory encoding")
 
-        let claude = home.appendingPathComponent(".claude/projects/\(ConversationIndex.claudeDirectoryName(for: path))", isDirectory: true)
+        let claude = home.appendingPathComponent(".claude/projects/\(ClaudeTranscript.directoryName(for: path))", isDirectory: true)
         try FileManager.default.createDirectory(at: claude, withIntermediateDirectories: true)
         try write(claude.appendingPathComponent("titled.jsonl"), [
             #"{"type":"last-prompt","sessionId":"titled"}"#,

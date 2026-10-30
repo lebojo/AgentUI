@@ -21,7 +21,7 @@ enum InspectorTab: String, CaseIterable, Identifiable {
     }
 }
 
-struct ExplorerEntry: Identifiable, Sendable {
+struct ExplorerEntry: Codable, Identifiable, Sendable {
     let url: URL
     let isDirectory: Bool
     let isSymbolicLink: Bool
@@ -29,7 +29,7 @@ struct ExplorerEntry: Identifiable, Sendable {
     var name: String { url.lastPathComponent }
 }
 
-struct GitChange: Identifiable, Equatable, Sendable {
+struct GitChange: Codable, Identifiable, Equatable, Sendable {
     let path: String
     let originalPath: String?
     let indexStatus: String
@@ -68,14 +68,14 @@ struct GitChange: Identifiable, Equatable, Sendable {
     }
 }
 
-struct LocalGitSnapshot: Equatable, Sendable {
+struct LocalGitSnapshot: Codable, Equatable, Sendable {
     let root: String
     let branch: GitBranch?
     let headSHA: String?
     let changes: [GitChange]
 }
 
-enum GitHosting: String, Sendable {
+enum GitHosting: String, Codable, Sendable {
     case github, gitlab
 
     init(remoteURL: String) {
@@ -132,13 +132,13 @@ enum GitHosting: String, Sendable {
     }
 }
 
-struct RemoteRepository: Decodable, Equatable, Sendable {
+struct RemoteRepository: Codable, Equatable, Sendable {
     let nameWithOwner: String
     let url: String
     let description: String?
 }
 
-struct RemoteCheck: Decodable, Identifiable, Equatable, Sendable {
+struct RemoteCheck: Codable, Identifiable, Equatable, Sendable {
     let name: String?
     let context: String?
     let status: String?
@@ -152,7 +152,7 @@ struct RemoteCheck: Decodable, Identifiable, Equatable, Sendable {
     var id: String { title + (url ?? "") }
 }
 
-struct ChangeRequest: Decodable, Equatable, Sendable {
+struct ChangeRequest: Codable, Equatable, Sendable {
     let number: Int
     let title: String
     let url: String
@@ -165,7 +165,7 @@ struct ChangeRequest: Decodable, Equatable, Sendable {
     let statusCheckRollup: [RemoteCheck]?
 }
 
-struct PipelineRun: Decodable, Identifiable, Equatable, Sendable {
+struct PipelineRun: Codable, Identifiable, Equatable, Sendable {
     let databaseId: Int
     let displayTitle: String
     let workflowName: String
@@ -177,7 +177,7 @@ struct PipelineRun: Decodable, Identifiable, Equatable, Sendable {
     var result: String { conclusion.isEmpty ? status : conclusion }
 }
 
-struct RemoteSnapshot: Equatable, Sendable {
+struct RemoteSnapshot: Codable, Equatable, Sendable {
     var hosting: GitHosting = .github
     let repository: RemoteRepository
     let changeRequest: ChangeRequest?

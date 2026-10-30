@@ -3,7 +3,7 @@ import SwiftUI
 import SwiftTerm
 import Observation
 
-final class ActivityTerminalView: LocalProcessTerminalView {
+final class ActivityTerminalView: SharedProcessTerminalView {
     private(set) var lastOutput = Date.distantPast
 
     override func dataReceived(slice: ArraySlice<UInt8>) {
@@ -23,7 +23,20 @@ final class ActivityTerminalView: LocalProcessTerminalView {
     private(set) var exitCode: Int32?
     private(set) var title = ""
     let path: String
+    let claudeConfig: URL
     let identity = UUID()
+    let transcript = SessionTranscript()
+    private(set) var outputRevision = 0
+    private(set) var isLaunchingAgent = false
+    @ObservationIgnored private let runsShell: Bool
+    @ObservationIgnored private var mirrorModes = TerminalMirrorModes()
+    @ObservationIgnored private var cachedScreen: TerminalScreen?
+    @ObservationIgnored private var screenRevision = -1
+    @ObservationIgnored private var transcriptRevision = -1
+    @ObservationIgnored private lazy var journalMonitor = AgentJournalMonitor(transcript: transcript)
+    @ObservationIgnored private var chatViewers = 0
+    @ObservationIgnored private var pendingWrite: Task<Void, Error>?
+
     private(set) var currentDirectory: String
     private(set) var branch: GitBranch?
     private(set) var agent: AgentProcess?
@@ -32,9 +45,16 @@ final class ActivityTerminalView: LocalProcessTerminalView {
     init(context: TerminalContext, command: [String], environment: [String: String]) {
         path = context.worktree.path
         currentDirectory = context.worktree.path
+        runsShell = command.isEmpty
+        claudeConfig = Self.claudeConfig(environment: environment)
         view = ActivityTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
         super.init()
         view.processDelegate = self
+        view.received = { [weak self] data in
+            guard let self else { return }
+            self.mirrorModes.append(data)
+            self.outputRevision += 1
+        }
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
             hasExited = true
@@ -60,11 +80,113 @@ final class ActivityTerminalView: LocalProcessTerminalView {
         }
     }
 
-    func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {}
+    private static func claudeConfig(environment: [String: String]) -> URL {
+        let directory = environment["CLAUDE_CONFIG_DIR"] ?? ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"]
+        return directory.map { URL(fileURLWithPath: $0) } ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude")
+    }
+
+    func acquireChat() {
+        chatViewers += 1
+        if chatViewers == 1 { journalMonitor.attach(agent?.journal) }
+    }
+
+    func releaseChat() {
+        chatViewers = max(0, chatViewers - 1)
+        if chatViewers == 0 { journalMonitor.attach(nil) }
+    }
+
+    func updateTranscript() {
+        guard transcript.source == .terminal, (transcriptRevision != outputRevision || transcript.messages.isEmpty) else { return }
+        transcriptRevision = outputRevision
+        transcript.update(screen: view.getTerminal().recentText(limit: 65_536))
+    }
+
+    func send(_ data: Data, message: String? = nil) async throws {
+        guard data.count <= 65_536 else { throw WorkspaceError(message: "Message trop long (64 Ko maximum).") }
+        let previous = pendingWrite
+        let write = Task {
+            _ = await previous?.result
+            try await write(data, message: message)
+        }
+        pendingWrite = write
+        try await write.value
+    }
+
+    func launch(_ agent: ConversationAgent, skippingPermissions: Bool) async throws {
+        guard self.agent == nil, !isLaunchingAgent, isShellInForeground else {
+            throw WorkspaceError(message: "Le terminal n’est pas à l’invite du shell. Termine la commande en cours avant de lancer un agent.")
+        }
+        isLaunchingAgent = true
+        defer { isLaunchingAgent = false }
+        let command = agent.launchCommand(skippingPermissions: skippingPermissions).joined(separator: " ")
+        try await send(Data((command + "\r").utf8))
+        try await waitForForegroundCommand()
+    }
+
+    private var isShellInForeground: Bool {
+        runsShell && !hasExited && tcgetpgrp(view.process.childfd) == view.process.shellPid
+    }
+
+    private func waitForForegroundCommand() async throws {
+        let deadline = ContinuousClock.now + .seconds(2)
+        while isShellInForeground, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
+    private func write(_ data: Data, message: String?) async throws {
+        guard !hasExited else { throw WorkspaceError(message: "Cette session est terminée.") }
+        guard let message else {
+            view.send(source: view, data: Array(data)[...])
+            return
+        }
+        updateTranscript()
+        transcript.sent(message)
+        if data.last == 13, view.getTerminal().bracketedPasteMode {
+            try await submitAsSinglePaste(data.dropLast())
+        } else {
+            view.send(source: view, data: Array(data)[...])
+        }
+    }
+
+    private func submitAsSinglePaste(_ text: Data) async throws {
+        var paste = Data("\u{1b}[200~".utf8)
+        paste.append(text)
+        paste.append(Data("\u{1b}[201~".utf8))
+        view.send(source: view, data: Array(paste)[...])
+        try await Task.sleep(for: .milliseconds(50))
+        guard !hasExited else { throw WorkspaceError(message: "Cette session est terminée.") }
+        view.send(source: view, data: [13][...])
+    }
+
+    func screen() -> TerminalScreen {
+        if screenRevision != outputRevision || cachedScreen == nil {
+            cachedScreen = TerminalScreen(terminal: view.getTerminal(), modes: mirrorModes)
+            screenRevision = outputRevision
+        }
+        return cachedScreen!
+    }
+
+    func snapshot(previousMessages: [SessionMessage], chat: Bool,
+                  screen: TerminalScreen? = nil, previousScreen: TerminalScreen? = nil) -> RemoteTerminalSnapshot {
+        if chat { updateTranscript() }
+        let bytes = chat ? (data: Data(), reset: false) : (screen ?? self.screen()).output(after: previousScreen)
+        let messages = chat ? transcript.messages : []
+        let delta = SessionTranscriptDelta(previous: previousMessages, current: messages)
+        let terminal = view.getTerminal()
+        return RemoteTerminalSnapshot(identity: identity, isChat: chat, output: chat ? Data() : bytes.data, offset: outputRevision, reset: bytes.reset,
+                                      columns: terminal.cols, rows: terminal.rows,
+                                      transcript: delta.messages, transcriptDropped: delta.dropped, transcriptStart: delta.start,
+                                      transcriptAppend: delta.append,
+                                      hasExited: hasExited, exitCode: exitCode, chatSource: transcript.source)
+    }
+
+    func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) { outputRevision += 1 }
     func setTerminalTitle(source: LocalProcessTerminalView, title: String) { self.title = title }
     func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
     func processTerminated(source: TerminalView, exitCode: Int32?) {
         hasExited = true
+        journalMonitor.attach(nil)
         self.exitCode = exitCode.flatMap { $0 & 0x7f == 0 ? ($0 >> 8) & 0xff : nil }
     }
     func updateRepository(directory: String, branch: GitBranch?) {
@@ -80,9 +202,11 @@ final class ActivityTerminalView: LocalProcessTerminalView {
         }
         if agent != running { agent = running }
         if agentStatus != status { agentStatus = status }
+        if chatViewers > 0 { journalMonitor.attach(running?.journal) }
     }
 
     func stop() {
+        journalMonitor.attach(nil)
         guard view.process.running else { return }
         let pid = view.process.shellPid
         if pid > 0 { kill(-pid, SIGHUP) }
@@ -155,11 +279,12 @@ final class ActivityTerminalView: LocalProcessTerminalView {
         refreshingAgents = true
         defer { refreshingAgents = false }
         let shells = entries.compactMap { id, session in
-            session.hasExited ? nil : (id: id, identity: session.identity, pid: session.view.process.shellPid, directory: session.currentDirectory)
+            session.hasExited ? nil : (id: id, identity: session.identity, pid: session.view.process.shellPid,
+                                       directory: session.currentDirectory, claudeConfig: session.claudeConfig)
         }
         let found = await Task.detached(priority: .utility) {
             shells.reduce(into: [UUID: AgentProcess]()) { result, shell in
-                result[shell.identity] = AgentProcess.find(under: shell.pid, fallbackDirectory: shell.directory)
+                result[shell.identity] = AgentProcess.find(under: shell.pid, fallbackDirectory: shell.directory, claudeConfig: shell.claudeConfig)
             }
         }.value
         guard !Task.isCancelled else { return }
@@ -259,5 +384,23 @@ struct NativeTerminalView: NSViewRepresentable {
         context.coordinator.appliedAppearance = appearance
         context.coordinator.appliedColorScheme = colorScheme
         session.view.apply(appearance)
+    }
+}
+
+private extension AgentProcess {
+    var journal: AgentJournal? {
+        switch agent {
+        case .claude:
+            transcriptPath.map { AgentJournal(source: .claude, url: URL(fileURLWithPath: $0)) }
+        case .codex:
+            transcriptPath.map { AgentJournal(source: .codex, url: URL(fileURLWithPath: $0)) }
+        case .copilot:
+            sessionID.map { session in
+                AgentJournal(source: .copilot, url: FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent(".copilot/session-state/\(session)/events.jsonl"))
+            }
+        case .openCode:
+            nil
+        }
     }
 }

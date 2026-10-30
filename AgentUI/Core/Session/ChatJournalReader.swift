@@ -1,0 +1,40 @@
+import Foundation
+
+actor ChatJournalReader<Decoder: ChatJournalDecoder> {
+    private var fileID: UInt64?
+    private var position: UInt64 = 0
+    private var pending = Data()
+    private var discarding = false
+    private var decoder = Decoder()
+    private let initialLimit: UInt64 = 2_097_152
+    private let recordLimit = 1_048_576
+
+    func read(_ url: URL) -> [SessionMessage] {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let size = attributes[.size] as? UInt64, let inode = attributes[.systemFileNumber] as? UInt64,
+              let file = try? FileHandle(forReadingFrom: url) else { return decoder.messages }
+        defer { try? file.close() }
+        if inode != fileID || size < position {
+            fileID = inode
+            position = size > initialLimit ? size - initialLimit : 0
+            pending = Data()
+            discarding = position > 0
+            decoder = Decoder()
+        }
+        try? file.seek(toOffset: position)
+        while position < size {
+            guard let bytes = try? file.read(upToCount: Int(min(65_536, size - position))), !bytes.isEmpty else { break }
+            position += UInt64(bytes.count)
+            pending.append(bytes)
+            while let end = pending.firstIndex(of: 10) {
+                let line = Data(pending[..<end])
+                let start = position - UInt64(pending.count)
+                pending.removeSubrange(...end)
+                if !discarding, line.count <= recordLimit { decoder.consume(line, offset: start) }
+                discarding = false
+            }
+            if pending.count > recordLimit { pending.removeAll(keepingCapacity: false); discarding = true }
+        }
+        return decoder.messages
+    }
+}
