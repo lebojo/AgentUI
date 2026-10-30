@@ -303,6 +303,26 @@ import Observation
         save()
     }
 
+    func isBusy(_ removal: Removal) -> Bool {
+        removal.projectID.map(busyProjects.contains) ?? false
+    }
+
+    func remove(_ removal: Removal) {
+        guard !isBusy(removal) else {
+            errorMessage = "Une opération Git est en cours sur ce projet. Réessaie quand elle sera terminée."
+            return
+        }
+        switch removal {
+        case .project(let id): removeProject(id)
+        case .terminal(let id): closeTerminal(id)
+        case .worktree(let projectID, let worktreeID, _):
+            Task {
+                do { try await deleteWorktree(projectID: projectID, worktreeID: worktreeID) }
+                catch { errorMessage = error.localizedDescription }
+            }
+        }
+    }
+
     @discardableResult func addTerminal(projectID: UUID, worktreeID: UUID, name: String = TerminalRecord.defaultName, command: [String] = [], select: Bool = true) throws -> TerminalContext {
         guard let p = projects.firstIndex(where: { $0.id == projectID }),
               let w = projects[p].worktrees.firstIndex(where: { $0.id == worktreeID }) else {

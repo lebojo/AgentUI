@@ -28,5 +28,16 @@ enum SettingsTests {
         let decodedAppearance = try JSONDecoder().decode(TerminalAppearance.self, from: JSONEncoder().encode(appearance))
         try CoreTests.require(decodedAppearance == appearance, "Terminal appearance round-trips")
         print("PASS terminal appearance settings")
+
+        var confirmations = RemovalConfirmations()
+        let id = UUID(), worktree = Removal.worktree(projectID: id, worktreeID: id, name: "feature")
+        try CoreTests.require(confirmations.requires(.project(id)) && confirmations.requires(.terminal(id)), "Removals are confirmed by default")
+        confirmations.skip(.terminal(id))
+        try CoreTests.require(!confirmations.requires(.terminal(id)) && confirmations.requires(.project(id)), "Skipping is per removal kind")
+        confirmations.skip(worktree)
+        try CoreTests.require(confirmations.requires(worktree), "Worktree deletion always asks for confirmation")
+        let decodedConfirmations = try JSONDecoder().decode(RemovalConfirmations.self, from: JSONEncoder().encode(confirmations))
+        try CoreTests.require(decodedConfirmations == confirmations, "Removal confirmations round-trip")
+        print("PASS removal confirmations")
     }
 }
