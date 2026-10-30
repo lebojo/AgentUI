@@ -21,13 +21,6 @@ import Observation
 
     typealias LocalQuery = @Sendable (String) async throws -> LocalGitSnapshot
     typealias RemoteQuery = @Sendable (LocalGitSnapshot) async throws -> RemoteSnapshot
-    @ObservationIgnored private let readLocal: LocalQuery
-    @ObservationIgnored private let readRemote: RemoteQuery
-
-    init(readLocal: @escaping LocalQuery, readRemote: @escaping RemoteQuery) {
-        self.readLocal = readLocal
-        self.readRemote = readRemote
-    }
 
     private var currentKey: String? {
         local.map { $0.root + "|" + ($0.branch?.name ?? "") + "|" + ($0.headSHA ?? "") }
@@ -37,8 +30,8 @@ import Observation
         remoteDate.map { $0.duration(to: .now) >= remoteInterval } ?? true
     }
 
-    func monitor(path: String, forceRemote: Bool = false, changes: AsyncStream<Void>,
-                 remoteInterval: Duration = .seconds(60)) async {
+    func monitor(path: String, forceRemote: Bool = false, changes: AsyncStream<Void>, remoteInterval: Duration = .seconds(60),
+                 readLocal: @escaping LocalQuery, readRemote: @escaping RemoteQuery) async {
         let token = UUID()
         generation = token
         self.remoteInterval = remoteInterval
@@ -51,8 +44,8 @@ import Observation
         if forceRemote { remoteKey = nil }
         let (triggers, trigger) = AsyncStream.makeStream(of: RemoteTrigger.self, bufferingPolicy: .bufferingNewest(1))
         await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.localLoop(path: path, token: token, changes: changes, trigger: trigger) }
-            group.addTask { await self.remoteLoop(token: token, triggers: triggers) }
+            group.addTask { await self.localLoop(path: path, token: token, changes: changes, trigger: trigger, readLocal: readLocal) }
+            group.addTask { await self.remoteLoop(token: token, triggers: triggers, readRemote: readRemote) }
             group.addTask {
                 while !Task.isCancelled {
                     do { try await Task.sleep(for: remoteInterval) } catch { return }
@@ -65,7 +58,7 @@ import Observation
     }
 
     private func localLoop(path: String, token: UUID, changes: AsyncStream<Void>,
-                           trigger: AsyncStream<RemoteTrigger>.Continuation) async {
+                           trigger: AsyncStream<RemoteTrigger>.Continuation, readLocal: LocalQuery) async {
         for await _ in changes {
             guard !Task.isCancelled, generation == token else { break }
             localLoading = true
@@ -89,7 +82,7 @@ import Observation
         if generation == token { localLoading = false }
     }
 
-    private func remoteLoop(token: UUID, triggers: AsyncStream<RemoteTrigger>) async {
+    private func remoteLoop(token: UUID, triggers: AsyncStream<RemoteTrigger>, readRemote: RemoteQuery) async {
         for await reason in triggers {
             guard !Task.isCancelled, generation == token else { break }
             guard let snapshot = local, let key = currentKey,

@@ -280,11 +280,12 @@ import Observation
         case .terminal(let id, _):
             return try .success(store.sessions.start(try context(id)).snapshot(previousMessages: [], chat: true))
         case .input(let id, let data, let message):
+            try requireWritable()
             guard data.count <= 65_536, (message?.utf8.count ?? 0) <= 65_536 else { throw RemoteError(message: "Message trop long.") }
             try await store.sessions.start(try context(id)).send(data, message: message)
             return try .success(true)
         case .newTerminal(let project, let worktree):
-            guard !store.isReadOnly else { throw RemoteError(message: "L’organisation du Mac est en lecture seule.") }
+            try requireWritable()
             let launch = settings?.agentLaunch ?? AgentLaunch()
             let id = try store.addTerminal(projectID: project, worktreeID: worktree,
                                            command: launch.command(on: .newTerminal), select: false)
@@ -306,11 +307,12 @@ import Observation
         case .conversations(let id):
             return try await .success(ConversationIndex.load(at: context(id).worktree.path))
         case .launchAgent(let id, let agent):
+            try requireWritable()
             let session = store.sessions.start(try context(id))
             try await session.launch(agent, skippingPermissions: settings?.agentLaunch.skipsPermissions ?? false)
             return try .success(true)
         case .resume(let id, let conversation):
-            guard !store.isReadOnly else { throw RemoteError(message: "L’organisation du Mac est en lecture seule.") }
+            try requireWritable()
             let context = try context(id)
             let available = await ConversationIndex.load(at: context.worktree.path, runningMaximumAge: .zero)
             guard let actual = available.first(where: { $0.id == conversation.id }), !actual.isRunning else {
@@ -319,6 +321,10 @@ import Observation
             let resumed = try store.resume(actual, projectID: context.project.id, worktreeID: context.worktree.id, select: false)
             return try .success(resumed.terminal.id)
         }
+    }
+
+    private func requireWritable() throws {
+        guard store?.isReadOnly != true else { throw RemoteError(message: "L’organisation du Mac est en lecture seule.") }
     }
 
     private func context(_ id: UUID) throws -> TerminalContext {

@@ -161,7 +161,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
 
     func screen() -> TerminalScreen {
         if screenRevision != outputRevision || cachedScreen == nil {
-            cachedScreen = TerminalScreen(terminal: view.getTerminal(), modes: mirrorModes)
+            cachedScreen = TerminalScreen(terminal: view.getTerminal(), modes: mirrorModes, previous: cachedScreen)
             screenRevision = outputRevision
         }
         return cachedScreen!

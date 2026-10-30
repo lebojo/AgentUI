@@ -33,16 +33,7 @@ import Observation
     }
 
     var isConnected: Bool { status == .connected }
-    var context: TerminalContext? {
-        for project in workspace.projects {
-            for worktree in project.worktrees {
-                if let terminal = worktree.terminals.first(where: { $0.id == selection }) {
-                    return TerminalContext(project: project, worktree: worktree, terminal: terminal)
-                }
-            }
-        }
-        return nil
-    }
+    var context: TerminalContext? { TerminalContext(terminalID: selection, in: workspace.projects) }
     var statusText: String {
         switch status {
         case .disconnected: "Déconnecté"
@@ -222,7 +213,7 @@ import Observation
     let store: MobileWorkspaceStore
 
     private func request<Value: Decodable & Sendable>(_ request: RemoteRequest) async throws -> Value {
-        guard store.isConnected, store.host == host else { throw RemoteError(message: "Le Mac est déconnecté.") }
+        guard store.wantsConnection, store.host == host else { throw RemoteError(message: "Le Mac est déconnecté.") }
         return try await RemoteChannel.call(request, host: host, key: try store.requiredPairingKey())
     }
 

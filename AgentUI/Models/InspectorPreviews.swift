@@ -8,15 +8,6 @@ import Observation
 
     }
 
-    @ObservationIgnored private let readFile: @Sendable (URL) async throws -> String
-    @ObservationIgnored private let readDiff: @Sendable (GitChange, String) async throws -> GitDiff
-
-    init(readFile: @escaping @Sendable (URL) async throws -> String,
-         readDiff: @escaping @Sendable (GitChange, String) async throws -> GitDiff) {
-        self.readFile = readFile
-        self.readDiff = readDiff
-    }
-
     var current: InspectorPreview?
     var error: String?
     private(set) var request: Request?
@@ -27,7 +18,8 @@ import Observation
 
     func diff(_ change: GitChange, at root: String) { submit(.diff(change, root: root)) }
 
-    func load() async {
+    func load(readFile: @Sendable (URL) async throws -> String,
+              readDiff: @Sendable (GitChange, String) async throws -> GitDiff) async {
         guard let request else { return }
         do {
             switch request {

@@ -13,6 +13,7 @@ enum RemoteProtocol {
     }
     static let version = 5
     static let maximumFrame = 4 * 1024 * 1024
+    static let maximumPayload = maximumFrame / 4 * 3 - 4096
 
     static func host(_ value: String) throws -> NWEndpoint.Host {
         let value = value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -98,7 +99,9 @@ struct RemoteReply: Codable, Sendable {
     var error: String?
 
     static func success(_ value: some Encodable) throws -> Self {
-        Self(payload: try JSONEncoder().encode(value))
+        let payload = try JSONEncoder().encode(value)
+        guard payload.count <= RemoteProtocol.maximumPayload else { throw RemoteError(message: "Réponse trop volumineuse.") }
+        return Self(payload: payload)
     }
 
     func decode<Value: Decodable>(_ type: Value.Type) throws -> Value {

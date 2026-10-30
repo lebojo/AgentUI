@@ -9,8 +9,9 @@ struct TerminalScreen {
     let history: [String]
     let lines: [String]
     let state: String
+    private let historyLines: [BufferLine?]
 
-    init(terminal: Terminal, modes: TerminalMirrorModes) {
+    init(terminal: Terminal, modes: TerminalMirrorModes, previous: TerminalScreen? = nil) {
         let columns = terminal.cols
         let rows = terminal.rows
         self.columns = columns
@@ -35,7 +36,14 @@ struct TerminalScreen {
             return result
         }
         historyStart = alternate ? top : max(first, top - min(200, 16_384 / max(1, columns)))
-        history = (historyStart..<top).map(encodeLine)
+        let reusable = previous?.columns == columns && previous?.alternate == false && !alternate ? previous : nil
+        let historyLines = (historyStart..<top).map { terminal.getScrollInvariantLine(row: $0) }
+        var history: [String] = []
+        for (row, line) in zip(historyStart..<top, historyLines) {
+            history.append(reusable?.encodedHistory(row: row, line: line) ?? encodeLine(row))
+        }
+        self.history = history
+        self.historyLines = historyLines
         lines = (top..<(top + rows)).map(encodeLine)
         func mode(_ number: Int, _ enabled: Bool) -> String { "\u{1b}[?\(number)\(enabled ? "h" : "l")" }
         var tail = ""
@@ -72,6 +80,12 @@ struct TerminalScreen {
         tail += "\u{1b}[\(modes.insert ? "4h" : "4l")"
         tail += Self.sgr(terminal.currentAttribute)
         state = tail
+    }
+
+    private func encodedHistory(row: Int, line: BufferLine?) -> String? {
+        let index = row - historyStart
+        guard let line, historyLines.indices.contains(index), historyLines[index] === line else { return nil }
+        return history[index]
     }
 
     func output(after previous: TerminalScreen?) -> (data: Data, reset: Bool) {

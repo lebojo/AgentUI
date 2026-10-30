@@ -26,15 +26,17 @@ import Foundation
         _ = try await GitService.run(["add", "."], at: repository.path)
         _ = try await GitService.run(["-c", "user.name=Tests", "-c", "user.email=tests@example.invalid", "commit", "-m", "fixture"], at: repository.path)
         let reads = Counter()
-        let model = InspectorStore(readLocal: { path in
-            await reads.increment()
-            return try await InspectorService.localGit(at: path)
-        }, readRemote: { local in
-            RemoteSnapshot(repository: RemoteRepository(nameWithOwner: "fixture/app", url: "https://github.com/fixture/app", description: nil),
-                           changeRequest: nil, runs: [], changeRequestError: nil, checksError: nil)
-        })
+        let model = InspectorStore()
         let changes = await FileEvents.repositoryChanges(at: repository.path)
-        let monitoring = Task { await model.monitor(path: repository.path, changes: changes) }
+        let monitoring = Task {
+            await model.monitor(path: repository.path, changes: changes, readLocal: { path in
+                await reads.increment()
+                return try await InspectorService.localGit(at: path)
+            }, readRemote: { local in
+                RemoteSnapshot(repository: RemoteRepository(nameWithOwner: "fixture/app", url: "https://github.com/fixture/app", description: nil),
+                               changeRequest: nil, runs: [], changeRequestError: nil, checksError: nil)
+            })
+        }
         try await wait(until: { model.local != nil }, "The inspector reads the repository on start")
         try await Task.sleep(for: .seconds(1.5))
         let settledReads = await reads.value

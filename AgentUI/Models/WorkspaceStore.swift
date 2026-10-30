@@ -55,14 +55,7 @@ import Observation
     var terminalCount: Int { projects.flatMap(\.worktrees).flatMap(\.terminals).count }
 
     func context(for terminalID: UUID?) -> TerminalContext? {
-        for project in projects {
-            for worktree in project.worktrees {
-                if let terminal = worktree.terminals.first(where: { $0.id == terminalID }) {
-                    return TerminalContext(project: project, worktree: worktree, terminal: terminal)
-                }
-            }
-        }
-        return nil
+        TerminalContext(terminalID: terminalID, in: projects)
     }
 
     subscript(expanded id: UUID) -> Bool {

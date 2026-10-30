@@ -34,7 +34,7 @@ struct MobileWorkspaceView: View {
             guard !isInBackground else { store.suspend(); return }
             await store.watch(prefersChat: mode == .chat)
         }
-        .alert("Opération impossible", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
+        .alert("Opération impossible", isPresented: $store.error.isPresent) {
             Button("OK") { store.error = nil }
         } message: { Text(store.error ?? "") }
     }

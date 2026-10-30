@@ -24,7 +24,8 @@ private final class Delegate: TerminalDelegate {
             host.feed(byteArray: Array(bytes))
         }
         func sync(full: Bool = false) {
-            let screen = TerminalScreen(terminal: host, modes: modes)
+            let screen = TerminalScreen(terminal: host, modes: modes, previous: previous)
+            require(screen.history == TerminalScreen(terminal: host, modes: modes).history, "Reused scrollback rows match a fresh encoding")
             let delta = screen.output(after: full ? nil : previous)
             peer.feed(byteArray: Array(delta.data))
             let actual = TerminalScreen(terminal: peer, modes: modes)
@@ -80,6 +81,9 @@ private final class Delegate: TerminalDelegate {
         sync()
         host.resize(cols: 60, rows: 15)
         peer.resize(cols: 60, rows: 15)
+        sync()
+        feed("\u{1b}[3J\u{1b}[H\u{1b}[2J")
+        feed(String(repeating: "after clear\r\n", count: 40))
         sync()
         print("PASS alternate-screen exit, independent scroll position and host resize")
 

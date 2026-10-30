@@ -29,19 +29,20 @@ import Foundation
 
         let previewFile = root.appendingPathComponent("preview.txt")
         try "hello\n".write(to: previewFile, atomically: true, encoding: .utf8)
-        let previews = InspectorPreviews(readFile: { try await InspectorService.textFile($0) }, readDiff: { try await InspectorService.diff($0, at: $1) })
+        let previews = InspectorPreviews()
+        func loadPreview() async { await previews.load(readFile: { try await InspectorService.textFile($0) }, readDiff: { try await InspectorService.diff($0, at: $1) }) }
         previews.open(previewFile)
         previews.diff(change, at: repo.path)
         try CoreTests.require(previews.isLoading && previews.request == .file(previewFile), "A second preview request is ignored while one is loading")
-        await previews.load()
+        await loadPreview()
         guard case .file(let loadedFile)? = previews.current else { throw WorkspaceError(message: "FAIL: file preview not loaded") }
         try CoreTests.require(loadedFile.text == "hello\n" && !previews.isLoading && previews.error == nil, "A loaded preview is presented and clears the request")
         previews.open(root.appendingPathComponent("missing.txt"))
-        await previews.load()
+        await loadPreview()
         try CoreTests.require(previews.error != nil && !previews.isLoading, "A failed preview reports its error and clears the request")
         previews.error = nil
         previews.diff(change, at: repo.path)
-        let cancelled = Task { await previews.load() }
+        let cancelled = Task { await loadPreview() }
         cancelled.cancel()
         await cancelled.value
         try CoreTests.require(previews.error == nil && previews.request == .diff(change, root: repo.path), "A cancelled preview is neither reported as an error nor forgotten")
@@ -160,10 +161,11 @@ import Foundation
         print("PASS ordered persistence")
 
         let fixture = InspectorFixture()
-        let model = InspectorStore(readLocal: { _ in await fixture.local() }, readRemote: { try await fixture.remote($0) })
+        let model = InspectorStore()
         let (changes, fileEvent) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
         fileEvent.yield()
-        let monitoring = Task { await model.monitor(path: repo.path, changes: changes, remoteInterval: .milliseconds(10)) }
+        let monitoring = Task { await model.monitor(path: repo.path, changes: changes, remoteInterval: .milliseconds(10),
+                                                   readLocal: { _ in await fixture.local() }, readRemote: { try await fixture.remote($0) }) }
         for _ in 0..<200 {
             if await fixture.remoteStarted { break }
             try await Task.sleep(for: .milliseconds(5))

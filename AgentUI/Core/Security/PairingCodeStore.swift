@@ -8,10 +8,10 @@ protocol PairingCodeStore: Sendable {
 
 enum PairingCodeStores {
     static func make(account: String) -> any PairingCodeStore {
+        #if DEBUG
         if let code = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)[account] as? String {
             return FixedPairingCodeStore(code: code)
         }
-        #if DEBUG
         if ProcessInfo.processInfo.environment["AGENTUI_STATE_DIRECTORY"] != nil { return FixedPairingCodeStore(code: nil) }
         #endif
         return KeychainPairingCodeStore(account: account)

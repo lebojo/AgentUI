@@ -21,8 +21,23 @@ enum RemoteChannel {
         return NWParameters(tls: tls, tcp: tcp)
     }
 
+    private static let callGate = RemoteCallGate(limit: 4)
+
     static func call<Value: Decodable & Sendable>(_ request: RemoteRequest, host: String, key: PairingKey,
                                                   as type: Value.Type = Value.self) async throws -> Value {
+        await callGate.enter()
+        do {
+            let value = try await perform(request, host: host, key: key, as: type)
+            await callGate.leave()
+            return value
+        } catch {
+            await callGate.leave()
+            throw error
+        }
+    }
+
+    private static func perform<Value: Decodable & Sendable>(_ request: RemoteRequest, host: String, key: PairingKey,
+                                                             as type: Value.Type) async throws -> Value {
         let connection = NWConnection(host: try RemoteProtocol.host(host), port: NWEndpoint.Port(rawValue: RemoteProtocol.port)!,
                                       using: parameters(key: key))
         return try await withTaskCancellationHandler {
@@ -111,5 +126,28 @@ enum RemoteChannel {
     private static func translated(_ error: NWError) -> Error {
         guard case .tls = error else { return error }
         return RemoteError(message: "Code d’appairage refusé. Recopie le code affiché sur le Mac dans Réglages → Accès local.", isPermanent: true)
+    }
+}
+
+private actor RemoteCallGate {
+    private let limit: Int
+    private var running = 0
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    init(limit: Int) {
+        self.limit = limit
+    }
+
+    func enter() async {
+        guard running >= limit else {
+            running += 1
+            return
+        }
+        await withCheckedContinuation { waiting.append($0) }
+    }
+
+    func leave() {
+        if waiting.isEmpty { running -= 1 }
+        else { waiting.removeFirst().resume() }
     }
 }

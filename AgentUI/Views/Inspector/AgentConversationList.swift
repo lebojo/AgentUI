@@ -31,7 +31,7 @@ struct AgentConversationList: View {
             guard workspaceVisible, scenePhase != .background else { return }
             await monitor()
         }
-        .alert("Reprise impossible", isPresented: Binding(get: { resumeError != nil }, set: { if !$0 { resumeError = nil } })) {
+        .alert("Reprise impossible", isPresented: $resumeError.isPresent) {
             Button("OK") { resumeError = nil }
         } message: { Text(resumeError ?? "") }
     }

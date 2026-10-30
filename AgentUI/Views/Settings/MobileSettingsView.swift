@@ -34,7 +34,7 @@ struct MobileSettingsView: View {
                     Button(store.isConnected ? "Reconnecter" : "Se connecter") {
                         do { try store.connect(to: address, pairingCode: pairingCode); error = nil }
                         catch { self.error = error.localizedDescription }
-                    }.disabled(address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pairingCode.isEmpty || store.status == .connecting)
+                    }.disabled(address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pairingCode.isEmpty)
                     if store.wantsConnection {
                         Button("Se déconnecter", role: .destructive) { store.disconnect() }
                     }

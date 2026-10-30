@@ -178,6 +178,18 @@ struct TerminalContext: Equatable, Sendable {
         self.worktree = WorktreeInfo(id: worktree.id, name: worktree.name, path: worktree.path, isPrimary: worktree.isPrimary)
         self.terminal = terminal
     }
+
+    init?(terminalID: UUID?, in projects: [Project]) {
+        for project in projects {
+            for worktree in project.worktrees {
+                if let terminal = worktree.terminals.first(where: { $0.id == terminalID }) {
+                    self.init(project: project, worktree: worktree, terminal: terminal)
+                    return
+                }
+            }
+        }
+        return nil
+    }
 }
 
 struct WorkspaceError: LocalizedError {

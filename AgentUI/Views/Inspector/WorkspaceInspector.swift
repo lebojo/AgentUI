@@ -40,8 +40,8 @@ private struct InspectorContents: View {
     @Environment(\.workspaceVisible) private var workspaceVisible
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var model: InspectorStore
-    @State private var previews: InspectorPreviews
+    @State private var model = InspectorStore()
+    @State private var previews = InspectorPreviews()
     @State private var refresh = 0
 
     let context: TerminalContext
@@ -68,20 +68,11 @@ private struct InspectorContents: View {
         .task(id: "\(tab.rawValue)-\(refresh)-\(workspaceVisible)-\(scenePhase == .background)", priority: .utility) {
             guard workspaceVisible, scenePhase != .background, tab == .git || tab == .checks else { return }
             let changes = await source.repositoryChanges(at: context.worktree.path)
-            await model.monitor(path: context.worktree.path, forceRemote: refresh > 0, changes: changes)
+            await model.monitor(path: context.worktree.path, forceRemote: refresh > 0, changes: changes,
+                                readLocal: { [source] in try await source.localGit(at: $0) },
+                                readRemote: { [source] in try await source.remote($0) })
         }
     }
-
-    init(context: TerminalContext, tab: InspectorTab, source: any InspectorSource) {
-        self.context = context
-        self.tab = tab
-        self.source = source
-        _model = State(initialValue: InspectorStore(readLocal: { try await source.localGit(at: $0) },
-                                                    readRemote: { try await source.remote($0) }))
-        _previews = State(initialValue: InspectorPreviews(readFile: { try await source.textFile($0) },
-                                                         readDiff: { try await source.diff($0, at: $1) }))
-    }
-
 }
 
 struct InspectorNotice: View {
