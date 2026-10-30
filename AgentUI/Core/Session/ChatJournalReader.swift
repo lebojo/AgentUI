@@ -26,13 +26,15 @@ actor ChatJournalReader<Decoder: ChatJournalDecoder> {
             guard let bytes = try? file.read(upToCount: Int(min(65_536, size - position))), !bytes.isEmpty else { break }
             position += UInt64(bytes.count)
             pending.append(bytes)
-            while let end = pending.firstIndex(of: 10) {
-                let line = Data(pending[..<end])
-                let start = position - UInt64(pending.count)
-                pending.removeSubrange(...end)
-                if !discarding, line.count <= recordLimit { decoder.consume(line, offset: start) }
+            var lineStart = pending.startIndex
+            while let end = pending[lineStart...].firstIndex(of: 10) {
+                let line = Data(pending[lineStart..<end])
+                let offset = position - UInt64(pending.endIndex - lineStart)
+                if !discarding, line.count <= recordLimit { decoder.consume(line, offset: offset) }
                 discarding = false
+                lineStart = pending.index(after: end)
             }
+            pending = Data(pending[lineStart...])
             if pending.count > recordLimit { pending.removeAll(keepingCapacity: false); discarding = true }
         }
         return decoder.messages

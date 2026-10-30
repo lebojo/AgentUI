@@ -77,6 +77,13 @@ struct AgentProcess: Equatable, Sendable {
         return components[index + 1]
     }
 
+    static func copilotJournalPath(inPath path: String) -> String? {
+        let components = path.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+        guard let index = components.firstIndex(of: "session-state"), index + 1 < components.count,
+              copilotSessionID(inPath: path) != nil else { return nil }
+        return (components[...(index + 1)] + ["events.jsonl"]).joined(separator: "/")
+    }
+
     private static func agent(of pid: Int32) -> ConversationAgent? {
         let candidates = [name(of: pid)].compactMap { $0 } + Array(arguments(of: pid).prefix(2))
         let names = candidates.map { URL(fileURLWithPath: $0).lastPathComponent }
@@ -97,7 +104,8 @@ struct AgentProcess: Equatable, Sendable {
             let rollout = pids.lazy.flatMap(openFiles).first { codexSessionID(inRolloutPath: $0) != nil }
             return (rollout.flatMap(codexSessionID(inRolloutPath:)), rollout, nil)
         case .copilot:
-            return (pids.lazy.flatMap(openFiles).compactMap(copilotSessionID(inPath:)).first, nil, nil)
+            let file = pids.lazy.flatMap(openFiles).first { copilotSessionID(inPath: $0) != nil }
+            return (file.flatMap(copilotSessionID(inPath:)), file.flatMap(copilotJournalPath(inPath:)), nil)
         case .openCode:
             return (nil, nil, nil)
         }

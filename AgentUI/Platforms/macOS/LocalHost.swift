@@ -19,6 +19,7 @@ import Observation
     @ObservationIgnored private var settings: SettingsStore?
     @ObservationIgnored private var installedAgents: InstalledAgents?
     @ObservationIgnored private var listener: NWListener?
+    @ObservationIgnored private var listenerRetry: Task<Void, Never>?
     @ObservationIgnored private var jobs: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var connections: [UUID: (connection: NWConnection, peer: String)] = [:]
 
@@ -65,6 +66,8 @@ import Observation
     }
 
     func stop() {
+        listenerRetry?.cancel()
+        listenerRetry = nil
         listener?.cancel()
         listener = nil
         for job in jobs.values { job.cancel() }
@@ -95,7 +98,10 @@ import Observation
                     guard let self, self.listener === listener else { return }
                     switch state {
                     case .ready: self.status = "Prêt à recevoir une connexion"
-                    case .failed(let error): self.status = error.localizedDescription; self.stop()
+                    case .failed(let error):
+                        self.stop()
+                        self.status = "\(error.localizedDescription) Nouvelle tentative dans 5 secondes…"
+                        self.retryListener()
                     default: break
                     }
                 }
@@ -105,6 +111,13 @@ import Observation
             }
             listener.start(queue: .main)
         } catch { status = error.localizedDescription }
+    }
+
+    private func retryListener() {
+        listenerRetry = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(5)) } catch { return }
+            self?.restart()
+        }
     }
 
     private func accept(_ connection: NWConnection) {
@@ -139,15 +152,8 @@ import Observation
     }
 
     private func readRequest(_ connection: NWConnection) async throws -> RemoteRequest {
-        try await withThrowingTaskGroup(of: RemoteRequest.self) { group in
-            group.addTask { try await RemoteChannel.receive(on: connection) }
-            group.addTask {
-                try await Task.sleep(for: .seconds(15))
-                connection.cancel()
-                throw CancellationError()
-            }
-            defer { group.cancelAll() }
-            return try await group.next()!
+        try await RemoteChannel.withTimeout(on: connection, failure: CancellationError()) {
+            try await RemoteChannel.receive(on: connection)
         }
     }
 

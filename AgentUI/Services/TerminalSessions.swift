@@ -395,10 +395,7 @@ private extension AgentProcess {
         case .codex:
             transcriptPath.map { AgentJournal(source: .codex, url: URL(fileURLWithPath: $0)) }
         case .copilot:
-            sessionID.map { session in
-                AgentJournal(source: .copilot, url: FileManager.default.homeDirectoryForCurrentUser
-                    .appendingPathComponent(".copilot/session-state/\(session)/events.jsonl"))
-            }
+            transcriptPath.map { AgentJournal(source: .copilot, url: URL(fileURLWithPath: $0)) }
         case .openCode:
             nil
         }

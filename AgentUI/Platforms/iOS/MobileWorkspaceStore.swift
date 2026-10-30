@@ -4,6 +4,14 @@ import Observation
 
 @MainActor @Observable final class MobileWorkspaceStore {
     enum Status: Equatable { case disconnected, connecting, connected, failed(String) }
+
+    private struct QueuedInput {
+        let data: Data
+        let terminal: UUID
+        let message: String?
+        let completion: (Error?) -> Void
+    }
+
     private(set) var host = UserDefaults.standard.string(forKey: "remoteHost") ?? ""
     private(set) var pairingCode: String
     private(set) var status: Status = .disconnected
@@ -24,12 +32,13 @@ import Observation
     @ObservationIgnored private var streamConnection: NWConnection?
     @ObservationIgnored private var pendingInputs: [UUID: (Error?) -> Void] = [:]
     @ObservationIgnored private var inputTimeouts: [UUID: Task<Void, Never>] = [:]
+    @ObservationIgnored private var queuedInputs: [QueuedInput] = []
+    @ObservationIgnored private var streamReady = false
 
     init(pairingStore: any PairingCodeStore = PairingCodeStores.make(account: "remotePairingCode")) {
         self.pairingStore = pairingStore
         pairingCode = (try? pairingStore.load()) ?? ""
-        pairingKey = try? PairingKey(code: pairingCode)
-        wantsConnection = !host.isEmpty && pairingKey != nil
+        wantsConnection = !host.isEmpty && !pairingCode.isEmpty
     }
 
     var isConnected: Bool { status == .connected }
@@ -77,11 +86,14 @@ import Observation
         if session?.isChat == true, !prefersChat { session = nil }
         let token = UUID()
         generation = token
-        status = .connecting
+        streamReady = false
+        if status != .connected { status = .connecting }
         let selectedID = selection
         do {
+            let key = try await requiredPairingKey()
+            guard generation == token else { return }
             let connection = NWConnection(host: try RemoteProtocol.host(host), port: NWEndpoint.Port(rawValue: RemoteProtocol.port)!,
-                                          using: RemoteChannel.parameters(key: try requiredPairingKey()))
+                                          using: RemoteChannel.parameters(key: key))
             streamConnection = connection
             defer {
                 connection.cancel()
@@ -98,6 +110,10 @@ import Observation
                     first = false
                     guard generation == token, !Task.isCancelled else { return }
                     if status != .connected { status = .connected }
+                    if !streamReady {
+                        streamReady = true
+                        sendQueuedInputs()
+                    }
                     switch event {
                     case .workspace(let value):
                         if workspace != value { workspace = value }
@@ -151,6 +167,10 @@ import Observation
             completion(RemoteError(message: "Reconnecte-toi au Mac avant d’envoyer."))
             return
         }
+        guard streamReady else {
+            queuedInputs.append(QueuedInput(data: data, terminal: terminal, message: message, completion: completion))
+            return
+        }
         let id = UUID()
         pendingInputs[id] = completion
         do {
@@ -169,24 +189,36 @@ import Observation
         }
     }
 
+    private func sendQueuedInputs() {
+        let queued = queuedInputs
+        queuedInputs.removeAll()
+        for input in queued {
+            enqueueInput(input.data, terminal: input.terminal, message: input.message, completion: input.completion)
+        }
+    }
+
     private func finishInput(_ id: UUID, error: Error?) {
         inputTimeouts.removeValue(forKey: id)?.cancel()
         pendingInputs.removeValue(forKey: id)?(error)
     }
 
-    func requiredPairingKey() throws -> PairingKey {
-        guard let pairingKey else {
+    func requiredPairingKey() async throws -> PairingKey {
+        if let pairingKey { return pairingKey }
+        let code = pairingCode
+        guard let key = try? await Task.detached(priority: .userInitiated, operation: { try PairingKey(code: code) }).value else {
             throw RemoteError(message: "Saisis le code d’appairage affiché sur le Mac dans Réglages → Accès local.", isPermanent: true)
         }
-        return pairingKey
+        if pairingCode == code { pairingKey = key }
+        return key
     }
 
     private func cancelInputs() {
         for timeout in inputTimeouts.values { timeout.cancel() }
         inputTimeouts.removeAll()
-        let pending = pendingInputs
+        let pending = Array(pendingInputs.values) + queuedInputs.map(\.completion)
         pendingInputs.removeAll()
-        for completion in pending.values {
+        queuedInputs.removeAll()
+        for completion in pending {
             completion(RemoteError(message: "Connexion interrompue. Vérifie la session avant de renvoyer."))
         }
     }
@@ -194,14 +226,14 @@ import Observation
     func launch(_ agent: ConversationAgent, in context: TerminalContext) async {
         do {
             let _: Bool = try await RemoteChannel.call(.launchAgent(terminal: context.terminal.id, agent: agent),
-                                                       host: host, key: try requiredPairingKey())
+                                                       host: host, key: try await requiredPairingKey())
         } catch { self.error = error.localizedDescription }
     }
 
     func newTerminal(in context: TerminalContext) async {
         do {
             let id: UUID = try await RemoteChannel.call(.newTerminal(project: context.project.id, worktree: context.worktree.id),
-                                                        host: host, key: try requiredPairingKey())
+                                                        host: host, key: try await requiredPairingKey())
             selection = id
         } catch { self.error = error.localizedDescription }
     }
@@ -214,7 +246,7 @@ import Observation
 
     private func request<Value: Decodable & Sendable>(_ request: RemoteRequest) async throws -> Value {
         guard store.wantsConnection, store.host == host else { throw RemoteError(message: "Le Mac est déconnecté.") }
-        return try await RemoteChannel.call(request, host: host, key: try store.requiredPairingKey())
+        return try await RemoteChannel.call(request, host: host, key: try await store.requiredPairingKey())
     }
 
     func children(at url: URL) async throws -> [ExplorerEntry] {

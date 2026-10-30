@@ -42,39 +42,39 @@ enum RemoteChannel {
                                       using: parameters(key: key))
         return try await withTaskCancellationHandler {
             defer { connection.cancel() }
-            return try await withThrowingTaskGroup(of: Value.self) { group in
-                group.addTask {
-                    connection.start(queue: .global(qos: .userInitiated))
-                    try await send(request, on: connection)
-                    let reply: RemoteReply = try await receive(on: connection)
-                    return try reply.decode(type)
-                }
-                group.addTask {
-                    try await Task.sleep(for: .seconds(15))
-                    connection.cancel()
-                    throw RemoteError(message: "Le Mac ne répond pas. Vérifie l’IP, le réseau local et le partage dans ses réglages.")
-                }
-                defer { group.cancelAll() }
-                return try await group.next()!
+            return try await withTimeout(on: connection, failure: unresponsiveHost) {
+                connection.start(queue: .global(qos: .userInitiated))
+                try await send(request, on: connection)
+                let reply: RemoteReply = try await receive(on: connection)
+                return try reply.decode(type)
             }
         } onCancel: { connection.cancel() }
     }
 
     static func firstEvent(after request: RemoteRequest, on connection: NWConnection) async throws -> RemoteEvent {
-        try await withThrowingTaskGroup(of: RemoteEvent.self) { group in
-            group.addTask {
-                connection.start(queue: .global(qos: .userInitiated))
-                try await send(request, on: connection)
-                return try await receive(on: connection)
-            }
+        try await withTimeout(on: connection, failure: unresponsiveHost) {
+            connection.start(queue: .global(qos: .userInitiated))
+            try await send(request, on: connection)
+            return try await receive(on: connection)
+        }
+    }
+
+    static func withTimeout<Value: Sendable>(on connection: NWConnection, failure: some Error & Sendable,
+                                             _ operation: @escaping @Sendable () async throws -> Value) async throws -> Value {
+        try await withThrowingTaskGroup(of: Value.self) { group in
+            group.addTask { try await operation() }
             group.addTask {
                 try await Task.sleep(for: .seconds(15))
                 connection.cancel()
-                throw RemoteError(message: "Le Mac ne répond pas. Vérifie son IP et ses réglages d’accès local.")
+                throw failure
             }
             defer { group.cancelAll() }
             return try await group.next()!
         }
+    }
+
+    private static var unresponsiveHost: RemoteError {
+        RemoteError(message: "Le Mac ne répond pas. Vérifie son IP, le réseau local et ses réglages d’accès local.")
     }
 
     static func send(_ value: some Encodable, on connection: NWConnection) async throws {

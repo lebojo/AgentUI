@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Native text keeps selection and accessibility. Fenced code gets its own
-/// horizontal viewport instead of imposing terminal-width wrapping on prose.
 struct SessionMarkdown: View {
     let text: String
 
@@ -9,7 +7,7 @@ struct SessionMarkdown: View {
         VStack(alignment: .leading, spacing: Spacing.m) {
             ForEach(Array(text.components(separatedBy: "```").enumerated()), id: \.offset) { index, block in
                 if index.isMultiple(of: 2) {
-                    Text(.init(block)).font(Typography.body).textSelection(.enabled)
+                    prose(block).font(Typography.body).textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     let code = block.firstIndex(of: "\n").map { String(block[block.index(after: $0)...]) } ?? block
@@ -20,5 +18,11 @@ struct SessionMarkdown: View {
                 }
             }
         }
+    }
+
+    private func prose(_ block: String) -> Text {
+        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        guard let rendered = try? AttributedString(markdown: block, options: options) else { return Text(verbatim: block) }
+        return Text(rendered)
     }
 }

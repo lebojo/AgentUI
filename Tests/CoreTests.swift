@@ -195,6 +195,8 @@ import Foundation
         try require(AgentProcess.codexSessionID(inRolloutPath: "/h/sessions/2026/10/27/rollout-2026-10-27T20-51-18-\(rolloutID).jsonl") == rolloutID
                     && AgentProcess.codexSessionID(inRolloutPath: "/h/sessions/notes.jsonl") == nil, "Read Codex session IDs from rollout paths")
         try require(AgentProcess.copilotSessionID(inPath: "/Users/me/.copilot/session-state/abc/events.jsonl") == "abc", "Read Copilot session IDs")
+        try require(AgentProcess.copilotJournalPath(inPath: "/Volumes/Work/.copilot/session-state/abc/workspace.yaml") == "/Volumes/Work/.copilot/session-state/abc/events.jsonl",
+                    "Follow the Copilot journal next to the file the agent opened")
         try require(AgentProcess.agent(named: ["2.1.312", "claude", "--resume"]) == .claude && AgentProcess.agent(named: ["zsh", "-l"]) == nil,
                     "Recognise agents by process or argument name")
 
