@@ -70,7 +70,7 @@ struct AgentUIApplication: App {
                 .environment(settings)
                 .environment(visibility)
                 .environment(installedAgents)
-                .task { await installedAgents.refresh() }
+                .task(id: visibility.isVisible) { if visibility.isVisible { await installedAgents.refresh() } }
                 .onAppear {
                     delegate.store = store
                     delegate.host = host

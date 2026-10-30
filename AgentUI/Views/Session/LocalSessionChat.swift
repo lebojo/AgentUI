@@ -13,12 +13,13 @@ struct LocalSessionChat: View {
         .task(id: session.identity) {
             session.acquireChat()
             defer { session.releaseChat() }
-            // One invalidation signal, coalesced before rendering; no idle timer or per-byte view updates.
             let (changes, continuation) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
             continuation.yield(())
             for await _ in changes {
                 if Task.isCancelled { break }
-                withObservationTracking { _ = session.outputRevision; _ = session.transcript.source } onChange: { continuation.yield(()) }
+                withObservationTracking {
+                    if session.transcript.source == .terminal { _ = session.outputRevision }
+                } onChange: { continuation.yield(()) }
                 do { try await Task.sleep(for: .milliseconds(100)) } catch { break }
                 session.updateTranscript()
             }

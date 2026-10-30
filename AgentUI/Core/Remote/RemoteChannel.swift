@@ -25,6 +25,7 @@ enum RemoteChannel {
 
     static func call<Value: Decodable & Sendable>(_ request: RemoteRequest, host: String, key: PairingKey,
                                                   as type: Value.Type = Value.self) async throws -> Value {
+        guard request.waitsForInspectorSlot else { return try await perform(request, host: host, key: key, as: type) }
         try await callGate.enter()
         do {
             let value = try await perform(request, host: host, key: key, as: type)

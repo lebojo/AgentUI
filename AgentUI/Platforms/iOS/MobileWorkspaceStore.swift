@@ -128,7 +128,11 @@ import Observation
                                 }
                             }
                         }
-                        session?.apply(snapshot)
+                        if session?.apply(snapshot) == false {
+                            session = nil
+                            connectionID = UUID()
+                            return
+                        }
                     case .failure(let message):
                         if selectedID != nil, selection != selectedID { return }
                         throw RemoteError(message: message, isPermanent: true)
@@ -266,7 +270,7 @@ import Observation
         return value.diff
     }
     func conversations(at path: String, fresh: Bool) async throws -> [AgentConversation] {
-        try await request(.conversations(terminal: terminal))
+        try await request(.conversations(terminal: terminal, fresh: fresh))
     }
     func resume(_ conversation: AgentConversation, context: TerminalContext) async throws {
         let id: UUID = try await request(.resume(terminal: terminal, conversation: conversation))

@@ -3,9 +3,13 @@ import Observation
 
 @MainActor @Observable final class InstalledAgents {
     private(set) var agents: [ConversationAgent] = []
+    @ObservationIgnored private var refreshedAt: ContinuousClock.Instant?
 
     func refresh() async {
-        agents = await Self.detect()
+        guard refreshedAt.map({ $0.duration(to: .now) >= .seconds(60) }) ?? true else { return }
+        refreshedAt = .now
+        let detected = await Self.detect()
+        if agents != detected { agents = detected }
     }
 
     @concurrent private static func detect() async -> [ConversationAgent] {

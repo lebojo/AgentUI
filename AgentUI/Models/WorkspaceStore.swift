@@ -339,6 +339,7 @@ import Observation
             throw WorkspaceError(message: "Cette conversation vient d’être reprise dans un autre terminal.")
         }
         let context = try addTerminal(projectID: projectID, worktreeID: worktreeID, name: conversation.shortTitle, command: command, select: select)
+        recentResumes = recentResumes.filter { ContinuousClock.now - $0.value.at < .seconds(30) }
         recentResumes[conversation.id] = (context.terminal.id, .now)
         return context
     }

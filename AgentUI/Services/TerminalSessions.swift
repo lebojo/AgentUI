@@ -164,12 +164,11 @@ final class ActivityTerminalView: SharedProcessTerminalView {
 
     func snapshot(previousMessages: [SessionMessage], chat: Bool,
                   screen: TerminalScreen? = nil, previousScreen: TerminalScreen? = nil) -> RemoteTerminalSnapshot {
-        if chat { updateTranscript() }
         let bytes = chat ? (data: Data(), reset: false) : (screen ?? self.screen()).output(after: previousScreen)
         let messages = chat ? transcript.messages : []
         let delta = SessionTranscriptDelta(previous: previousMessages, current: messages)
         let terminal = view.getTerminal()
-        return RemoteTerminalSnapshot(identity: identity, isChat: chat, output: chat ? Data() : bytes.data, reset: bytes.reset,
+        return RemoteTerminalSnapshot(identity: identity, isChat: chat, output: bytes.data, reset: bytes.reset,
                                       columns: terminal.cols, rows: terminal.rows,
                                       transcript: delta.messages, transcriptDropped: delta.dropped, transcriptStart: delta.start,
                                       transcriptAppend: delta.append,
@@ -215,6 +214,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     private(set) var branchesByPath: [String: GitBranch] = [:]
     @ObservationIgnored private var refreshingRepositories = false
     @ObservationIgnored private var refreshingAgents = false
+    @ObservationIgnored private var lastAgentRefresh: ContinuousClock.Instant?
 
     func branch(for terminalID: UUID, initialPath: String) -> GitBranch? {
         if let session = entries[terminalID] { return session.branch }
@@ -270,8 +270,9 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     }
 
     func refreshAgents() async {
-        guard !refreshingAgents else { return }
+        guard !refreshingAgents, lastAgentRefresh.map({ $0.duration(to: .now) >= .milliseconds(900) }) ?? true else { return }
         refreshingAgents = true
+        lastAgentRefresh = .now
         defer { refreshingAgents = false }
         let shells = entries.compactMap { id, session in
             session.hasExited ? nil : (id: id, identity: session.identity, pid: session.view.process.shellPid,

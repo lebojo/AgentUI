@@ -182,6 +182,7 @@ import Observation
             return
         }
         _ = terminal.flatMap { store.context(for: $0) }.map { store.sessions.start($0) }
+        Task { await installedAgents?.refresh() }
         let refreshesAgents = terminal != nil
         if refreshesAgents { beginAgentRefresh(store) }
         defer { if refreshesAgents { endAgentRefresh() } }
@@ -228,7 +229,7 @@ import Observation
             withObservationTracking {
                 _ = store.state
                 let session = terminal.flatMap { store.sessions.session($0) }
-                _ = session?.outputRevision
+                if !(prefersChat && session?.agent != nil) || session?.transcript.source == .terminal { _ = session?.outputRevision }
                 _ = session?.hasExited
                 _ = session?.transcript.messages
                 _ = session?.transcript.source
@@ -350,8 +351,8 @@ import Observation
             guard let actual = local.changes.first(where: { $0.path == change.path }) else { throw RemoteError(message: "Le fichier n’a plus de modifications.") }
             _ = try validatedURL(URL(fileURLWithPath: local.root).appendingPathComponent(actual.path).path, terminal: id)
             return try await .success(RemoteDiff(InspectorService.diff(actual, at: local.root)))
-        case .conversations(let id):
-            return try await .success(ConversationIndex.load(at: context(id).worktree.path))
+        case .conversations(let id, let fresh):
+            return try await .success(ConversationIndex.load(at: context(id).worktree.path, runningMaximumAge: fresh ? .zero : .seconds(10)))
         case .launchAgent(let id, let agent):
             try requireWritable()
             let session = store.sessions.start(try context(id))

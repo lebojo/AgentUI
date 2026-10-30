@@ -92,9 +92,16 @@ enum RemoteRequest: Codable, Sendable {
     case git(terminal: UUID)
     case github(terminal: UUID)
     case diff(terminal: UUID, change: GitChange)
-    case conversations(terminal: UUID)
+    case conversations(terminal: UUID, fresh: Bool)
     case resume(terminal: UUID, conversation: AgentConversation)
     case launchAgent(terminal: UUID, agent: ConversationAgent)
+
+    var waitsForInspectorSlot: Bool {
+        switch self {
+        case .newTerminal, .launchAgent, .resume, .input: false
+        default: true
+        }
+    }
 
     var timeout: Duration {
         switch self {

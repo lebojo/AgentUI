@@ -23,17 +23,18 @@ import Observation
         view?.terminalDelegate = self
     }
 
-    func apply(_ snapshot: RemoteTerminalSnapshot) {
+    @discardableResult func apply(_ snapshot: RemoteTerminalSnapshot) -> Bool {
         hasExited = snapshot.hasExited
         chatSource = snapshot.chatSource
-        messages.removeFirst(min(snapshot.transcriptDropped, messages.count))
-        if snapshot.transcriptStart <= messages.count {
-            messages.replaceSubrange(snapshot.transcriptStart..., with: snapshot.transcript)
-        }
-        if let append = snapshot.transcriptAppend, messages.last?.id == append.id {
+        guard snapshot.transcriptDropped <= messages.count,
+              snapshot.transcriptStart <= messages.count - snapshot.transcriptDropped else { return false }
+        messages.removeFirst(snapshot.transcriptDropped)
+        messages.replaceSubrange(snapshot.transcriptStart..., with: snapshot.transcript)
+        if let append = snapshot.transcriptAppend {
+            guard messages.last?.id == append.id else { return false }
             messages[messages.count - 1].text += append.text
         }
-        guard let view else { return }
+        guard let view else { return true }
         applyingOutput = true
         defer { applyingOutput = false }
         let terminal = view.getTerminal()
@@ -43,6 +44,7 @@ import Observation
         let size = view.getOptimalFrameSize().size
         canvasSize = CGSize(width: ceil(size.width), height: ceil(size.height))
         if !snapshot.output.isEmpty { view.feed(byteArray: Array(snapshot.output)[...]) }
+        return true
     }
 
     func send(source: TerminalView, data: ArraySlice<UInt8>) {
