@@ -246,6 +246,12 @@ import Foundation
         let withTranscript = AgentProcess.find(under: shell.processIdentifier, fallbackDirectory: "/", claudeConfig: fakeHome.appendingPathComponent(".claude"))
         try require(withTranscript?.transcriptPath == fakeHome.appendingPathComponent(".claude/projects/-Users-me-My-Project/\(sessionID).jsonl").path,
                     "Locate the Claude transcript of the agent session")
+        let launched = Date()
+        let attached = AgentProcess(agent: .claude, startedAt: launched, directory: "/p", sessionID: "s", transcriptPath: "/p/s.jsonl")
+        let missedRead = AgentProcess(agent: .claude, startedAt: launched, directory: "/p", sessionID: nil).keepingTranscript(of: attached)
+        try require(missedRead.transcriptPath == "/p/s.jsonl" && missedRead.sessionID == "s", "A missed session read keeps the attached journal")
+        let cleared = AgentProcess(agent: .claude, startedAt: launched, directory: "/p", sessionID: "other").keepingTranscript(of: attached)
+        try require(cleared.transcriptPath == nil, "A new session does not inherit the previous journal")
         print("PASS agent process detection and conversation titles")
 
         let now = Date()

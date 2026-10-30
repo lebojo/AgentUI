@@ -19,10 +19,9 @@ struct AgentProcess: Equatable, Sendable {
 
     func keepingTranscript(of previous: AgentProcess?) -> AgentProcess {
         guard transcriptPath == nil, let previous, previous.agent == agent, previous.startedAt == startedAt,
-              previous.sessionID == sessionID else { return self }
-        var process = self
-        process.transcriptPath = previous.transcriptPath
-        return process
+              sessionID == nil || sessionID == previous.sessionID else { return self }
+        return AgentProcess(agent: agent, startedAt: startedAt, directory: directory, sessionID: previous.sessionID,
+                            transcriptPath: previous.transcriptPath, claudeStatus: claudeStatus ?? previous.claudeStatus)
     }
 
     static func find(under shellPID: Int32, fallbackDirectory: String,

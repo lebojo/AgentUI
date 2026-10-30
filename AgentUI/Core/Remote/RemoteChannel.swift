@@ -78,7 +78,7 @@ enum RemoteChannel {
         RemoteError(message: "Le Mac ne répond pas. Vérifie son IP, le réseau local et ses réglages d’accès local.")
     }
 
-    static func send(_ value: some Encodable, on connection: NWConnection) async throws {
+    @concurrent static func send(_ value: some Encodable & Sendable, on connection: NWConnection) async throws {
         let data = try frame(value)
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             connection.send(content: data, completion: .contentProcessed { error in
@@ -101,7 +101,7 @@ enum RemoteChannel {
         return Data([UInt8((size >> 24) & 255), UInt8((size >> 16) & 255), UInt8((size >> 8) & 255), UInt8(size & 255)]) + data
     }
 
-    static func receive<Value: Decodable>(on connection: NWConnection) async throws -> Value {
+    @concurrent static func receive<Value: Decodable & Sendable>(on connection: NWConnection) async throws -> Value {
         let header = try await read(count: 4, on: connection)
         let count = header.reduce(0) { ($0 << 8) | Int($1) }
         guard count > 0, count <= RemoteProtocol.maximumFrame else { throw RemoteError(message: "Message réseau invalide.") }

@@ -23,7 +23,6 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     private(set) var exitCode: Int32?
     private(set) var title = ""
     let path: String
-    let claudeConfig: URL
     let identity = UUID()
     let transcript = SessionTranscript()
     private(set) var outputRevision = 0
@@ -46,7 +45,6 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         path = context.worktree.path
         currentDirectory = context.worktree.path
         runsShell = command.isEmpty
-        claudeConfig = ClaudeTranscript.configDirectory()
         view = ActivityTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
         super.init()
         view.processDelegate = self
@@ -275,12 +273,11 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         lastAgentRefresh = .now
         defer { refreshingAgents = false }
         let shells = entries.compactMap { id, session in
-            session.hasExited ? nil : (id: id, identity: session.identity, pid: session.view.process.shellPid,
-                                       directory: session.currentDirectory, claudeConfig: session.claudeConfig)
+            session.hasExited ? nil : (id: id, identity: session.identity, pid: session.view.process.shellPid, directory: session.currentDirectory)
         }
         let found = await Task.detached(priority: .utility) {
             shells.reduce(into: [UUID: AgentProcess]()) { result, shell in
-                result[shell.identity] = AgentProcess.find(under: shell.pid, fallbackDirectory: shell.directory, claudeConfig: shell.claudeConfig)
+                result[shell.identity] = AgentProcess.find(under: shell.pid, fallbackDirectory: shell.directory)
             }
         }.value
         guard !Task.isCancelled else { return }
