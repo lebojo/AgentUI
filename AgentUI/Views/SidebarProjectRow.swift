@@ -78,8 +78,10 @@ struct SidebarProjectRow: View {
                 Button("Actualiser les worktrees", systemImage: "arrow.clockwise") { Task { await store.refreshWorktrees(project.id) } }
                     .disabled(store.busyProjects.contains(project.id))
                 Divider()
-                Button("Retirer le projet…", systemImage: "minus.circle", role: .destructive) { removal = .project(project.id) }
-                    .disabled(store.busyProjects.contains(project.id))
+                RemovalButton(pending: $removal, removal: .project(project.id), placement: .menu)
+            }
+            .swipeActions(edge: .trailing) {
+                RemovalButton(pending: $removal, removal: .project(project.id), placement: .swipe)
             }
         }
     }
@@ -165,6 +167,8 @@ private struct SidebarWorktreeRow: View {
     let query: String
     let showAll: Bool
 
+    private var worktreeRemoval: Removal { .worktree(projectID: project.id, worktreeID: worktree.id, name: worktree.name) }
+
     var body: some View {
         DisclosureGroup(isExpanded: query.isEmpty ? $store[expanded: worktree.id] : .constant(true)) {
             ForEach(worktree.terminals.filter { showAll || matches(worktree.name) || matches($0.name) }) { terminal in
@@ -199,22 +203,16 @@ private struct SidebarWorktreeRow: View {
                     Button("Nouveau groupe…") { sheet = .worktreeGroup(projectID: project.id, worktreeID: worktree.id) }
                 }
                 Divider()
-                Button("Supprimer le worktree…", systemImage: "trash", role: .destructive) { confirmDeletion() }
-                    .disabled(store.busyProjects.contains(project.id))
+                RemovalButton(pending: $removal, removal: worktreeRemoval, placement: .menu)
             }
             .swipeActions(edge: .trailing) {
-                Button("Supprimer", systemImage: "trash") { confirmDeletion() }
-                    .tint(Palette.danger)
-                    .disabled(store.busyProjects.contains(project.id))
+                RemovalButton(pending: $removal, removal: worktreeRemoval, placement: .swipe)
             }
         }
     }
 
     private func matches(_ value: String) -> Bool { query.isEmpty || value.localizedStandardContains(query) }
     private func openTerminal() { store.openTerminal(project, worktree, launch: settings.agentLaunch) }
-    private func confirmDeletion() {
-        removal = .worktree(projectID: project.id, worktreeID: worktree.id, name: worktree.name)
-    }
 }
 
 private extension WorkspaceStore {
@@ -274,7 +272,10 @@ private struct SidebarTerminalRow: View {
                 Button("Utiliser le nom de la conversation", systemImage: "bubble.left") { store.useAutomaticName(terminal.id) }
             }
             Divider()
-            Button("Fermer le terminal…", systemImage: "xmark", role: .destructive) { removal = .terminal(terminal.id) }
+            RemovalButton(pending: $removal, removal: .terminal(terminal.id), placement: .menu)
+        }
+        .swipeActions(edge: .trailing) {
+            RemovalButton(pending: $removal, removal: .terminal(terminal.id), placement: .swipe)
         }
     }
 }

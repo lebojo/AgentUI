@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     var body: some View {
         TabView {
+            GeneralSettingsPane()
+                .tabItem { Label("Général", systemImage: "gearshape") }
             TerminalSettingsPane()
                 .tabItem { Label("Terminal", systemImage: "terminal") }
             AgentSettingsPane()

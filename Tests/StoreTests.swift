@@ -46,6 +46,14 @@ private final class ChangeFlag: @unchecked Sendable {
         try require(afterFlush == store.state && !store.hasUnsavedChanges, "Flush persists the final coalesced state")
         print("PASS granular observation, coalescing and explicit durable flush")
 
+        store.busyProjects.insert(p2.id)
+        try require(store.isBusy(.project(p2.id)) && !store.isBusy(.terminal(p2.worktrees[0].terminals[0].id)), "Only removals inside a busy project are blocked")
+        store.remove(.project(p2.id))
+        try require(store.projects.contains { $0.id == p2.id } && store.errorMessage != nil, "Removing a busy project is refused with an error")
+        store.busyProjects.remove(p2.id)
+        store.errorMessage = nil
+        print("PASS busy project removal")
+
         if geteuid() != 0 {
             try fm.setAttributes([.posixPermissions: 0o500], ofItemAtPath: root.path)
             _ = store.addFolder("Pending save")
