@@ -53,6 +53,7 @@ import Observation
     private func loadPairingKey() async throws -> PairingKey {
         if let pairingKey { return pairingKey }
         if let code = try pairingStore.load(), let key = try? await PairingKey.derive(from: code) {
+            if let pairingKey { return pairingKey }
             pairingCode = code
             pairingKey = key
             return key
@@ -349,7 +350,7 @@ import Observation
         case .diff(let id, let change):
             let local = try await InspectorService.localGit(at: context(id).worktree.path)
             guard let actual = local.changes.first(where: { $0.path == change.path }) else { throw RemoteError(message: "Le fichier n’a plus de modifications.") }
-            _ = try validatedURL(URL(fileURLWithPath: local.root).appendingPathComponent(actual.path).path, terminal: id)
+            _ = try validatedURL(URL(fileURLWithPath: local.root).appendingPathComponent(actual.path).path, within: local.root)
             return try await .success(RemoteDiff(InspectorService.diff(actual, at: local.root)))
         case .conversations(let id, let fresh):
             return try await .success(ConversationIndex.load(at: context(id).worktree.path, runningMaximumAge: fresh ? .zero : .seconds(10)))
@@ -380,7 +381,11 @@ import Observation
     }
 
     private func validatedURL(_ path: String, terminal: UUID) throws -> URL {
-        let root = URL(fileURLWithPath: try context(terminal).worktree.path).resolvingSymlinksInPath()
+        try validatedURL(path, within: context(terminal).worktree.path)
+    }
+
+    private func validatedURL(_ path: String, within rootPath: String) throws -> URL {
+        let root = URL(fileURLWithPath: rootPath).resolvingSymlinksInPath()
         let url = URL(fileURLWithPath: path).resolvingSymlinksInPath()
         guard url.path == root.path || url.path.hasPrefix(root.path + "/") else {
             throw RemoteError(message: "Le fichier est en dehors de ce worktree.")

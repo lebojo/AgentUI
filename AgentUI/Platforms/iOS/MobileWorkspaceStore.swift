@@ -134,7 +134,10 @@ import Observation
                             return
                         }
                     case .failure(let message):
-                        if selectedID != nil, selection != selectedID { return }
+                        guard selectedID == nil else {
+                            if selection == selectedID { selection = nil }
+                            return
+                        }
                         throw RemoteError(message: message, isPermanent: true)
                     case .inputResult(let request, let error):
                         inputTimeouts.removeValue(forKey: request)?.cancel()
