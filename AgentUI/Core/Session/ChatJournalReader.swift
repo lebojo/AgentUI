@@ -7,7 +7,7 @@ actor ChatJournalReader<Decoder: ChatJournalDecoder> {
     private var discarding = false
     private var decoder = Decoder()
     private let initialLimit: UInt64 = 2_097_152
-    private let recordLimit = 1_048_576
+    private let recordLimit = 16_777_216
 
     func read(_ url: URL) -> [SessionMessage] {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
@@ -18,7 +18,7 @@ actor ChatJournalReader<Decoder: ChatJournalDecoder> {
             fileID = inode
             position = size > initialLimit ? size - initialLimit : 0
             pending = Data()
-            discarding = position > 0
+            discarding = position > 0 && !Self.lineEnds(before: position, in: file)
             decoder = Decoder()
         }
         try? file.seek(toOffset: position)
@@ -38,5 +38,10 @@ actor ChatJournalReader<Decoder: ChatJournalDecoder> {
             if pending.count > recordLimit { pending.removeAll(keepingCapacity: false); discarding = true }
         }
         return decoder.messages
+    }
+
+    private static func lineEnds(before position: UInt64, in file: FileHandle) -> Bool {
+        guard (try? file.seek(toOffset: position - 1)) != nil, let byte = try? file.read(upToCount: 1) else { return false }
+        return byte.first == 10
     }
 }

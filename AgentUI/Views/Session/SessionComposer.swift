@@ -28,6 +28,7 @@ struct SessionComposer: View {
                     .autocorrectionDisabled()
                     .commandInputTraits()
                     .lineLimit(1...6).textFieldStyle(.plain)
+                    .onSubmit(submit)
                     .padding(Spacing.m)
                     .background(Palette.fill.opacity(0.4), in: RoundedRectangle(cornerRadius: Radius.m))
                 Button(action: submit) {

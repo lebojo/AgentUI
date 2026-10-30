@@ -22,6 +22,7 @@ struct MobileSessionDetail: View {
                             .id(context.terminal.id)
                         } else if let terminal = session.view {
                             MobileTerminalViewport(terminal: terminal, canvasSize: session.canvasSize)
+                            .id(session.identity)
                             .disabled(!store.isConnected || session.hasExited)
                             if mode == .chat, store.isConnected, !session.hasExited, !store.installedAgents.isEmpty {
                                 AgentShortcutBar(agents: store.installedAgents) { agent in

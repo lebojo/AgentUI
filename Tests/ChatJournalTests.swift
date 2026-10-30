@@ -133,6 +133,16 @@ import Foundation
         try huge.write(to: file, options: .atomic)
         let tail = await reader.read(file)
         try require(tail.count == 1 && tail.first?.text == "Tail survives eviction", "Bounded initial tail skips a partial/oversized record")
+        let first = try record("assistant", "boundary", "Boundary first")
+        let last = try record("assistant", "boundary-last", "Boundary last")
+        var window = first
+        window.append(Data(repeating: 120, count: 2_097_152 - first.count - last.count - 1)); window.append(10)
+        window.append(last)
+        var aligned = Data(repeating: 66, count: 4_096); aligned.append(10)
+        aligned.append(window)
+        try aligned.write(to: file, options: .atomic)
+        let boundary = await ChatJournalReader<ClaudeChatDecoder>().read(file)
+        try require(boundary.map(\.text) == ["Boundary first", "Boundary last"], "A tail window starting on a line boundary keeps its first record")
         print("PASS incremental reads, partial UTF-8 records, replacement and bounded initial history")
 
         let log = root.appendingPathComponent("projects/-tmp-project/\(UUID().uuidString).jsonl")
