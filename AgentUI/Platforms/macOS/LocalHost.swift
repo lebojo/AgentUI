@@ -19,8 +19,9 @@ import Observation
     @ObservationIgnored private var settings: SettingsStore?
     @ObservationIgnored private var installedAgents: InstalledAgents?
     @ObservationIgnored private var listener: NWListener?
+    @ObservationIgnored private var listenerStart: Task<Void, Never>?
     @ObservationIgnored private var listenerRetry: Task<Void, Never>?
-    @ObservationIgnored private var watchers = 0
+    @ObservationIgnored private var agentWatchers = 0
     @ObservationIgnored private var agentRefresh: Task<Void, Never>?
     @ObservationIgnored private var jobs: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var connections: [UUID: (connection: NWConnection, peer: String)] = [:]
@@ -41,25 +42,27 @@ import Observation
     }
 
     func renewPairingCode() {
-        do {
-            try storeNewPairingCode()
-            restart()
-        } catch { pairingStorageError = error.localizedDescription }
+        Task {
+            do {
+                try await storeNewPairingCode()
+                restart()
+            } catch { pairingStorageError = error.localizedDescription }
+        }
     }
 
-    private func loadPairingKey() throws -> PairingKey {
+    private func loadPairingKey() async throws -> PairingKey {
         if let pairingKey { return pairingKey }
-        if let code = try pairingStore.load(), let key = try? PairingKey(code: code) {
+        if let code = try pairingStore.load(), let key = try? await PairingKey.derive(from: code) {
             pairingCode = code
             pairingKey = key
             return key
         }
-        return try storeNewPairingCode()
+        return try await storeNewPairingCode()
     }
 
-    @discardableResult private func storeNewPairingCode() throws -> PairingKey {
+    @discardableResult private func storeNewPairingCode() async throws -> PairingKey {
         let code = RemotePairing.newCode()
-        let key = try PairingKey(code: code)
+        let key = try await PairingKey.derive(from: code)
         try pairingStore.save(code)
         pairingCode = code
         pairingKey = key
@@ -68,6 +71,8 @@ import Observation
     }
 
     func stop() {
+        listenerStart?.cancel()
+        listenerStart = nil
         listenerRetry?.cancel()
         listenerRetry = nil
         listener?.cancel()
@@ -82,37 +87,49 @@ import Observation
         stop()
         guard enabled, store != nil else { status = "Accès local désactivé"; return }
         addresses = Self.localAddresses()
-        do {
-            let parameters = RemoteChannel.parameters(key: try loadPairingKey())
-            #if DEBUG
-            let isolatedFixtureListensOnLoopbackOnly = ProcessInfo.processInfo.environment["AGENTUI_STATE_DIRECTORY"] != nil
-            if isolatedFixtureListensOnLoopbackOnly {
-                parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: RemoteProtocol.port)!)
+        status = "Démarrage…"
+        listenerStart = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let key = try await loadPairingKey()
+                guard !Task.isCancelled else { return }
+                try listen(with: key)
+            } catch {
+                guard !Task.isCancelled else { return }
+                status = error.localizedDescription
             }
-            #endif
-            let listener = try parameters.requiredLocalEndpoint == nil
-                ? NWListener(using: parameters, on: NWEndpoint.Port(rawValue: RemoteProtocol.port)!)
-                : NWListener(using: parameters)
-            self.listener = listener
-            status = "Démarrage…"
-            listener.stateUpdateHandler = { [weak self, weak listener] state in
-                Task { @MainActor [weak self, weak listener] in
-                    guard let self, self.listener === listener else { return }
-                    switch state {
-                    case .ready: self.status = "Prêt à recevoir une connexion"
-                    case .failed(let error):
-                        self.stop()
-                        self.status = "\(error.localizedDescription) Nouvelle tentative dans 5 secondes…"
-                        self.retryListener()
-                    default: break
-                    }
+        }
+    }
+
+    private func listen(with key: PairingKey) throws {
+        let parameters = RemoteChannel.parameters(key: key)
+        #if DEBUG
+        let isolatedFixtureListensOnLoopbackOnly = ProcessInfo.processInfo.environment["AGENTUI_STATE_DIRECTORY"] != nil
+        if isolatedFixtureListensOnLoopbackOnly {
+            parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: RemoteProtocol.port)!)
+        }
+        #endif
+        let listener = try parameters.requiredLocalEndpoint == nil
+            ? NWListener(using: parameters, on: NWEndpoint.Port(rawValue: RemoteProtocol.port)!)
+            : NWListener(using: parameters)
+        self.listener = listener
+        listener.stateUpdateHandler = { [weak self, weak listener] state in
+            Task { @MainActor [weak self, weak listener] in
+                guard let self, self.listener === listener else { return }
+                switch state {
+                case .ready: self.status = "Prêt à recevoir une connexion"
+                case .failed(let error):
+                    self.stop()
+                    self.status = "\(error.localizedDescription) Nouvelle tentative dans 5 secondes…"
+                    self.retryListener()
+                default: break
                 }
             }
-            listener.newConnectionHandler = { [weak self] connection in
-                Task { @MainActor [weak self] in self?.accept(connection) }
-            }
-            listener.start(queue: .main)
-        } catch { status = error.localizedDescription }
+        }
+        listener.newConnectionHandler = { [weak self] connection in
+            Task { @MainActor [weak self] in self?.accept(connection) }
+        }
+        listener.start(queue: .main)
     }
 
     private func retryListener() {
@@ -165,8 +182,9 @@ import Observation
             return
         }
         _ = terminal.flatMap { store.context(for: $0) }.map { store.sessions.start($0) }
-        beginWatching(store)
-        defer { endWatching() }
+        let refreshesAgents = terminal != nil
+        if refreshesAgents { beginAgentRefresh(store) }
+        defer { if refreshesAgents { endAgentRefresh() } }
         let notifications = Task { await notifyInspectorChanges(on: connection, terminal: terminal) }
         defer { notifications.cancel() }
         var sessionIdentity: UUID?
@@ -268,9 +286,9 @@ import Observation
         }
     }
 
-    private func beginWatching(_ store: WorkspaceStore) {
-        watchers += 1
-        guard watchers == 1 else { return }
+    private func beginAgentRefresh(_ store: WorkspaceStore) {
+        agentWatchers += 1
+        guard agentWatchers == 1 else { return }
         agentRefresh = Task { [weak store] in
             while !Task.isCancelled {
                 await store?.sessions.refreshAgents()
@@ -279,9 +297,9 @@ import Observation
         }
     }
 
-    private func endWatching() {
-        watchers -= 1
-        guard watchers == 0 else { return }
+    private func endAgentRefresh() {
+        agentWatchers -= 1
+        guard agentWatchers == 0 else { return }
         agentRefresh?.cancel()
         agentRefresh = nil
     }

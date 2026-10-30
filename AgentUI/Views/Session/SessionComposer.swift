@@ -15,7 +15,7 @@ struct SessionComposer: View {
                 if source == .terminal {
                     Button("Échap") { control(Data([27])) }
                 }
-                Button("Interrompre") { control(Data([3])) }
+                Button("Interrompre") { control(Data([source.interruptKey])) }
                 if source == .terminal {
                     Button("Entrée") { control(Data([13])) }
                 }

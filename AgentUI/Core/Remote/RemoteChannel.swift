@@ -25,7 +25,7 @@ enum RemoteChannel {
 
     static func call<Value: Decodable & Sendable>(_ request: RemoteRequest, host: String, key: PairingKey,
                                                   as type: Value.Type = Value.self) async throws -> Value {
-        await callGate.enter()
+        try await callGate.enter()
         do {
             let value = try await perform(request, host: host, key: key, as: type)
             await callGate.leave()
@@ -42,7 +42,7 @@ enum RemoteChannel {
                                       using: parameters(key: key))
         return try await withTaskCancellationHandler {
             defer { connection.cancel() }
-            return try await withTimeout(on: connection, failure: unresponsiveHost) {
+            return try await withTimeout(request.timeout, on: connection, failure: unresponsiveHost) {
                 connection.start(queue: .global(qos: .userInitiated))
                 try await send(request, on: connection)
                 let reply: RemoteReply = try await receive(on: connection)
@@ -59,12 +59,12 @@ enum RemoteChannel {
         }
     }
 
-    static func withTimeout<Value: Sendable>(on connection: NWConnection, failure: some Error & Sendable,
+    static func withTimeout<Value: Sendable>(_ timeout: Duration = .seconds(15), on connection: NWConnection, failure: some Error & Sendable,
                                              _ operation: @escaping @Sendable () async throws -> Value) async throws -> Value {
         try await withThrowingTaskGroup(of: Value.self) { group in
             group.addTask { try await operation() }
             group.addTask {
-                try await Task.sleep(for: .seconds(15))
+                try await Task.sleep(for: timeout)
                 connection.cancel()
                 throw failure
             }
@@ -123,31 +123,56 @@ enum RemoteChannel {
         return data
     }
 
+    private static let pairingMismatch: Set<OSStatus> = [errSSLPeerBadRecordMac, errSSLBadRecordMac, errSSLDecryptionFail,
+                                                         errSSLPeerDecryptError, errSSLPeerDecryptionFail]
+
     private static func translated(_ error: NWError) -> Error {
-        guard case .tls = error else { return error }
+        guard case .tls(let status) = error, pairingMismatch.contains(status) else { return error }
         return RemoteError(message: "Code d’appairage refusé. Recopie le code affiché sur le Mac dans Réglages → Accès local.", isPermanent: true)
     }
 }
 
 private actor RemoteCallGate {
+    private struct Waiter {
+        let id: UUID
+        let continuation: CheckedContinuation<Void, Error>
+    }
+
     private let limit: Int
     private var running = 0
-    private var waiting: [CheckedContinuation<Void, Never>] = []
+    private var waiting: [Waiter] = []
 
     init(limit: Int) {
         self.limit = limit
     }
 
-    func enter() async {
+    func enter() async throws {
         guard running >= limit else {
             running += 1
             return
         }
-        await withCheckedContinuation { waiting.append($0) }
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await wait(id)
+        } onCancel: {
+            Task { await self.cancel(id) }
+        }
+    }
+
+    private func wait(_ id: UUID) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            if Task.isCancelled { continuation.resume(throwing: CancellationError()) }
+            else { waiting.append(Waiter(id: id, continuation: continuation)) }
+        }
     }
 
     func leave() {
         if waiting.isEmpty { running -= 1 }
-        else { waiting.removeFirst().resume() }
+        else { waiting.removeFirst().continuation.resume() }
+    }
+
+    private func cancel(_ id: UUID) {
+        guard let index = waiting.firstIndex(where: { $0.id == id }) else { return }
+        waiting.remove(at: index).continuation.resume(throwing: CancellationError())
     }
 }

@@ -69,6 +69,10 @@ struct PairingKey: Equatable, Sendable {
         guard status == kCCSuccess else { throw RemoteError(message: "Impossible de préparer le chiffrement de la connexion.", isPermanent: true) }
         data = Data(key)
     }
+
+    static func derive(from code: String) async throws -> PairingKey {
+        try await Task.detached(priority: .userInitiated) { try PairingKey(code: code) }.value
+    }
 }
 
 struct RemoteError: LocalizedError, Sendable {
@@ -91,6 +95,13 @@ enum RemoteRequest: Codable, Sendable {
     case conversations(terminal: UUID)
     case resume(terminal: UUID, conversation: AgentConversation)
     case launchAgent(terminal: UUID, agent: ConversationAgent)
+
+    var timeout: Duration {
+        switch self {
+        case .git, .github, .diff, .conversations, .resume: .seconds(60)
+        default: .seconds(15)
+        }
+    }
 }
 
 struct RemoteReply: Codable, Sendable {

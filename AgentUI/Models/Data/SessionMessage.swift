@@ -57,3 +57,12 @@ struct SessionTranscriptDelta: Sendable {
 enum SessionChatSource: String, Codable, Sendable {
     case terminal, claude, codex, copilot
 }
+
+extension Array where Element == SessionMessage {
+    mutating func trimHistory(keepingAtLeast minimum: Int) {
+        var bytes = reduce(0) { $0 + $1.text.utf8.count }
+        while count > minimum && (count > 200 || bytes > 262_144) {
+            bytes -= removeFirst().text.utf8.count
+        }
+    }
+}

@@ -39,10 +39,7 @@ struct ChatMessageLog: Sendable {
     }
 
     mutating func trim() {
-        var bytes = messages.reduce(0) { $0 + $1.text.utf8.count }
-        while messages.count > 1 && (messages.count > 200 || bytes > 262_144) {
-            bytes -= messages.removeFirst().text.utf8.count
-        }
+        messages.trimHistory(keepingAtLeast: 1)
     }
 
     static func bounded(_ text: String) -> String {

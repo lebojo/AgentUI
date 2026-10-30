@@ -7,4 +7,6 @@ extension SessionChatSource {
         case .copilot: .copilot
         }
     }
+
+    var interruptKey: UInt8 { self == .terminal ? 3 : 27 }
 }

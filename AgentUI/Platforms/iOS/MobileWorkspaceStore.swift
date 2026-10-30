@@ -54,7 +54,7 @@ import Observation
 
     func connect(to address: String, pairingCode code: String) throws {
         _ = try RemoteProtocol.host(address)
-        let key = try PairingKey(code: code)
+        _ = try RemotePairing.normalized(code)
         try pairingStore.save(code)
         let value = address.trimmingCharacters(in: .whitespacesAndNewlines)
         if host != value {
@@ -64,7 +64,7 @@ import Observation
         }
         host = value
         pairingCode = code
-        pairingKey = key
+        pairingKey = nil
         UserDefaults.standard.set(host, forKey: "remoteHost")
         status = .connecting
         connectionID = UUID()
@@ -205,7 +205,7 @@ import Observation
     func requiredPairingKey() async throws -> PairingKey {
         if let pairingKey { return pairingKey }
         let code = pairingCode
-        guard let key = try? await Task.detached(priority: .userInitiated, operation: { try PairingKey(code: code) }).value else {
+        guard let key = try? await PairingKey.derive(from: code) else {
             throw RemoteError(message: "Saisis le code d’appairage affiché sur le Mac dans Réglages → Accès local.", isPermanent: true)
         }
         if pairingCode == code { pairingKey = key }

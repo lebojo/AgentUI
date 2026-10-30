@@ -167,7 +167,7 @@ try:
     print("PASS unencrypted and wrong-code clients refused, forward-secret cipher", flush=True)
 
     idle = [socket.create_connection(("127.0.0.1", port), timeout=5) for _ in range(8)]
-    time.sleep(.3)
+    time.sleep(1)
     try:
         rpc("workspace", version=5)
         raise AssertionError("A peer exceeded its connection limit")
@@ -233,12 +233,20 @@ try:
 
     echo = bridge("terminal.create", projectID=project["id"], worktreeID=worktree["id"], name="Echo",
                   command=["/bin/cat"])["terminalID"]
-    with watch(echo, chat=False) as sock:
-        assert rpc("launchAgent", terminal=echo, agent="codex") is True
+    with watch(echo, chat=False):
+        try:
+            rpc("launchAgent", terminal=echo, agent="codex")
+            raise AssertionError("An agent must not be typed into a running program")
+        except ValueError as error:
+            assert "invite du shell" in str(error), error
+    stub = "codex() { printf '\\101\\107\\105\\116\\124_STUB_STARTED\\n'; }\r"
+    rpc("input", id=terminal, data=base64.b64encode(stub.encode()).decode())
+    with watch(terminal, chat=False) as sock:
+        assert rpc("launchAgent", terminal=terminal, agent="codex") is True
         deadline = time.monotonic() + 10
-        while b"codex" not in base64.b64decode(read(sock).get("terminal", {}).get("_0", {}).get("output", "")):
-            assert time.monotonic() < deadline, "The agent shortcut did not type its command"
-    print("PASS agent shortcut types the launch command into the terminal", flush=True)
+        while b"AGENT_STUB_STARTED" not in base64.b64decode(read(sock).get("terminal", {}).get("_0", {}).get("output", "")):
+            assert time.monotonic() < deadline, "The agent shortcut did not run its command at the shell prompt"
+    print("PASS agent shortcut refuses a running program and launches at the shell prompt", flush=True)
 
     assert rpc("text", terminal=terminal, path=str(repo / "hello.txt")) == "Bonjour du Mac\n"
     children = rpc("children", terminal=terminal, path=str(repo))

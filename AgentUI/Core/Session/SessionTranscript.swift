@@ -12,7 +12,7 @@ import Observation
         anchor = String(latest.suffix(2_048))
         messages.append(SessionMessage(kind: .input, text: text))
         messages.append(SessionMessage(kind: .output, text: ""))
-        trimHistory()
+        messages.trimHistory(keepingAtLeast: 2)
     }
 
     func update(screen: String) {
@@ -32,7 +32,7 @@ import Observation
         } else {
             messages.append(SessionMessage(kind: .output, text: output))
         }
-        trimHistory()
+        messages.trimHistory(keepingAtLeast: 2)
     }
 
     func useJournal(_ messages: [SessionMessage], from source: SessionChatSource) {
@@ -46,12 +46,5 @@ import Observation
         messages = []
         anchor = ""
         latest = ""
-    }
-
-    private func trimHistory() {
-        var size = messages.reduce(0) { $0 + $1.text.utf8.count }
-        while messages.count > 2 && (messages.count > 100 || size > 262_144) {
-            size -= messages.removeFirst().text.utf8.count
-        }
     }
 }
