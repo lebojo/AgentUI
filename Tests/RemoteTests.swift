@@ -45,6 +45,12 @@ import Foundation
         }
         try require(transcript.messages.count <= 100, "Message count is bounded")
         try require(transcript.messages.reduce(0) { $0 + $1.text.utf8.count } <= 262_144, "Chat memory is bounded")
+        let repetitive = SessionTranscript()
+        repetitive.update(screen: String(repeating: "x", count: 40_000))
+        repetitive.sent("go")
+        let clock = ContinuousClock()
+        let elapsed = clock.measure { repetitive.update(screen: String(repeating: "x", count: 40_001)) }
+        try require(elapsed < .milliseconds(100), "Finding the sent anchor in repetitive output stays fast")
         print("PASS shared chat transcript and redraw handling")
 
         let old = SessionMessage(kind: .output, text: String(repeating: "a", count: 50_000))
@@ -83,5 +89,19 @@ import Foundation
             try require(transported == snapshot, "GitHub and GitLab reviews/checks survive mobile transport")
         }
         print("PASS GitHub and GitLab inspector round trip")
+
+        let rejection = try JSONEncoder().encode(RemoteRejection("Versions incompatibles."))
+        guard case .failure(let message) = try JSONDecoder().decode(RemoteEvent.self, from: rejection) else {
+            throw RemoteError(message: "FAIL: A rejection must decode as a stream failure")
+        }
+        try require(message == "Versions incompatibles.", "A rejection carries its message to a stream")
+        let rejectedReply = try JSONDecoder().decode(RemoteReply.self, from: rejection)
+        try require(rejectedReply.error == "Versions incompatibles.", "A rejection carries its message to a request")
+        let entries = (0..<60_000).map { "/Users/someone/Developer/project/Sources/Generated/File\($0).swift" }
+        let fitted = try RemoteReply.fitting(entries) { $0 }
+        try require((fitted.payload?.count ?? .max) <= RemoteProtocol.maximumPayload, "A long list is trimmed to fit one frame")
+        let kept = try fitted.decode([String].self)
+        try require(kept.count > 10_000, "A trimmed list keeps as many entries as fit")
+        print("PASS version rejections and oversized lists fit the mobile protocol")
     }
 }

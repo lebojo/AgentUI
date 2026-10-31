@@ -105,11 +105,13 @@ struct TerminalScreen {
         if !reset, previous?.lines == lines, previous?.state == state, previousEnd == historyEnd { return (Data(), false) }
         let appended = reset ? historyStart : max(historyStart, previousEnd)
         let result = render(reset: reset, from: appended, previous: previous)
-        guard result.utf8.count > Self.outputLimit, appended < historyEnd else { return (Data(result.utf8), reset) }
-        return (Data(render(reset: reset, from: historyEnd, previous: previous).utf8), reset)
+        guard result.utf8.count > Self.outputLimit else { return (Data(result.utf8), reset) }
+        let withoutScrollback = appended < historyEnd ? render(reset: reset, from: historyEnd, previous: previous) : result
+        guard withoutScrollback.utf8.count > Self.outputLimit else { return (Data(withoutScrollback.utf8), reset) }
+        return (Data(render(reset: reset, from: historyEnd, previous: previous, styled: false).utf8), reset)
     }
 
-    private func render(reset: Bool, from appended: Int, previous: TerminalScreen?) -> String {
+    private func render(reset: Bool, from appended: Int, previous: TerminalScreen?, styled: Bool = true) -> String {
         let historyEnd = historyStart + history.count
         var result = ""
         if reset { result += "\u{1b}[?1047\(alternate ? "h" : "l")" }
@@ -120,10 +122,25 @@ struct TerminalScreen {
             result += "\u{1b}[\(rows);1H\n"
         }
         for row in lines.indices where reset || appended < historyEnd || previous?.lines[row] != lines[row] {
-            result += "\u{1b}[\(row + 1);1H\u{1b}[0m\u{1b}[2K" + lines[row]
+            result += "\u{1b}[\(row + 1);1H\u{1b}[0m\u{1b}[2K" + (styled ? lines[row] : Self.unstyled(lines[row]))
         }
         result += state
         return result
+    }
+
+    private static func unstyled(_ line: String) -> String {
+        var result = String.UnicodeScalarView()
+        var inEscape = false
+        for scalar in line.unicodeScalars {
+            if inEscape {
+                inEscape = scalar != "m"
+            } else if scalar == "\u{1b}" {
+                inEscape = true
+            } else {
+                result.append(scalar)
+            }
+        }
+        return String(result)
     }
 
     private static func sgr(_ attribute: Attribute) -> String {

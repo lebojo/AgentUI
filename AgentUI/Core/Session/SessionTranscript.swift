@@ -22,7 +22,7 @@ import Observation
         guard latest != text else { return }
         latest = text
         let output: String
-        if !anchor.isEmpty, let range = text.range(of: anchor) {
+        if !anchor.isEmpty, let range = text.utf8.firstRange(of: anchor.utf8) {
             output = String(text[range.upperBound...]).trimmingCharacters(in: .newlines)
         } else {
             output = text

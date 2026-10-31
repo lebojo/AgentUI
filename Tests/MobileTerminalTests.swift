@@ -3,6 +3,7 @@ import SwiftTerm
 
 private struct Viewport: View {
     let session: MobileTerminalSession
+
     var body: some View {
         if let view = session.view {
             MobileTerminalViewport(terminal: view, canvasSize: session.canvasSize)
@@ -10,7 +11,6 @@ private struct Viewport: View {
     }
 }
 
-/// Compiled as a separate Simulator test app by run-terminal-mirror.sh.
 @main @MainActor final class MobileTerminalTests: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, configurationForConnecting session: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         let configuration = UISceneConfiguration(name: nil, sessionRole: session.role)

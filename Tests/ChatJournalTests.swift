@@ -85,6 +85,12 @@ import Foundation
         try require(!decoder.messages.map(\.text).joined().contains("PRIVATE"), "No injected context or private thinking in the UI")
         let delta = SessionTranscriptDelta(previous: before, current: decoder.messages)
         try require(delta.append == nil && delta.messages.last?.toolState == .completed, "Tool metadata updates survive the remote delta even if text is unchanged")
+        var notification = try JSONSerialization.data(withJSONObject: ["type": "user", "uuid": "n1", "origin": ["kind": "task-notification"],
+                                                                       "message": ["content": "<task-notification><task-id>1</task-id></task-notification>"]])
+        notification.append(10)
+        decoder.consume(notification, offset: 5)
+        decoder.consume(try record("user", "n2", "<task-notification><status>completed</status></task-notification>"), offset: 6)
+        try require(decoder.messages.count == 3, "Background task notifications are not shown as user messages")
         print("PASS Claude roles, stable IDs, tool results, meta filtering and remote metadata deltas")
 
         var codex = CodexChatDecoder()
@@ -101,6 +107,19 @@ import Foundation
         try require(codexStates.messages.map(\.toolState) == [.running, .failed, .completed],
                     "Codex exec headers report running, non-zero exit and empty output without erasing the command")
         try require(codexStates.messages[2].text == "touch done", "An empty tool output keeps the command visible")
+        var codexChunks = CodexChatDecoder()
+        let item = { (payload: [String: Any]) in try line(["type": "response_item", "payload": payload]) }
+        let chunk = #"{"chunk_id":"a5871d","wall_time_seconds":0.1,"exit_code":1,"original_token_count":3,"output":"No such file"}"#
+        for (offset, record) in [
+            try item(["type": "custom_tool_call", "call_id": "j", "name": "exec", "input": "cat missing"]),
+            try item(["type": "custom_tool_call_output", "call_id": "j", "output": [["type": "input_text", "text": "Script completed\nWall time 0.1 seconds\nOutput:\n"],
+                                                                                     ["type": "input_text", "text": "Warning: truncated output\nTotal output lines: 1\n\n" + chunk]]]),
+            try item(["type": "message", "role": "user", "id": "html", "content": [["type": "input_text", "text": "<div>hello</div>"]]]),
+            try item(["type": "message", "role": "user", "id": "reply", "content": [["type": "input_text", "text": "<send_user_message_question_reply>Oui</send_user_message_question_reply>"]]])
+        ].enumerated() { codexChunks.consume(record, offset: UInt64(offset)) }
+        try require(codexChunks.messages.first?.toolState == .failed && codexChunks.messages.first?.text == "No such file",
+                    "A JSON exec chunk reports its exit code and output")
+        try require(codexChunks.messages.dropFirst().map(\.text) == ["<div>hello</div>", "Oui"], "Prompts made of a single element stay visible")
         print("PASS Codex rollout roles, tool calls, legacy shell output and injected context filtering")
 
         var copilot = CopilotChatDecoder()
@@ -143,6 +162,19 @@ import Foundation
         try aligned.write(to: file, options: .atomic)
         let boundary = await ChatJournalReader<ClaudeChatDecoder>().read(file)
         try require(boundary.map(\.text) == ["Boundary first", "Boundary last"], "A tail window starting on a line boundary keeps its first record")
+        let oversized = root.appendingPathComponent("oversized.jsonl")
+        try item(["type": "custom_tool_call", "call_id": "big", "name": "exec", "input": "screenshot"]).write(to: oversized)
+        let oversizedReader = ChatJournalReader<CodexChatDecoder>()
+        let started = await oversizedReader.read(oversized)
+        try require(started.first?.toolState == .running, "The tool call starts before its result")
+        var result = Data(#"{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"big","output":""#.utf8)
+        result.append(Data(repeating: 65, count: 17_000_000))
+        result.append(Data("\"}}\n".utf8))
+        result.append(try item(["type": "message", "role": "assistant", "id": "after", "content": [["type": "output_text", "text": "Après"]]]))
+        try append(result, to: oversized)
+        let finished = await oversizedReader.read(oversized)
+        try require(finished.first?.toolState == .completed && finished.last?.text == "Après",
+                    "A tool result above the record limit still completes its call and later records are read")
         print("PASS incremental reads, partial UTF-8 records, replacement and bounded initial history")
 
         let log = root.appendingPathComponent("projects/-tmp-project/\(UUID().uuidString).jsonl")

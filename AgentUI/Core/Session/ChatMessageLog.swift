@@ -4,6 +4,7 @@ protocol ChatJournalDecoder: Sendable {
     init()
     var messages: [SessionMessage] { get }
     mutating func consume(_ line: Data, offset: UInt64)
+    mutating func consumeOversized(_ head: Data)
 }
 
 struct ChatMessageLog: Sendable {
@@ -36,6 +37,18 @@ struct ChatMessageLog: Sendable {
         } else {
             upsert(SessionMessage(id: id, kind: .tool, text: Self.bounded(output), title: "Résultat de l’outil", toolState: state))
         }
+    }
+
+    mutating func finishOversizedTools(in head: Data, key: String) {
+        let text = String(decoding: head, as: UTF8.self)
+        var remaining = text[...]
+        while let marker = remaining.range(of: "\"\(key)\":\"") {
+            let value = remaining[marker.upperBound...]
+            guard let end = value.firstIndex(of: "\"") else { break }
+            finishTool(String(value[..<end]), output: "Résultat trop volumineux pour être affiché.", state: .completed)
+            remaining = value[end...]
+        }
+        trim()
     }
 
     mutating func trim() {

@@ -18,6 +18,10 @@ extension Color {
 extension View {
     func commandInputTraits() -> some View { self }
 
+    func submitsOnReturn(_ text: Binding<String>, perform submit: @escaping () -> Void) -> some View {
+        onSubmit(submit)
+    }
+
     func previewSheetFrame(idealWidth: CGFloat, idealHeight: CGFloat) -> some View {
         frame(minWidth: Dimension.PreviewSheet.minWidth, idealWidth: idealWidth,
               minHeight: Dimension.PreviewSheet.minHeight, idealHeight: idealHeight)

@@ -27,4 +27,9 @@ struct CopilotChatDecoder: ChatJournalDecoder {
         }
         log.trim()
     }
+
+    mutating func consumeOversized(_ head: Data) {
+        guard String(decoding: head, as: UTF8.self).contains("\"tool.execution_complete\"") else { return }
+        log.finishOversizedTools(in: head, key: "toolCallId")
+    }
 }

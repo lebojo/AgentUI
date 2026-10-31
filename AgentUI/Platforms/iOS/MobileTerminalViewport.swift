@@ -14,8 +14,6 @@ struct MobileTerminalViewport: UIViewRepresentable {
     }
 }
 
-/// Fit/zoom changes only the viewport transform, never the host-sized emulator.
-/// SwiftTerm keeps its own scrollback; the enclosing viewport pans the zoomed canvas.
 final class MobileTerminalScrollView: UIScrollView, UIScrollViewDelegate {
     private let canvas = UIView()
     private let terminal: TerminalView
@@ -32,8 +30,6 @@ final class MobileTerminalScrollView: UIScrollView, UIScrollViewDelegate {
         minimumZoomScale = 0.1
         contentInsetAdjustmentBehavior = .never
         keyboardDismissMode = .interactive
-        // SwiftTerm draws its background on the layer and makes its native
-        // background transparent. Extend that visible colour below the grid.
         backgroundColor = terminal.layer.backgroundColor.map { UIColor(cgColor: $0) } ?? terminal.nativeBackgroundColor
         canvas.backgroundColor = backgroundColor
         canvas.addSubview(terminal)
@@ -42,6 +38,7 @@ final class MobileTerminalScrollView: UIScrollView, UIScrollViewDelegate {
         reset.numberOfTapsRequired = 2
         reset.numberOfTouchesRequired = 2
         addGestureRecognizer(reset)
+        accessibilityLabel = "Écran du terminal"
         accessibilityHint = "Pince pour agrandir. Touche deux fois avec deux doigts pour ajuster la largeur."
     }
 

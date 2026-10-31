@@ -13,9 +13,9 @@ struct SessionComposer: View {
         VStack(spacing: Spacing.s) {
             HStack(spacing: Spacing.s) {
                 if source == .terminal {
-                    Button("Échap") { control(Data([27])) }
+                    Button("Ctrl-C") { control(Data([3])) }
                 }
-                Button("Interrompre") { control(Data([source.interruptKey])) }
+                Button("Interrompre") { control(Data([27])) }
                 if source == .terminal {
                     Button("Entrée") { control(Data([13])) }
                 }
@@ -28,7 +28,7 @@ struct SessionComposer: View {
                     .autocorrectionDisabled()
                     .commandInputTraits()
                     .lineLimit(1...6).textFieldStyle(.plain)
-                    .onSubmit(submit)
+                    .submitsOnReturn($draft, perform: submit)
                     .padding(Spacing.m)
                     .background(Palette.fill.opacity(0.4), in: RoundedRectangle(cornerRadius: Radius.m))
                 Button(action: submit) {

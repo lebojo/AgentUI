@@ -5,10 +5,9 @@ struct MobileWorkspaceView: View {
 
     @Environment(\.scenePhase) private var scenePhase
 
+    @State private var store = MobileWorkspaceStore()
     @State private var inspectorVisible = false
     @State private var settingsVisible = false
-
-    @Bindable var store: MobileWorkspaceStore
 
     private var isInBackground: Bool { scenePhase == .background }
     private var watchKey: String {

@@ -34,6 +34,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     @ObservationIgnored private var transcriptRevision = -1
     @ObservationIgnored private lazy var journalMonitor = AgentJournalMonitor(transcript: transcript)
     @ObservationIgnored private var chatViewers = 0
+    @ObservationIgnored private var chatRelease: Task<Void, Never>?
     @ObservationIgnored private var pendingWrite: Task<Void, Error>?
 
     private(set) var currentDirectory: String
@@ -80,12 +81,20 @@ final class ActivityTerminalView: SharedProcessTerminalView {
 
     func acquireChat() {
         chatViewers += 1
-        if chatViewers == 1 { journalMonitor.attach(agent?.journal) }
+        chatRelease?.cancel()
+        chatRelease = nil
+        journalMonitor.attach(agent?.journal)
     }
 
     func releaseChat() {
         chatViewers = max(0, chatViewers - 1)
-        if chatViewers == 0 { journalMonitor.attach(nil) }
+        guard chatViewers == 0 else { return }
+        chatRelease = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(30)) } catch { return }
+            guard let self, chatViewers == 0 else { return }
+            chatRelease = nil
+            journalMonitor.attach(nil)
+        }
     }
 
     func updateTranscript() {
@@ -153,11 +162,14 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     }
 
     func screen() -> TerminalScreen {
-        if screenRevision != outputRevision || cachedScreen == nil {
-            cachedScreen = TerminalScreen(terminal: view.getTerminal(), modes: mirrorModes, previous: cachedScreen)
-            screenRevision = outputRevision
+        let terminal = view.getTerminal()
+        if let cachedScreen, screenRevision == outputRevision, cachedScreen.columns == terminal.cols, cachedScreen.rows == terminal.rows {
+            return cachedScreen
         }
-        return cachedScreen!
+        let screen = TerminalScreen(terminal: terminal, modes: mirrorModes, previous: cachedScreen)
+        cachedScreen = screen
+        screenRevision = outputRevision
+        return screen
     }
 
     func snapshot(previousMessages: [SessionMessage], chat: Bool,
@@ -194,7 +206,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         }
         if agent != running { agent = running }
         if agentStatus != status { agentStatus = status }
-        if chatViewers > 0 { journalMonitor.attach(running?.journal) }
+        if chatViewers > 0 || chatRelease != nil { journalMonitor.attach(running?.journal) }
     }
 
     func stop() {

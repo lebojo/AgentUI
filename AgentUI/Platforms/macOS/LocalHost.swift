@@ -25,9 +25,11 @@ import Observation
     @ObservationIgnored private var agentRefresh: Task<Void, Never>?
     @ObservationIgnored private var jobs: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var connections: [UUID: (connection: NWConnection, peer: String)] = [:]
+    @ObservationIgnored private let pathMonitor = NWPathMonitor()
 
     private static let maximumConnections = 32
     private static let maximumConnectionsPerPeer = 8
+    private static let incompatibleVersions = "Versions incompatibles. Mets à jour AgentUI sur le Mac et sur cet appareil."
 
     init(pairingStore: any PairingCodeStore = PairingCodeStores.make(account: "localHost.pairingCode")) {
         self.pairingStore = pairingStore
@@ -38,7 +40,17 @@ import Observation
         self.store = store
         self.settings = settings
         self.installedAgents = installedAgents
+        pathMonitor.pathUpdateHandler = { [weak self] _ in
+            Task { @MainActor [weak self] in self?.refreshAddresses() }
+        }
+        pathMonitor.start(queue: .main)
         restart()
+    }
+
+    private func refreshAddresses() {
+        guard enabled, store != nil else { return }
+        let current = Self.localAddresses()
+        if addresses != current { addresses = current }
     }
 
     func renewPairingCode() {
@@ -127,8 +139,14 @@ import Observation
                 }
             }
         }
-        listener.newConnectionHandler = { [weak self] connection in
-            Task { @MainActor [weak self] in self?.accept(connection) }
+        listener.newConnectionHandler = { [weak self, weak listener] connection in
+            Task { @MainActor [weak self, weak listener] in
+                guard let self, let listener, self.listener === listener, self.enabled else {
+                    connection.cancel()
+                    return
+                }
+                self.accept(connection)
+            }
         }
         listener.start(queue: .main)
     }
@@ -149,6 +167,16 @@ import Observation
         }
         let id = UUID()
         connections[id] = (connection, String(describing: host))
+        connection.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .failed, .cancelled:
+                Task { @MainActor [weak self] in
+                    self?.connections[id] = nil
+                    self?.jobs[id]?.cancel()
+                }
+            default: break
+            }
+        }
         connection.start(queue: .global(qos: .userInitiated))
         jobs[id] = Task { [weak self] in
             guard let self else { connection.cancel(); return }
@@ -158,7 +186,12 @@ import Observation
                 self.jobs[id] = nil
             }
             do {
-                let request = try await self.readRequest(connection)
+                let request: RemoteRequest
+                do { request = try await self.readRequest(connection) }
+                catch is DecodingError {
+                    try await RemoteChannel.send(RemoteRejection(Self.incompatibleVersions), on: connection)
+                    return
+                }
                 if case .watch(let version, let terminal, let prefersChat) = request {
                     try await self.watch(connection, version: version, terminal: terminal, prefersChat: prefersChat)
                 } else {
@@ -179,7 +212,7 @@ import Observation
 
     private func watch(_ connection: NWConnection, version: Int, terminal: UUID?, prefersChat: Bool) async throws {
         guard version == RemoteProtocol.version, let store else {
-            try await RemoteChannel.send(RemoteEvent.failure("Versions incompatibles. Mets les deux applications à jour."), on: connection)
+            try await RemoteChannel.send(RemoteEvent.failure(Self.incompatibleVersions), on: connection)
             return
         }
         _ = terminal.flatMap { store.context(for: $0) }.map { store.sessions.start($0) }
@@ -201,12 +234,6 @@ import Observation
         var previousRevision = -1
         var previousExit: Bool?
         let (changes, continuation) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
-        connection.stateUpdateHandler = { state in
-            switch state {
-            case .failed, .cancelled: continuation.finish()
-            default: break
-            }
-        }
         let inputTask = Task {
             defer { continuation.finish() }
             do {
@@ -251,7 +278,7 @@ import Observation
                 previousAgents = agents
             }
             if let terminal, store.context(for: terminal) == nil {
-                try await RemoteChannel.send(RemoteEvent.failure("Ce terminal a été fermé sur le Mac."), on: connection)
+                try await RemoteChannel.send(RemoteEvent.terminalClosed, on: connection)
                 return
             }
             let session = terminal.flatMap { store.sessions.session($0) }
@@ -325,7 +352,7 @@ import Observation
         switch request {
         case .watch, .streamInput: throw RemoteError(message: "Requête invalide.")
         case .workspace(let version):
-            guard version == RemoteProtocol.version else { throw RemoteError(message: "Versions incompatibles.") }
+            guard version == RemoteProtocol.version else { throw RemoteError(message: Self.incompatibleVersions) }
             return try .success(store.state)
         case .input(let id, let data, let message):
             try requireWritable()
@@ -339,11 +366,12 @@ import Observation
                                            command: launch.command(on: .newTerminal), select: false)
             return try .success(id.terminal.id)
         case .children(let id, let path):
-            return try await .success(InspectorService.children(at: validatedURL(path, terminal: id)))
+            return try .fitting(await InspectorService.children(at: validatedURL(path, terminal: id))) { $0 }
         case .text(let id, let path):
             return try await .success(InspectorService.textFile(validatedURL(path, terminal: id)))
         case .git(let id):
-            return try await .success(InspectorService.localGit(at: context(id).worktree.path))
+            let local = try await InspectorService.localGit(at: context(id).worktree.path)
+            return try .fitting(local.changes) { LocalGitSnapshot(root: local.root, branch: local.branch, headSHA: local.headSHA, changes: $0) }
         case .github(let id):
             let local = try await InspectorService.localGit(at: context(id).worktree.path)
             return try await .success(InspectorService.remote(for: local))
@@ -385,12 +413,22 @@ import Observation
     }
 
     private func validatedURL(_ path: String, within rootPath: String) throws -> URL {
-        let root = URL(fileURLWithPath: rootPath).resolvingSymlinksInPath()
-        let url = URL(fileURLWithPath: path).resolvingSymlinksInPath()
+        let root = Self.resolved(rootPath)
+        let url = Self.resolved(path)
         guard url.path == root.path || url.path.hasPrefix(root.path + "/") else {
             throw RemoteError(message: "Le fichier est en dehors de ce worktree.")
         }
         return url
+    }
+
+    private static func resolved(_ path: String) -> URL {
+        var existing = URL(fileURLWithPath: path).standardizedFileURL
+        var missing: [String] = []
+        while existing.path != "/", !FileManager.default.fileExists(atPath: existing.path) {
+            missing.insert(existing.lastPathComponent, at: 0)
+            existing.deleteLastPathComponent()
+        }
+        return missing.reduce(existing.resolvingSymlinksInPath()) { $0.appendingPathComponent($1) }
     }
 
     private static func localAddresses() -> [String] {

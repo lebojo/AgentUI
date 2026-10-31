@@ -55,14 +55,13 @@ const button = (items, name) => items.find(n => n.type === 'Button' && n.AXLabel
         await tap('Terminal');
         await sleep(1000);
         current = await nodes();
-        assert(current.some(n => n.AXValue === 'Message ou commande'), 'Terminal did not stay open in Chat');
-        assert(current.some(n => n.AXLabel?.includes('NEW_SESSION_OUTPUT')), 'The real host session was not displayed');
+        assert(current.some(n => n.AXLabel === 'Écran du terminal'), 'A plain shell is not mirrored as a terminal');
         await tap('AgentUI');
         await tap('Mobile fixture', true);
         await tap('Mobile fixture', true);
         await tap('Terminal');
         await sleep(1000);
-        assert((await nodes()).some(n => n.AXValue === 'Message ou commande'), 'Reopening the selected terminal lost navigation');
+        assert((await nodes()).some(n => n.AXLabel === 'Écran du terminal'), 'Reopening the selected terminal lost navigation');
         console.log('PASS project/worktree expansion never selects a terminal or reconnects');
         console.log('PASS real terminal selection, back navigation and repeated reopening');
     } finally {

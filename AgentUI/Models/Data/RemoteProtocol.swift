@@ -11,7 +11,7 @@ enum RemoteProtocol {
         #endif
         return 52741
     }
-    static let version = 5
+    static let version = 6
     static let maximumFrame = 4 * 1024 * 1024
     static let maximumPayload = maximumFrame / 4 * 3 - 4096
 
@@ -121,6 +121,16 @@ struct RemoteReply: Codable, Sendable {
         return Self(payload: payload)
     }
 
+    static func fitting<Element>(_ elements: [Element], _ value: ([Element]) -> some Encodable) throws -> Self {
+        var count = elements.count
+        while true {
+            let payload = try JSONEncoder().encode(value(Array(elements.prefix(count))))
+            if payload.count <= RemoteProtocol.maximumPayload { return Self(payload: payload) }
+            guard count > 0 else { throw RemoteError(message: "Réponse trop volumineuse.") }
+            count = min(count - 1, count * RemoteProtocol.maximumPayload / payload.count * 9 / 10)
+        }
+    }
+
     func decode<Value: Decodable>(_ type: Value.Type) throws -> Value {
         if let error { throw RemoteError(message: error) }
         guard let payload else { throw RemoteError(message: "Réponse vide du Mac.") }
@@ -128,15 +138,25 @@ struct RemoteReply: Codable, Sendable {
     }
 }
 
-
 enum RemoteEvent: Codable, Sendable {
     case workspace(Workspace)
     case terminal(RemoteTerminalSnapshot)
+    case terminalClosed
     case failure(String)
     case inputResult(request: UUID, error: String?)
     case repositoryChanged
     case conversationsChanged
     case installedAgents([ConversationAgent])
+}
+
+struct RemoteRejection: Encodable, Sendable {
+    let error: String
+    let failure: [String: String]
+
+    init(_ message: String) {
+        error = message
+        failure = ["_0": message]
+    }
 }
 
 struct RemoteDiff: Codable, Sendable {

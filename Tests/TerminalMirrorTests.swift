@@ -104,6 +104,22 @@ private final class Delegate: TerminalDelegate {
         let mirrored = TerminalScreen(terminal: widePeer, modes: TerminalMirrorModes())
         require(mirrored.history.isEmpty, "The oversized checkpoint drops its scrollback")
         require(mirrored.lines == TerminalScreen(terminal: wide, modes: TerminalMirrorModes()).lines, "Dropping scrollback keeps the live screen exact")
+        let huge = Terminal(delegate: Delegate()), hugePeer = Terminal(delegate: Delegate())
+        huge.resize(cols: 520, rows: 160)
+        hugePeer.resize(cols: 520, rows: 160)
+        var frame = "\u{1b}[?1049h"
+        for row in 0..<160 {
+            for column in 0..<520 {
+                frame += "\u{1b}[38;2;\(row % 256);\(column % 256);7;48;2;\(column % 256);\(row % 256);9m\(row % 10)"
+            }
+            if row < 159 { frame += "\r\n" }
+        }
+        huge.feed(text: frame)
+        let alternate = TerminalScreen(terminal: huge, modes: TerminalMirrorModes()).output(after: nil)
+        require(alternate.data.count <= TerminalScreen.outputLimit, "A styled alternate screen without scrollback stays within the frame budget")
+        hugePeer.feed(byteArray: Array(alternate.data))
+        let plain = { (terminal: Terminal) in (0..<160).map { terminal.getLine(row: $0)?.translateToString(trimRight: true) ?? "" } }
+        require(plain(hugePeer) == plain(huge), "The unstyled fallback keeps the screen text exact")
         print("PASS oversized checkpoint keeps the live screen within the frame budget")
 
         var scanner = TerminalMirrorModes()

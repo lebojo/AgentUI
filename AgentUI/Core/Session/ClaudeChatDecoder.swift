@@ -10,7 +10,9 @@ struct ClaudeChatDecoder: ChatJournalDecoder {
               record["isSidechain"] as? Bool != true else { return }
         let role = record["type"] as? String
         guard role == "user" || role == "assistant", let message = record["message"] as? [String: Any] else { return }
+        let origin = (record["origin"] as? [String: Any])?["kind"] as? String
         let isMeta = record["isMeta"] as? Bool == true || record["isSynthetic"] as? Bool == true || record["isCompactSummary"] as? Bool == true
+            || (role == "user" && origin.map { $0 != "human" } == true)
         let id = record["uuid"] as? String ?? "line:\(offset)"
         let kind: SessionMessage.Kind = role == "user" ? .input : .assistant
         if let text = message["content"] as? String {
@@ -34,12 +36,16 @@ struct ClaudeChatDecoder: ChatJournalDecoder {
         log.trim()
     }
 
+    mutating func consumeOversized(_ head: Data) {
+        log.finishOversizedTools(in: head, key: "tool_use_id")
+    }
+
     private mutating func addText(_ text: String, id: String, kind: SessionMessage.Kind) {
         guard !Self.isTerminalMarkup(text) else { return }
         log.addText(text, id: id, kind: kind)
     }
 
     private static func isTerminalMarkup(_ text: String) -> Bool {
-        text.hasPrefix("<local-command-") || text.hasPrefix("<command-name>") || text.hasPrefix("<system-reminder>")
+        ["<local-command-", "<command-name>", "<system-reminder>", "<task-notification>"].contains { text.hasPrefix($0) }
     }
 }

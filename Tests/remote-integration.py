@@ -111,9 +111,12 @@ def rpc(action, **kwargs):
         return json.loads(base64.b64decode(reply["payload"]))
 
 
+PROTOCOL = 6
+
+
 def watch(terminal=None, chat=True):
     sock = connect()
-    request = dict(version=5, prefersChat=chat)
+    request = dict(version=PROTOCOL, prefersChat=chat)
     if terminal:
         request["terminal"] = terminal
     send(sock, {"watch": request})
@@ -131,12 +134,12 @@ try:
     bridge("debug.addLocation", path=str(repo))
     def host_ready():
         try:
-            rpc("workspace", version=5)
+            rpc("workspace", version=PROTOCOL)
             return True
         except (ConnectionError, OSError, ssl.SSLError):
             return False
     wait_for(host_ready)
-    workspace = rpc("workspace", version=5)
+    workspace = rpc("workspace", version=PROTOCOL)
     terminal = workspace["selection"]
     project = workspace["projects"][0]
     worktree = project["worktrees"][0]
@@ -147,17 +150,26 @@ try:
         raise AssertionError("Incompatible version accepted")
     except ValueError:
         pass
+    with connect() as sock:
+        send(sock, {"watch": dict(version=PROTOCOL + 1)})
+        reply = read(sock)
+        assert "Versions incompatibles" in reply["failure"]["_0"] and "Versions incompatibles" in reply["error"], reply
+    try:
+        rpc("futureRequest", terminal=terminal)
+        raise AssertionError("An unknown request was accepted")
+    except ValueError as error:
+        assert "Versions incompatibles" in str(error), error
     print("PASS real host connection and protocol version", flush=True)
 
     with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
-        send(sock, {"workspace": dict(version=5)})
+        send(sock, {"workspace": dict(version=PROTOCOL)})
         try:
             assert b"projects" not in sock.recv(65536)
         except ConnectionError:
             pass
     try:
         with connect("MNPQ-RSTU-VWXY") as sock:
-            send(sock, {"workspace": dict(version=5)})
+            send(sock, {"workspace": dict(version=PROTOCOL)})
             read(sock)
         raise AssertionError("Wrong pairing code accepted")
     except (ssl.SSLError, ConnectionError, EOFError):
@@ -169,7 +181,7 @@ try:
     idle = [socket.create_connection(("127.0.0.1", port), timeout=5) for _ in range(8)]
     time.sleep(1)
     try:
-        rpc("workspace", version=5)
+        rpc("workspace", version=PROTOCOL)
         raise AssertionError("A peer exceeded its connection limit")
     except (ssl.SSLError, ConnectionError, EOFError, OSError):
         pass
@@ -270,12 +282,12 @@ try:
     change = next(change for change in local["changes"] if change["path"] == "hello.txt")
     diff = rpc("diff", terminal=terminal, change=change)
     assert "Changed from the Mac" in diff["sections"][0]["patch"]
-    terminals = lambda: rpc("workspace", version=5)["projects"][0]["worktrees"][0]["terminals"]
+    terminals = lambda: rpc("workspace", version=PROTOCOL)["projects"][0]["worktrees"][0]["terminals"]
     before = len(terminals())
     new_id = rpc("newTerminal", project=project["id"], worktree=worktree["id"])
     assert new_id != terminal
     assert len(terminals()) == before + 1
-    assert rpc("workspace", version=5)["selection"] != new_id, "A terminal created from the phone does not take the Mac's selection"
+    assert rpc("workspace", version=PROTOCOL)["selection"] != new_id, "A terminal created from the phone does not take the Mac's selection"
     print("PASS shared Git diff and new remote terminal", flush=True)
 
     with watch(terminal) as sock:
