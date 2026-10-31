@@ -9,7 +9,7 @@ struct InspectorRepositoryContent: View {
             LazyVStack(alignment: .leading, spacing: Spacing.xl) {
                 if let local = model.local {
                     if tab == .git {
-                        GitChangeList(root: local.root, branch: local.branch, changes: local.changes)
+                        GitChangeList(root: local.root, branch: local.branch, changes: local.changes, omitted: local.omittedChanges)
                         Divider()
                         RemoteSummary(model: model)
                     } else {

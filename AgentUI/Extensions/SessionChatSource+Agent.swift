@@ -1,10 +1,7 @@
 extension SessionChatSource {
-    var agent: ConversationAgent? {
-        switch self {
-        case .terminal: nil
-        case .claude: .claude
-        case .codex: .codex
-        case .copilot: .copilot
-        }
+    init?(agent: ConversationAgent) {
+        self.init(rawValue: agent.rawValue)
     }
+
+    var agent: ConversationAgent? { ConversationAgent(rawValue: rawValue) }
 }

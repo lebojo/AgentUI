@@ -1,5 +1,4 @@
 import SwiftUI
-import Observation
 
 struct LocalSessionChat: View {
     let session: TerminalSession
@@ -12,18 +11,8 @@ struct LocalSessionChat: View {
         }
         .task(id: session.identity) {
             session.acquireChat()
-            defer { session.releaseChat() }
-            let (changes, continuation) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
-            continuation.yield(())
-            for await _ in changes {
-                if Task.isCancelled { break }
-                withObservationTracking {
-                    if session.transcript.source == .terminal { _ = session.outputRevision }
-                } onChange: { continuation.yield(()) }
-                do { try await Task.sleep(for: .milliseconds(100)) } catch { break }
-                session.updateTranscript()
-            }
-            continuation.finish()
+            while !Task.isCancelled { try? await Task.sleep(for: .seconds(3_600)) }
+            session.releaseChat()
         }
     }
 }

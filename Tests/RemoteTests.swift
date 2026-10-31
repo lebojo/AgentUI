@@ -58,6 +58,13 @@ import Foundation
         grown.text += "next token"
         let incremental = SessionTranscriptDelta(previous: [old], current: [grown])
         try require(incremental.messages.isEmpty && incremental.append?.text == "next token", "Stream only appended text, not the entire growing bubble")
+        var spinner = old
+        spinner.text += "⠋"
+        var spun = old
+        spun.text += "⠙ done"
+        let spinning = SessionTranscriptDelta(previous: [spinner], current: [spun])
+        try require(spinning.messages.isEmpty && spinning.append?.text == "⠙ done" && spinning.append?.applied(to: spinner.text) == spun.text,
+                    "A redraw near the end only sends the changed tail")
         grown.text = "redrawn screen"
         let redraw = SessionTranscriptDelta(previous: [old], current: [grown])
         try require(redraw.append == nil && redraw.messages.first?.text == "redrawn screen", "Redraw replaces changed output")
@@ -98,10 +105,11 @@ import Foundation
         let rejectedReply = try JSONDecoder().decode(RemoteReply.self, from: rejection)
         try require(rejectedReply.error == "Versions incompatibles.", "A rejection carries its message to a request")
         let entries = (0..<60_000).map { "/Users/someone/Developer/project/Sources/Generated/File\($0).swift" }
-        let fitted = try RemoteReply.fitting(entries) { $0 }
+        let fitted = try RemoteReply.fitting(entries) { kept, omitted in [String(omitted)] + kept }
         try require((fitted.payload?.count ?? .max) <= RemoteProtocol.maximumPayload, "A long list is trimmed to fit one frame")
         let kept = try fitted.decode([String].self)
         try require(kept.count > 10_000, "A trimmed list keeps as many entries as fit")
+        try require(Int(kept[0]).map { $0 + kept.count - 1 } == entries.count, "A trimmed list reports how many entries were left out")
         print("PASS version rejections and oversized lists fit the mobile protocol")
     }
 }

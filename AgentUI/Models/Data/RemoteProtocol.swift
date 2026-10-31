@@ -121,10 +121,10 @@ struct RemoteReply: Codable, Sendable {
         return Self(payload: payload)
     }
 
-    static func fitting<Element>(_ elements: [Element], _ value: ([Element]) -> some Encodable) throws -> Self {
+    static func fitting<Element>(_ elements: [Element], _ value: ([Element], Int) -> some Encodable) throws -> Self {
         var count = elements.count
         while true {
-            let payload = try JSONEncoder().encode(value(Array(elements.prefix(count))))
+            let payload = try JSONEncoder().encode(value(Array(elements.prefix(count)), elements.count - count))
             if payload.count <= RemoteProtocol.maximumPayload { return Self(payload: payload) }
             guard count > 0 else { throw RemoteError(message: "Réponse trop volumineuse.") }
             count = min(count - 1, count * RemoteProtocol.maximumPayload / payload.count * 9 / 10)
@@ -150,12 +150,18 @@ enum RemoteEvent: Codable, Sendable {
 }
 
 struct RemoteRejection: Encodable, Sendable {
-    let error: String
-    let failure: [String: String]
+    private enum CodingKeys: String, CodingKey { case error }
+
+    let message: String
 
     init(_ message: String) {
-        error = message
-        failure = ["_0": message]
+        self.message = message
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        try RemoteEvent.failure(message).encode(to: encoder)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(message, forKey: .error)
     }
 }
 

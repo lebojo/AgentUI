@@ -8,7 +8,7 @@ import AppKit
     func openLocalFile(_ url: URL) { NSWorkspace.shared.open(url) }
     func revealLocalFile(_ url: URL) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
 
-    func children(at url: URL) async throws -> [ExplorerEntry] { try await InspectorService.children(at: url) }
+    func children(at url: URL) async throws -> ExplorerListing { ExplorerListing(entries: try await InspectorService.children(at: url)) }
     func textFile(_ url: URL) async throws -> String { try await InspectorService.textFile(url) }
     func localGit(at path: String) async throws -> LocalGitSnapshot { try await InspectorService.localGit(at: path) }
     func remote(_ snapshot: LocalGitSnapshot) async throws -> RemoteSnapshot {

@@ -27,7 +27,13 @@ struct SessionMessage: Identifiable, Codable, Equatable, Sendable {
 
 struct SessionTextAppend: Codable, Sendable {
     let id: String
+    let keeping: Int
     let text: String
+
+    func applied(to previous: String) -> String? {
+        guard keeping <= previous.utf8.count else { return nil }
+        return String(decoding: previous.utf8.prefix(keeping), as: UTF8.self) + text
+    }
 }
 
 struct SessionTranscriptDelta: Sendable {
@@ -42,10 +48,14 @@ struct SessionTranscriptDelta: Sendable {
         let firstChanged = zip(kept, current).prefix { $0 == $1 }.count
         if kept.count == current.count, firstChanged == current.count - 1,
            let old = kept.last, let new = current.last,
-           old.id == new.id, old.kind == new.kind, old.title == new.title, old.toolState == new.toolState, new.text.hasPrefix(old.text) {
+           old.id == new.id, old.kind == new.kind, old.title == new.title, old.toolState == new.toolState,
+           case let shared = zip(old.text, new.text).prefix(while: { $0 == $1 }).count, shared > 0 {
+            let oldEnd = old.text.index(old.text.startIndex, offsetBy: shared)
+            let newEnd = new.text.index(new.text.startIndex, offsetBy: shared)
             start = current.count
             messages = []
-            append = SessionTextAppend(id: new.id, text: String(new.text.dropFirst(old.text.count)))
+            append = SessionTextAppend(id: new.id, keeping: old.text.utf8.distance(from: old.text.startIndex, to: oldEnd),
+                                       text: String(new.text[newEnd...]))
         } else {
             start = firstChanged
             messages = Array(current.dropFirst(firstChanged))

@@ -6,18 +6,16 @@ struct AgentJournal: Equatable, Sendable {
 
     func makeReader() -> @Sendable (URL) async -> [SessionMessage] {
         switch source {
-        case .claude:
-            let reader = ChatJournalReader<ClaudeChatDecoder>()
-            return { await reader.read($0) }
-        case .codex:
-            let reader = ChatJournalReader<CodexChatDecoder>()
-            return { await reader.read($0) }
-        case .copilot:
-            let reader = ChatJournalReader<CopilotChatDecoder>()
-            return { await reader.read($0) }
-        case .terminal:
-            return { _ in [] }
+        case .claude: Self.reader(decoding: ClaudeChatDecoder.self)
+        case .codex: Self.reader(decoding: CodexChatDecoder.self)
+        case .copilot: Self.reader(decoding: CopilotChatDecoder.self)
+        case .terminal: { _ in [] }
         }
+    }
+
+    private static func reader<Decoder: ChatJournalDecoder>(decoding: Decoder.Type) -> @Sendable (URL) async -> [SessionMessage] {
+        let reader = ChatJournalReader<Decoder>()
+        return { await reader.read($0) }
     }
 }
 
@@ -26,6 +24,7 @@ struct AgentJournal: Equatable, Sendable {
     private var attached: AgentJournal?
     private var read: (@Sendable (URL) async -> [SessionMessage])?
     private var fileWatch: DispatchSourceFileSystemObject?
+    private var watchRetry: Task<Void, Never>?
     private var reading: Task<Void, Never>?
     private var readAgain = false
     private var generation = UUID()
@@ -52,6 +51,7 @@ struct AgentJournal: Equatable, Sendable {
     private func stopWatching() {
         generation = UUID()
         fileWatch?.cancel(); fileWatch = nil
+        watchRetry?.cancel(); watchRetry = nil
         reading?.cancel(); reading = nil
         readAgain = false
         read = nil
@@ -67,6 +67,18 @@ struct AgentJournal: Equatable, Sendable {
                 fileWatch?.cancel(); fileWatch = nil
                 installFileWatch()
             }
+            scheduleRead()
+        }
+        if fileWatch == nil { retryFileWatch() }
+    }
+
+    private func retryFileWatch() {
+        let token = generation
+        watchRetry = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            guard let self, generation == token, fileWatch == nil else { return }
+            watchRetry = nil
+            installFileWatch()
             scheduleRead()
         }
     }

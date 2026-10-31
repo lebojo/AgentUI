@@ -261,7 +261,9 @@ try:
     print("PASS agent shortcut refuses a running program and launches at the shell prompt", flush=True)
 
     assert rpc("text", terminal=terminal, path=str(repo / "hello.txt")) == "Bonjour du Mac\n"
-    children = rpc("children", terminal=terminal, path=str(repo))
+    listing = rpc("children", terminal=terminal, path=str(repo))
+    assert listing["omitted"] == 0, listing
+    children = listing["entries"]
     assert any(entry["url"].endswith("hello.txt") for entry in children)
     for forbidden in ["/etc/passwd", str(repo / "../../etc/passwd")]:
         try:

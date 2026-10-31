@@ -21,6 +21,11 @@ enum InspectorTab: String, CaseIterable, Identifiable {
     }
 }
 
+struct ExplorerListing: Codable, Sendable {
+    var entries: [ExplorerEntry]
+    var omitted = 0
+}
+
 struct ExplorerEntry: Codable, Identifiable, Sendable {
     let url: URL
     let isDirectory: Bool
@@ -73,6 +78,7 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
     let branch: GitBranch?
     let headSHA: String?
     let changes: [GitChange]
+    var omittedChanges = 0
 }
 
 enum GitHosting: String, Codable, Sendable {

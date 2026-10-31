@@ -447,11 +447,12 @@ import Observation
         guard !worktree.isPrimary else { throw WorkspaceError(message: "Le dossier principal du projet ne peut pas être supprimé.") }
         busyProjects.insert(projectID)
         defer { busyProjects.remove(projectID) }
+        let started = worktree.terminals.filter { sessions.hasSession($0.id) }
         for terminal in worktree.terminals { sessions.close(terminal.id) }
         do {
             try await GitService.removeWorktree(project: project, path: worktree.path)
         } catch {
-            for context in worktree.terminals.compactMap({ context(for: $0.id) }) { sessions.start(context) }
+            for context in started.compactMap({ context(for: $0.id) }) { sessions.start(context) }
             throw error
         }
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }

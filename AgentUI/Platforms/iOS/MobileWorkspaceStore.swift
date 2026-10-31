@@ -28,6 +28,7 @@ import Observation
     var error: String?
     @ObservationIgnored private let pairingStore: any PairingCodeStore
     @ObservationIgnored private var pairingKey: PairingKey?
+    @ObservationIgnored private var pairingDerivation: (code: String, task: Task<PairingKey?, Never>)?
     @ObservationIgnored private var generation = UUID()
     @ObservationIgnored private var streamConnection: NWConnection?
     @ObservationIgnored private var pendingInputs: [UUID: (Error?) -> Void] = [:]
@@ -65,6 +66,7 @@ import Observation
         host = value
         pairingCode = code
         pairingKey = nil
+        pairingDerivation = nil
         UserDefaults.standard.set(host, forKey: "remoteHost")
         status = .connecting
         connectionID = UUID()
@@ -216,7 +218,16 @@ import Observation
     func requiredPairingKey() async throws -> PairingKey {
         if let pairingKey { return pairingKey }
         let code = pairingCode
-        guard let key = try? await PairingKey.derive(from: code) else {
+        let derivation: Task<PairingKey?, Never>
+        if let pending = pairingDerivation, pending.code == code {
+            derivation = pending.task
+        } else {
+            derivation = Task { try? await PairingKey.derive(from: code) }
+            pairingDerivation = (code, derivation)
+        }
+        let key = await derivation.value
+        if pairingDerivation?.code == code { pairingDerivation = nil }
+        guard let key else {
             throw RemoteError(message: "Saisis le code d’appairage affiché sur le Mac dans Réglages → Accès local.", isPermanent: true)
         }
         if pairingCode == code { pairingKey = key }
@@ -260,7 +271,7 @@ import Observation
         return try await RemoteChannel.call(request, host: host, key: try await store.requiredPairingKey())
     }
 
-    func children(at url: URL) async throws -> [ExplorerEntry] {
+    func children(at url: URL) async throws -> ExplorerListing {
         try await request(.children(terminal: terminal, path: url.path))
     }
     func textFile(_ url: URL) async throws -> String {

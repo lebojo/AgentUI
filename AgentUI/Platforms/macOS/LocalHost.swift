@@ -65,13 +65,16 @@ import Observation
     private func loadPairingKey() async throws -> PairingKey {
         if let pairingKey { return pairingKey }
         let codes = pairingStore
-        if let code = try await Task.detached(operation: { try codes.load() }).value, let key = try? await PairingKey.derive(from: code) {
-            if let pairingKey { return pairingKey }
-            pairingCode = code
-            pairingKey = key
-            return key
+        guard let code = try await Task.detached(operation: { try codes.load() }).value else { return try await storeNewPairingCode() }
+        guard let key = try? await PairingKey.derive(from: code) else {
+            let message = "Le code d’appairage enregistré est illisible. Génère un nouveau code pour appairer à nouveau tes appareils."
+            pairingStorageError = message
+            throw RemoteError(message: message)
         }
-        return try await storeNewPairingCode()
+        if let pairingKey { return pairingKey }
+        pairingCode = code
+        pairingKey = key
+        return key
     }
 
     @discardableResult private func storeNewPairingCode() async throws -> PairingKey {
@@ -259,7 +262,7 @@ import Observation
             withObservationTracking {
                 _ = store.state
                 let session = terminal.flatMap { store.sessions.session($0) }
-                if !(prefersChat && session?.agent != nil) || session?.transcript.source == .terminal { _ = session?.outputRevision }
+                if !(prefersChat && session?.agent != nil) { _ = session?.outputRevision }
                 _ = session?.hasExited
                 _ = session?.transcript.messages
                 _ = session?.transcript.source
@@ -301,7 +304,6 @@ import Observation
             if let session, previousRevision != session.outputRevision || previousExit != session.hasExited
                 || (chat && (previousMessages != session.transcript.messages || previousSource != session.transcript.source)) {
                 previousRevision = session.outputRevision
-                if chat { session.updateTranscript() }
                 let chatUnchanged = chat && previousExit == session.hasExited
                     && previousMessages == session.transcript.messages && previousSource == session.transcript.source
                 guard !chatUnchanged else { continue }
@@ -368,12 +370,14 @@ import Observation
                                            command: launch.command(on: .newTerminal), select: false)
             return try .success(id.terminal.id)
         case .children(let id, let path):
-            return try .fitting(await InspectorService.children(at: validatedURL(path, terminal: id))) { $0 }
+            return try .fitting(await InspectorService.children(at: validatedURL(path, terminal: id))) { ExplorerListing(entries: $0, omitted: $1) }
         case .text(let id, let path):
             return try await .success(InspectorService.textFile(validatedURL(path, terminal: id)))
         case .git(let id):
             let local = try await InspectorService.localGit(at: context(id).worktree.path)
-            return try .fitting(local.changes) { LocalGitSnapshot(root: local.root, branch: local.branch, headSHA: local.headSHA, changes: $0) }
+            return try .fitting(local.changes) {
+                LocalGitSnapshot(root: local.root, branch: local.branch, headSHA: local.headSHA, changes: $0, omittedChanges: $1)
+            }
         case .github(let id):
             let local = try await InspectorService.localGit(at: context(id).worktree.path, changesIn: [])
             return try await .success(InspectorService.remote(for: local))

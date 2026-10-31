@@ -24,15 +24,21 @@ import Observation
     }
 
     @discardableResult func apply(_ snapshot: RemoteTerminalSnapshot) -> Bool {
-        hasExited = snapshot.hasExited
-        chatSource = snapshot.chatSource
+        if hasExited != snapshot.hasExited { hasExited = snapshot.hasExited }
+        if chatSource != snapshot.chatSource { chatSource = snapshot.chatSource }
         guard snapshot.transcriptDropped <= messages.count,
               snapshot.transcriptStart <= messages.count - snapshot.transcriptDropped else { return false }
-        messages.removeFirst(snapshot.transcriptDropped)
-        messages.replaceSubrange(snapshot.transcriptStart..., with: snapshot.transcript)
-        if let append = snapshot.transcriptAppend {
-            guard messages.last?.id == append.id else { return false }
-            messages[messages.count - 1].text += append.text
+        let changesTranscript = snapshot.transcriptDropped > 0 || snapshot.transcriptStart < messages.count - snapshot.transcriptDropped
+            || !snapshot.transcript.isEmpty || snapshot.transcriptAppend != nil
+        if changesTranscript {
+            var updated = messages
+            updated.removeFirst(snapshot.transcriptDropped)
+            updated.replaceSubrange(snapshot.transcriptStart..., with: snapshot.transcript)
+            if let append = snapshot.transcriptAppend {
+                guard let last = updated.last, last.id == append.id, let text = append.applied(to: last.text) else { return false }
+                updated[updated.count - 1].text = text
+            }
+            messages = updated
         }
         guard let view else { return true }
         applyingOutput = true
@@ -42,7 +48,8 @@ import Observation
             terminal.resize(cols: snapshot.columns, rows: snapshot.rows)
         }
         let size = view.getOptimalFrameSize().size
-        canvasSize = CGSize(width: ceil(size.width), height: ceil(size.height))
+        let canvas = CGSize(width: ceil(size.width), height: ceil(size.height))
+        if canvasSize != canvas { canvasSize = canvas }
         if !snapshot.output.isEmpty { view.feed(byteArray: Array(snapshot.output)[...]) }
         return true
     }

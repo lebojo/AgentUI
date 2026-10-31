@@ -35,6 +35,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     @ObservationIgnored private lazy var journalMonitor = AgentJournalMonitor(transcript: transcript)
     @ObservationIgnored private var chatViewers = 0
     @ObservationIgnored private var chatRelease: Task<Void, Never>?
+    @ObservationIgnored private var transcriptRefresh: Task<Void, Never>?
     @ObservationIgnored private var pendingWrite: Task<Void, Error>?
 
     private(set) var currentDirectory: String
@@ -53,6 +54,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
             guard let self else { return }
             self.mirrorModes.append(data)
             self.outputRevision += 1
+            self.scheduleTranscriptRefresh()
         }
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
@@ -84,6 +86,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         chatRelease?.cancel()
         chatRelease = nil
         journalMonitor.attach(agent?.journal)
+        scheduleTranscriptRefresh()
     }
 
     func releaseChat() {
@@ -97,7 +100,17 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         }
     }
 
-    func updateTranscript() {
+    private func scheduleTranscriptRefresh() {
+        guard chatViewers > 0, transcript.source == .terminal, transcriptRefresh == nil else { return }
+        transcriptRefresh = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(100))
+            guard let self else { return }
+            transcriptRefresh = nil
+            updateTranscript()
+        }
+    }
+
+    private func updateTranscript() {
         guard transcript.source == .terminal, (transcriptRevision != outputRevision || transcript.messages.isEmpty) else { return }
         transcriptRevision = outputRevision
         transcript.update(screen: view.getTerminal().recentText(limit: 65_536))
@@ -185,7 +198,10 @@ final class ActivityTerminalView: SharedProcessTerminalView {
                                       hasExited: hasExited, exitCode: exitCode, chatSource: transcript.source)
     }
 
-    func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) { outputRevision += 1 }
+    func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {
+        outputRevision += 1
+        scheduleTranscriptRefresh()
+    }
     func setTerminalTitle(source: LocalProcessTerminalView, title: String) { self.title = title }
     func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
     func processTerminated(source: TerminalView, exitCode: Int32?) {
@@ -207,6 +223,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         if agent != running { agent = running }
         if agentStatus != status { agentStatus = status }
         if chatViewers > 0 || chatRelease != nil { journalMonitor.attach(running?.journal) }
+        scheduleTranscriptRefresh()
     }
 
     func stop() {
@@ -315,6 +332,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
 
     func session(_ id: UUID) -> TerminalSession? { entries[id] }
     func isRunning(_ id: UUID) -> Bool { entries[id]?.hasExited == false }
+    func hasSession(_ id: UUID) -> Bool { entries[id] != nil }
     @discardableResult func start(_ context: TerminalContext, command: [String] = []) -> TerminalSession {
         if let session = entries[context.terminal.id] { return session }
         let session = TerminalSession(context: context, command: command, environment: environment)
@@ -395,15 +413,7 @@ struct NativeTerminalView: NSViewRepresentable {
 
 private extension AgentProcess {
     var journal: AgentJournal? {
-        switch agent {
-        case .claude:
-            transcriptPath.map { AgentJournal(source: .claude, url: URL(fileURLWithPath: $0)) }
-        case .codex:
-            transcriptPath.map { AgentJournal(source: .codex, url: URL(fileURLWithPath: $0)) }
-        case .copilot:
-            transcriptPath.map { AgentJournal(source: .copilot, url: URL(fileURLWithPath: $0)) }
-        case .openCode:
-            nil
-        }
+        guard let source = SessionChatSource(agent: agent), let transcriptPath else { return nil }
+        return AgentJournal(source: source, url: URL(fileURLWithPath: transcriptPath))
     }
 }

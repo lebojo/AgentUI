@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ExplorerDirectory: View {
     @State private var entries: [ExplorerEntry] = []
+    @State private var omitted = 0
     @State private var error: String?
     @State private var loaded = false
 
@@ -16,12 +17,15 @@ struct ExplorerDirectory: View {
             ForEach(entries) { entry in
                 ExplorerRow(entry: entry, source: source)
             }
+            if omitted > 0 {
+                InspectorNotice(title: "Liste tronquée", message: "\(omitted) autres éléments non affichés sur cet appareil", symbol: "ellipsis.circle")
+            }
         }
         .task(id: url) {
             do {
                 let result = try await source.children(at: url)
                 guard !Task.isCancelled else { return }
-                entries = result; loaded = true; error = nil
+                entries = result.entries; omitted = result.omitted; loaded = true; error = nil
             } catch { self.error = error.localizedDescription; loaded = true }
         }
     }

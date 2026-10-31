@@ -4,7 +4,7 @@ import Foundation
     var canOpenLocalFiles: Bool { get }
     func openLocalFile(_ url: URL)
     func revealLocalFile(_ url: URL)
-    func children(at url: URL) async throws -> [ExplorerEntry]
+    func children(at url: URL) async throws -> ExplorerListing
     func textFile(_ url: URL) async throws -> String
     func localGit(at path: String) async throws -> LocalGitSnapshot
     func remote(_ snapshot: LocalGitSnapshot) async throws -> RemoteSnapshot
