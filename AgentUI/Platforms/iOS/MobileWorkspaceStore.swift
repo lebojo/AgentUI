@@ -87,6 +87,7 @@ import Observation
         let token = UUID()
         generation = token
         streamReady = false
+        let resumesStream = status == .connected
         if status != .connected { status = .connecting }
         let selectedID = selection
         do {
@@ -112,6 +113,10 @@ import Observation
                     if status != .connected { status = .connected }
                     if !streamReady {
                         streamReady = true
+                        if resumesStream {
+                            repositoryRevision += 1
+                            conversationRevision += 1
+                        }
                         sendQueuedInputs()
                     }
                     switch event {

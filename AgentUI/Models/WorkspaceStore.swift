@@ -335,7 +335,8 @@ import Observation
 
     @discardableResult func resume(_ conversation: AgentConversation, projectID: UUID, worktreeID: UUID, select: Bool = true) throws -> TerminalContext {
         guard let command = conversation.resumeCommand else { throw WorkspaceError(message: "Identifiant de session non pris en charge.") }
-        if let recent = recentResumes[conversation.id], ContinuousClock.now - recent.at < .seconds(30), context(for: recent.terminal) != nil {
+        if let recent = recentResumes[conversation.id], ContinuousClock.now - recent.at < .seconds(30), context(for: recent.terminal) != nil,
+           sessions.isRunning(recent.terminal) {
             throw WorkspaceError(message: "Cette conversation vient d’être reprise dans un autre terminal.")
         }
         let context = try addTerminal(projectID: projectID, worktreeID: worktreeID, name: conversation.shortTitle, command: command, select: select)
@@ -447,7 +448,12 @@ import Observation
         busyProjects.insert(projectID)
         defer { busyProjects.remove(projectID) }
         for terminal in worktree.terminals { sessions.close(terminal.id) }
-        try await GitService.removeWorktree(project: project, path: worktree.path)
+        do {
+            try await GitService.removeWorktree(project: project, path: worktree.path)
+        } catch {
+            for context in worktree.terminals.compactMap({ context(for: $0.id) }) { sessions.start(context) }
+            throw error
+        }
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
         projects[index].worktrees.removeAll { $0.id == worktreeID }
         if selectedContext == nil {

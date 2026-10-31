@@ -84,7 +84,10 @@ struct ClaudeTranscript: Equatable, Sendable {
     }
 
     static func directoryName(for path: String) -> String {
-        String(path.unicodeScalars.map { $0.isASCII && CharacterSet.alphanumerics.contains($0) ? Character($0) : "-" })
+        String(path.utf16.map { unit in
+            guard let scalar = Unicode.Scalar(unit), scalar.isASCII, CharacterSet.alphanumerics.contains(scalar) else { return "-" }
+            return Character(scalar)
+        })
     }
 
     static func directories(for path: String, in projects: URL) -> [URL] {

@@ -21,6 +21,7 @@ enum ConversationTests {
         let path = project.path
 
         try require(ClaudeTranscript.directoryName(for: "/Users/me/My Project.v2") == "-Users-me-My-Project-v2", "Claude directory encoding")
+        try require(ClaudeTranscript.directoryName(for: "/Users/me/🚀 é") == "-Users-me-----", "Claude replaces each UTF-16 unit like Claude Code")
 
         let claude = home.appendingPathComponent(".claude/projects/\(ClaudeTranscript.directoryName(for: path))", isDirectory: true)
         try FileManager.default.createDirectory(at: claude, withIntermediateDirectories: true)

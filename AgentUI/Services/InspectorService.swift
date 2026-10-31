@@ -41,14 +41,15 @@ enum InspectorService {
         return TextContent(text: text, isTruncated: data.count > 131_072)
     }
 
-    @concurrent static func localGit(at path: String) async throws -> LocalGitSnapshot {
+    @concurrent static func localGit(at path: String, changesIn paths: [String]? = nil) async throws -> LocalGitSnapshot {
         let git = URL(fileURLWithPath: "/usr/bin/git")
         let rootData = try await ReadCommand.run(git, ["rev-parse", "--show-toplevel"], at: path)
         let root = String(decoding: rootData, as: UTF8.self).trimmingCharacters(in: .newlines)
         async let head = try? ReadCommand.run(git, ["rev-parse", "--verify", "HEAD"], at: root)
         let safety = try await GitFilterGuard.shared.configuration(at: root)
-        async let changes = ReadCommand.run(git, ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=dirty"],
-                                            at: root, gitConfiguration: safety)
+        let status = ["--literal-pathspecs", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=dirty"]
+            + (paths.map { ["--"] + $0 } ?? [])
+        async let changes = paths?.isEmpty == true ? Data() : ReadCommand.run(git, status, at: root, gitConfiguration: safety)
         let branch = GitRepository.containing(root)?.branch
         return LocalGitSnapshot(root: root, branch: branch,
                                 headSHA: await head.map { String(decoding: $0, as: UTF8.self).trimmingCharacters(in: .newlines) },

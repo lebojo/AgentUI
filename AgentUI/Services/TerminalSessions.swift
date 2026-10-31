@@ -314,6 +314,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     var runningCount: Int { entries.values.filter { !$0.hasExited }.count }
 
     func session(_ id: UUID) -> TerminalSession? { entries[id] }
+    func isRunning(_ id: UUID) -> Bool { entries[id]?.hasExited == false }
     @discardableResult func start(_ context: TerminalContext, command: [String] = []) -> TerminalSession {
         if let session = entries[context.terminal.id] { return session }
         let session = TerminalSession(context: context, command: command, environment: environment)

@@ -14,17 +14,21 @@ struct ContentView: View {
     var body: some View {
         WorkspaceSplitView(inspectorVisible: $inspectorVisible) {
             WorkspaceSidebar(sheet: $sheet, removal: $removal, store: store)
+                .disabled(store.isReadOnly)
         } detail: {
-            if let context = store.selectedContext {
-                TerminalDetail(store: store, context: context)
-            } else {
-                WorkspaceWelcomeView(sheet: $sheet, store: store)
+            Group {
+                if let context = store.selectedContext {
+                    TerminalDetail(store: store, context: context)
+                } else {
+                    WorkspaceWelcomeView(sheet: $sheet, store: store)
+                }
             }
+            .disabled(store.isReadOnly)
         } inspector: {
             WorkspaceInspector(context: store.selectedContext, source: LocalInspectorSource(store: store))
+                .disabled(store.isReadOnly)
         }
         .environment(\.workspaceVisible, visibility.isVisible)
-        .disabled(store.isReadOnly)
         .safeAreaInset(edge: .top, spacing: 0) {
             if store.isReadOnly {
                 HStack {

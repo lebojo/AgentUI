@@ -28,6 +28,10 @@ enum InspectorTests {
         try require(diff.sections.map(\.kind) == [.staged, .unstaged] && diff.sections[0].patch.contains("+staged") && diff.sections[1].patch.contains("+unstaged") && diff.onlySection == nil
                     && diff.sections[0].lines.contains(GitDiffLine(id: 2, kind: .addition, text: "staged", oldNumber: nil, newNumber: 1)),
                     "Preview both index and worktree diffs")
+        let headOnly = try await InspectorService.localGit(at: repository.path, changesIn: [])
+        let single = try await InspectorService.localGit(at: repository.path, changesIn: ["tracked file.txt"])
+        try require(headOnly.changes.isEmpty && headOnly.headSHA == local.headSHA && single.changes.map(\.path) == ["tracked file.txt"],
+                    "Remote checks skip git status and remote diffs only check the requested path")
         let empty = try await InspectorService.localGit(at: unborn.path)
         try require(empty.headSHA == nil && empty.branch?.name == "develop", "Inspector supports unborn HEAD")
         print("PASS inspector status and real staged/unstaged diffs")

@@ -45,7 +45,10 @@ struct AgentConversationList: View {
                 guard !Task.isCancelled else { return }
                 if conversations != found { conversations = found }
                 error = nil
-            } catch { self.error = error.localizedDescription }
+            } catch {
+                guard !Task.isCancelled else { return }
+                self.error = error.localizedDescription
+            }
         }
     }
 

@@ -64,7 +64,8 @@ import Observation
 
     private func loadPairingKey() async throws -> PairingKey {
         if let pairingKey { return pairingKey }
-        if let code = try pairingStore.load(), let key = try? await PairingKey.derive(from: code) {
+        let codes = pairingStore
+        if let code = try await Task.detached(operation: { try codes.load() }).value, let key = try? await PairingKey.derive(from: code) {
             if let pairingKey { return pairingKey }
             pairingCode = code
             pairingKey = key
@@ -76,7 +77,8 @@ import Observation
     @discardableResult private func storeNewPairingCode() async throws -> PairingKey {
         let code = RemotePairing.newCode()
         let key = try await PairingKey.derive(from: code)
-        try pairingStore.save(code)
+        let codes = pairingStore
+        try await Task.detached { try codes.save(code) }.value
         pairingCode = code
         pairingKey = key
         pairingStorageError = nil
@@ -373,10 +375,11 @@ import Observation
             let local = try await InspectorService.localGit(at: context(id).worktree.path)
             return try .fitting(local.changes) { LocalGitSnapshot(root: local.root, branch: local.branch, headSHA: local.headSHA, changes: $0) }
         case .github(let id):
-            let local = try await InspectorService.localGit(at: context(id).worktree.path)
+            let local = try await InspectorService.localGit(at: context(id).worktree.path, changesIn: [])
             return try await .success(InspectorService.remote(for: local))
         case .diff(let id, let change):
-            let local = try await InspectorService.localGit(at: context(id).worktree.path)
+            let local = try await InspectorService.localGit(at: context(id).worktree.path,
+                                                            changesIn: [change.path] + (change.originalPath.map { [$0] } ?? []))
             guard let actual = local.changes.first(where: { $0.path == change.path }) else { throw RemoteError(message: "Le fichier n’a plus de modifications.") }
             _ = try validatedURL(URL(fileURLWithPath: local.root).appendingPathComponent(actual.path).path, within: local.root)
             return try await .success(RemoteDiff(InspectorService.diff(actual, at: local.root)))
