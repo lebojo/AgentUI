@@ -31,9 +31,13 @@ import AppKit
             alert.addButton(withTitle: "Annuler")
             guard alert.runModal() == .alertFirstButtonReturn else { return .terminateCancel }
         }
-        guard store.hasUnsavedChanges else { return .terminateNow }
+        guard store.sessions.runningCount > 0 || store.hasUnsavedChanges else { return .terminateNow }
         finishingTermination = true
         Task { @MainActor in
+            if store.sessions.runningCount > 0 {
+                await store.sessions.refreshAgents()
+                store.recordAgentSessions()
+            }
             do {
                 repeat { try await store.flushPersistence() } while store.hasUnsavedChanges
                 sender.reply(toApplicationShouldTerminate: true)
@@ -75,12 +79,12 @@ struct AgentUIApplication: App {
                     delegate.store = store
                     delegate.host = host
                     host.configure(store: store, settings: settings, installedAgents: installedAgents)
-                    store.resumeAgentSessions()
                     if delegate.closeCommand == nil { delegate.closeCommand = CloseTerminalCommand(store: store) }
                     if delegate.bridge == nil {
                         do { delegate.bridge = try AgentBridge(store: store) }
                         catch { store.errorMessage = error.localizedDescription }
                     }
+                    store.restoreSessions()
                 }
         }
         .defaultSize(width: Dimension.Window.defaultWidth, height: Dimension.Window.defaultHeight)

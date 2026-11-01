@@ -29,8 +29,9 @@ import Observation
     private(set) var agentKind: ConversationAgent?
     private(set) var agentStatus: AgentStatus?
     @ObservationIgnored private(set) var hadAgent = false
+    @ObservationIgnored var resume: AgentResume?
 
-    init(context: TerminalContext, command: [String], environment: [String: String]) {
+    init(context: TerminalContext, command: [String], keepsShell: Bool = false, environment: [String: String]) {
         path = context.worktree.path
         currentDirectory = context.worktree.path
         runsShell = command.isEmpty
@@ -59,7 +60,9 @@ import Observation
         env["AGENTUI_TERMINAL_ID"] = context.terminal.id.uuidString
         if env["LANG"] == nil { env["LANG"] = "en_US.UTF-8" }
         let shell = LoginShell.path(environment: env)
-        let args = command.isEmpty ? ["-l"] : ["-l", "-i", "-c", "exec \"$@\"", "agentui"] + command
+        let args = if command.isEmpty { ["-l"] }
+            else if keepsShell { ["-l", "-i", "-c", "\"$@\"; exec \"$0\" -l", shell] + command }
+            else { ["-l", "-i", "-c", "exec \"$@\"", "agentui"] + command }
         view.startProcess(executable: shell, args: args, environment: env.map { "\($0.key)=\($0.value)" }, currentDirectory: path)
         if !view.process.running {
             hasExited = true
@@ -335,11 +338,19 @@ import Observation
     func agentResumes() -> [UUID: AgentResume?] {
         entries.reduce(into: [:]) { result, entry in
             let session = entry.value
+            let resume: AgentResume?
             if let agent = session.agent {
-                if let resume = agent.resume { result.updateValue(resume, forKey: entry.key) }
+                guard let found = agent.resume ?? session.resume.flatMap({ $0.agent == agent.agent ? $0 : nil }) else {
+                    if session.resume != nil { result.updateValue(nil, forKey: entry.key) }
+                    session.resume = nil
+                    return
+                }
+                resume = found
             } else if session.hasExited || session.hadAgent {
-                result.updateValue(nil, forKey: entry.key)
-            }
+                resume = nil
+            } else { return }
+            session.resume = resume
+            result.updateValue(resume, forKey: entry.key)
         }
     }
 
@@ -365,8 +376,9 @@ import Observation
     func isRunning(_ id: UUID) -> Bool { entries[id]?.hasExited == false }
     @discardableResult func start(_ context: TerminalContext, command: [String] = []) -> TerminalSession {
         if let session = entries[context.terminal.id] { return session }
-        let command = command.isEmpty ? context.terminal.resume?.command ?? [] : command
-        let session = TerminalSession(context: context, command: command, environment: environment)
+        let resume = command.isEmpty ? context.terminal.resume.flatMap { $0.command == nil ? nil : $0 } : nil
+        let session = TerminalSession(context: context, command: resume?.command ?? command, keepsShell: resume != nil, environment: environment)
+        session.resume = resume
         entries[context.terminal.id] = session
         return session
     }

@@ -256,5 +256,24 @@ private final class ChangeFlag: @unchecked Sendable {
         split.applyAgentResumes([titled.terminal.id: nil])
         try require(split.context(for: titled.terminal.id)?.terminal.resume == nil, "A finished agent session is forgotten")
         print("PASS agent sessions resume after relaunch")
+
+        let relaunchFile = root.appendingPathComponent("relaunch.json")
+        var relaunchProject = Project(url: root.appendingPathComponent("relaunch"))
+        let agentTerminal = TerminalRecord(name: "Agent", resume: resume)
+        let idleTerminal = relaunchProject.worktrees[0].terminals[0]
+        relaunchProject.worktrees[0].terminals.append(agentTerminal)
+        relaunchProject.worktrees[0].layouts = [TerminalLayout.terminal(idleTerminal.id).splitting(idleTerminal.id, with: agentTerminal.id, axis: .horizontal)]
+        let relaunchState = Workspace(projects: [relaunchProject], selection: idleTerminal.id)
+        try WorkspaceDisk.save(relaunchState, to: relaunchFile)
+        let relaunched = WorkspaceStore(fileURL: relaunchFile)
+        relaunched.restoreSessions()
+        try require(relaunched.state == relaunchState && !relaunched.hasUnsavedChanges, "Relaunching keeps every terminal, name and split")
+        print("PASS relaunch keeps the organization")
+
+        let claudeArguments = ["node", "/usr/local/bin/claude", "--permission-mode", "bypassPermissions"]
+        try require(ConversationAgent.claude.skipsPermissions(in: claudeArguments), "Claude permission mode bypass is detected")
+        try require(ConversationAgent.codex.skipsPermissions(in: ["codex", "--yolo"]), "Codex yolo alias is detected")
+        try require(!ConversationAgent.claude.skipsPermissions(in: ["claude", "--permission-mode", "plan"]), "Other permission modes are not a bypass")
+        print("PASS permission bypass detection")
     }
 }

@@ -27,7 +27,8 @@ struct AgentProcess: Equatable, Sendable {
         guard transcriptPath == nil, let previous, previous.agent == agent, previous.startedAt == startedAt,
               sessionID == nil || sessionID == previous.sessionID else { return self }
         return AgentProcess(agent: agent, startedAt: startedAt, directory: directory, sessionID: previous.sessionID,
-                            transcriptPath: previous.transcriptPath, claudeStatus: claudeStatus ?? previous.claudeStatus)
+                            transcriptPath: previous.transcriptPath, claudeStatus: claudeStatus ?? previous.claudeStatus,
+                            skipsPermissions: skipsPermissions)
     }
 
     static func find(under shellPID: Int32, fallbackDirectory: String, previous: AgentProcess? = nil,
@@ -37,13 +38,14 @@ struct AgentProcess: Equatable, Sendable {
         while !pending.isEmpty, visited.count < 128 {
             let pid = pending.removeFirst()
             guard pid > 0, visited.insert(pid).inserted else { continue }
-            if let agent = agent(of: pid) {
+            let arguments = arguments(of: pid)
+            if let agent = agent(of: pid, arguments: arguments) {
                 let config = agent == .claude ? processClaudeConfig(of: pid) ?? claudeConfig : claudeConfig
                 let session = resolveSession(of: agent, in: subtree(of: pid), claudeConfig: config, previous: previous)
                 return AgentProcess(agent: agent, startedAt: startDate(of: pid) ?? .distantPast,
                                     directory: TerminalProcessDirectory.read(pid: pid) ?? fallbackDirectory,
                                     sessionID: session.id, transcriptPath: session.path, claudeStatus: session.status,
-                                    skipsPermissions: arguments(of: pid).contains(agent.permissionBypassFlag))
+                                    skipsPermissions: agent.skipsPermissions(in: arguments))
             }
             pending += children(of: pid)
         }
@@ -99,8 +101,8 @@ struct AgentProcess: Equatable, Sendable {
         return (components[...(index + 1)] + ["events.jsonl"]).joined(separator: "/")
     }
 
-    private static func agent(of pid: Int32) -> ConversationAgent? {
-        let candidates = [name(of: pid)].compactMap { $0 } + Array(arguments(of: pid).prefix(2))
+    private static func agent(of pid: Int32, arguments: [String]) -> ConversationAgent? {
+        let candidates = [name(of: pid)].compactMap { $0 } + Array(arguments.prefix(2))
         let names = candidates.map { URL(fileURLWithPath: $0).lastPathComponent }
         return agent(named: names)
     }

@@ -24,6 +24,17 @@ enum ConversationAgent: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    func skipsPermissions(in arguments: [String]) -> Bool {
+        let aliases = switch self {
+        case .claude: ["--permission-mode=bypassPermissions"]
+        case .codex: ["--yolo"]
+        case .copilot, .openCode: [String]()
+        }
+        if arguments.contains(where: { $0 == permissionBypassFlag || aliases.contains($0) }) { return true }
+        guard self == .claude, let index = arguments.firstIndex(of: "--permission-mode") else { return false }
+        return arguments.dropFirst(index + 1).first == "bypassPermissions"
+    }
+
     func launchCommand(skippingPermissions: Bool) -> [String] {
         [rawValue] + (skippingPermissions ? [permissionBypassFlag] : [])
     }

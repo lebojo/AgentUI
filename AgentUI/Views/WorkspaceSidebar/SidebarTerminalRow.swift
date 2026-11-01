@@ -17,6 +17,7 @@ struct SidebarTerminalRow: View {
             TerminalIcon(agent: session?.agentKind)
             VStack(alignment: .leading, spacing: Spacing.xxs) {
                 Text(terminal.name).lineLimit(1)
+                    .foregroundStyle(session == nil ? Palette.textSecondary : Palette.textPrimary)
                 HStack(spacing: Spacing.xxs) {
                     Image(systemName: branch?.isDetached == true ? "point.topleft.down.to.point.bottomright.curvepath" : "arrow.triangle.branch")
                         .font(Typography.xxs)
@@ -31,11 +32,14 @@ struct SidebarTerminalRow: View {
                 Image(systemName: session.hasExited ? "circle" : "circle.fill")
                     .font(Typography.statusDot).foregroundStyle(session.hasExited ? Palette.textSecondary : Palette.success)
                     .accessibilityLabel(session.hasExited ? "Session terminée" : "Terminal ouvert")
+            } else {
+                Image(systemName: "moon").font(Typography.caption).foregroundStyle(Palette.textSecondary)
+                    .accessibilityLabel("Terminal en veille")
             }
         }
         .padding(.vertical, Spacing.xxs)
         .tag(terminal.id)
-        .help(terminal.name)
+        .help(session == nil ? "\(terminal.name) — en veille, cliquer pour l’ouvrir" : terminal.name)
         .contextMenu {
             Button("Renommer…", systemImage: "pencil") { sheet = .rename(terminal.id, terminal.name) }
             if terminal.hasCustomName {

@@ -24,7 +24,7 @@ import Observation
     @ObservationIgnored private var restoring = false
     private var removingWorktrees: Set<UUID> = []
     @ObservationIgnored private var recentResumes: [String: (terminal: UUID, at: ContinuousClock.Instant)] = [:]
-    @ObservationIgnored private var resumedAgentSessions = false
+    @ObservationIgnored private var restoredSessions = false
     private let writer: WorkspaceWriter
     var errorMessage: String?
     var busyProjects: Set<UUID> = []
@@ -54,6 +54,7 @@ import Observation
             restore(try WorkspaceDisk.load(from: fileURL))
             canSave = true
             errorMessage = nil
+            restoreSessions()
         } catch { errorMessage = "L’organisation reste illisible. Le fichier original est conservé : \(fileURL.path)\n\(error.localizedDescription)" }
     }
 
@@ -323,16 +324,10 @@ import Observation
     }
 
     func applyConversationTitles(_ titles: [UUID: String]) {
-        var changed = false
-        for p in projects.indices {
-            for w in projects[p].worktrees.indices {
-                for t in projects[p].worktrees[w].terminals.indices {
-                    let terminal = projects[p].worktrees[w].terminals[t]
-                    guard !terminal.hasCustomName, let title = titles[terminal.id], terminal.name != title else { continue }
-                    projects[p].worktrees[w].terminals[t].name = title
-                    changed = true
-                }
-            }
+        let changed = updateTerminals { terminal in
+            guard !terminal.hasCustomName, let title = titles[terminal.id], terminal.name != title else { return false }
+            terminal.name = title
+            return true
         }
         if changed { save() }
     }
@@ -341,23 +336,17 @@ import Observation
 
     func applyAgentResumes(_ resumes: [UUID: AgentResume?]) {
         guard !resumes.isEmpty else { return }
-        var changed = false
-        for p in projects.indices {
-            for w in projects[p].worktrees.indices {
-                for t in projects[p].worktrees[w].terminals.indices {
-                    let terminal = projects[p].worktrees[w].terminals[t]
-                    guard let resume = resumes[terminal.id], terminal.resume != resume else { continue }
-                    projects[p].worktrees[w].terminals[t].resume = resume
-                    changed = true
-                }
-            }
+        let changed = updateTerminals { terminal in
+            guard let resume = resumes[terminal.id], terminal.resume != resume else { return false }
+            terminal.resume = resume
+            return true
         }
         if changed { save() }
     }
 
-    func resumeAgentSessions() {
-        guard !resumedAgentSessions else { return }
-        resumedAgentSessions = true
+    func restoreSessions() {
+        guard !restoredSessions, !isReadOnly else { return }
+        restoredSessions = true
         for project in projects {
             for worktree in project.worktrees {
                 for terminal in worktree.terminals where terminal.resume != nil {
@@ -368,13 +357,11 @@ import Observation
     }
 
     func useAutomaticName(_ terminalID: UUID) {
-        for p in projects.indices {
-            for w in projects[p].worktrees.indices {
-                for t in projects[p].worktrees[w].terminals.indices where projects[p].worktrees[w].terminals[t].id == terminalID {
-                    projects[p].worktrees[w].terminals[t].hasCustomName = false
-                    projects[p].worktrees[w].terminals[t].name = TerminalRecord.defaultName
-                }
-            }
+        updateTerminals { terminal in
+            guard terminal.id == terminalID else { return false }
+            terminal.hasCustomName = false
+            terminal.name = TerminalRecord.defaultName
+            return true
         }
         save()
     }
@@ -610,6 +597,21 @@ import Observation
             projects[index].worktrees.append(worktree)
         }
         save()
+    }
+
+    @discardableResult private func updateTerminals(_ update: (inout TerminalRecord) -> Bool) -> Bool {
+        var changed = false
+        for p in projects.indices {
+            for w in projects[p].worktrees.indices {
+                for t in projects[p].worktrees[w].terminals.indices {
+                    var terminal = projects[p].worktrees[w].terminals[t]
+                    guard update(&terminal) else { continue }
+                    projects[p].worktrees[w].terminals[t] = terminal
+                    changed = true
+                }
+            }
+        }
+        return changed
     }
 
     private func updateWorktree(_ id: UUID, _ update: (inout Worktree) -> Void) {
