@@ -62,7 +62,6 @@ import Observation
         if host != value {
             workspace = Workspace()
             selection = nil
-            session = nil
         }
         host = value
         pairingCode = code

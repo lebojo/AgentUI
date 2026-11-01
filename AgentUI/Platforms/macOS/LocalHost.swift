@@ -32,7 +32,7 @@ import Observation
     @ObservationIgnored private var listenerStart: Task<Void, Never>?
     @ObservationIgnored private var listenerRetry: Task<Void, Never>?
     @ObservationIgnored private var jobs: [UUID: Task<Void, Never>] = [:]
-    @ObservationIgnored private var connections: [UUID: (connection: NWConnection, peer: String)] = [:]
+    @ObservationIgnored private var connections: [UUID: (connection: NWConnection, peer: String, isPaired: Bool)] = [:]
     @ObservationIgnored private let pathMonitor = NWPathMonitor()
 
     private static let maximumConnections = 32
@@ -73,16 +73,26 @@ import Observation
     private func loadPairingKey() async throws -> PairingKey {
         if let pairingKey { return pairingKey }
         let codes = pairingStore
-        guard let code = try await Task.detached(operation: { try codes.load() }).value else { return try await storeNewPairingCode() }
+        let stored: String?
+        do { stored = try await Task.detached(operation: { try codes.load() }).value }
+        catch { throw storageFailure(error.localizedDescription) }
+        guard let code = stored else {
+            do { return try await storeNewPairingCode() }
+            catch { throw storageFailure(error.localizedDescription) }
+        }
         guard let key = try? await PairingKey.derive(from: code) else {
-            let message = "Le code d’appairage enregistré est illisible. Génère un nouveau code pour appairer à nouveau tes appareils."
-            pairingStorageError = message
-            throw RemoteError(message: message, isPermanent: true)
+            throw storageFailure("Le code d’appairage enregistré est illisible. Génère un nouveau code pour appairer à nouveau tes appareils.")
         }
         if let pairingKey { return pairingKey }
         pairingCode = code
         pairingKey = key
+        pairingStorageError = nil
         return key
+    }
+
+    private func storageFailure(_ message: String) -> RemoteError {
+        pairingStorageError = message
+        return RemoteError(message: message, isPermanent: true)
     }
 
     @discardableResult private func storeNewPairingCode() async throws -> PairingKey {
@@ -175,15 +185,17 @@ import Observation
 
     private func accept(_ connection: NWConnection) {
         guard case .hostPort(let host, _) = connection.endpoint, (try? RemoteProtocol.host(String(describing: host))) != nil,
-              connections.count < Self.maximumConnections,
+              connections.values.count(where: \.isPaired) < Self.maximumConnections,
               connections.values.count(where: { $0.peer == String(describing: host) }) < Self.maximumConnectionsPerPeer else {
             connection.cancel()
             return
         }
         let id = UUID()
-        connections[id] = (connection, String(describing: host))
+        connections[id] = (connection, String(describing: host), false)
         connection.stateUpdateHandler = { [weak self] state in
             switch state {
+            case .ready:
+                Task { @MainActor [weak self] in self?.connections[id]?.isPaired = true }
             case .failed, .cancelled:
                 Task { @MainActor [weak self] in
                     self?.connections[id] = nil
@@ -242,6 +254,7 @@ import Observation
         var streamed = StreamedSession()
         var watchedChat: TerminalSession?
         defer { watchedChat?.releaseChat() }
+        let streamsChat = { (session: TerminalSession?) in prefersChat && session?.agent != nil }
         let (changes, continuation) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
         let inputTask = Task {
             defer { continuation.finish() }
@@ -268,10 +281,13 @@ import Observation
                 _ = store.projects
                 let session = terminal.flatMap { store.sessions.session($0) }
                 if session == nil { _ = terminal.flatMap { store.startableContext(for: $0) } }
-                if !(prefersChat && session?.agent != nil) { _ = session?.outputRevision }
+                if streamsChat(session) {
+                    _ = session?.transcript.messages
+                    _ = session?.transcript.source
+                } else {
+                    _ = session?.outputRevision
+                }
                 _ = session?.hasExited
-                _ = session?.transcript.messages
-                _ = session?.transcript.source
                 _ = session?.agent
                 _ = installedAgents?.agents
             } onChange: { continuation.yield(()) }
@@ -292,7 +308,7 @@ import Observation
             }
             if let terminal, store.sessions.session(terminal) == nil { store.startSession(for: terminal) }
             let session = terminal.flatMap { store.sessions.session($0) }
-            let chat = prefersChat && session?.agent != nil
+            let chat = streamsChat(session)
             if streamed.identity != session?.identity || streamed.chat != chat {
                 watchedChat?.releaseChat()
                 watchedChat = chat ? session : nil

@@ -12,6 +12,7 @@ struct TerminalPane: View {
     let isSplit: Bool
 
     private var session: TerminalSession? { store.sessions.session(context.terminal.id) }
+    private var startableTerminal: UUID? { store.startableContext(for: context.terminal.id)?.terminal.id }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -62,7 +63,7 @@ struct TerminalPane: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: context.terminal.id) { store.startSession(for: context.terminal.id) }
+        .task(id: startableTerminal) { store.startSession(for: context.terminal.id) }
     }
 
     private func select() {
