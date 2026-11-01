@@ -72,6 +72,13 @@ import Foundation
         let spinning = SessionTranscriptDelta(previous: [spinner], current: [spun])
         try require(spinning.messages.isEmpty && spinning.append?.text == "⠙ done" && spinning.append?.applied(to: spinner.text) == spun.text,
                     "A redraw near the end only sends the changed tail")
+        var composed = old
+        composed.text += "café"
+        var decomposed = old
+        decomposed.text += "cafe\u{301} ok"
+        let normalization = SessionTranscriptDelta(previous: [composed], current: [decomposed])
+        try require(normalization.append?.applied(to: composed.text).map { Array($0.utf8) } == Array(decomposed.text.utf8),
+                    "Canonically equivalent text is rebuilt byte for byte on the phone")
         grown.text = "redrawn screen"
         let redraw = SessionTranscriptDelta(previous: [old], current: [grown])
         try require(redraw.append == nil && redraw.messages.first?.text == "redrawn screen", "Redraw replaces changed output")

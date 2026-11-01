@@ -24,7 +24,7 @@ struct AgentProcess: Equatable, Sendable {
                             transcriptPath: previous.transcriptPath, claudeStatus: claudeStatus ?? previous.claudeStatus)
     }
 
-    static func find(under shellPID: Int32, fallbackDirectory: String,
+    static func find(under shellPID: Int32, fallbackDirectory: String, previous: AgentProcess? = nil,
                      claudeConfig: URL = ClaudeTranscript.configDirectory()) -> AgentProcess? {
         var pending = [shellPID]
         var visited: Set<Int32> = []
@@ -32,8 +32,8 @@ struct AgentProcess: Equatable, Sendable {
             let pid = pending.removeFirst()
             guard pid > 0, visited.insert(pid).inserted else { continue }
             if let agent = agent(of: pid) {
-                let config = environmentValue("CLAUDE_CONFIG_DIR", of: pid).flatMap { $0.hasPrefix("/") ? URL(fileURLWithPath: $0) : nil }
-                let session = resolveSession(of: agent, in: subtree(of: pid), claudeConfig: config ?? claudeConfig)
+                let config = agent == .claude ? processClaudeConfig(of: pid) ?? claudeConfig : claudeConfig
+                let session = resolveSession(of: agent, in: subtree(of: pid), claudeConfig: config, previous: previous)
                 return AgentProcess(agent: agent, startedAt: startDate(of: pid) ?? .distantPast,
                                     directory: TerminalProcessDirectory.read(pid: pid) ?? fallbackDirectory,
                                     sessionID: session.id, transcriptPath: session.path, claudeStatus: session.status)
@@ -98,7 +98,8 @@ struct AgentProcess: Equatable, Sendable {
         return agent(named: names)
     }
 
-    private static func resolveSession(of agent: ConversationAgent, in pids: [Int32], claudeConfig: URL) -> (id: String?, path: String?, status: String?) {
+    private static func resolveSession(of agent: ConversationAgent, in pids: [Int32], claudeConfig: URL,
+                                       previous: AgentProcess?) -> (id: String?, path: String?, status: String?) {
         switch agent {
         case .claude:
             let sessions = claudeConfig.appendingPathComponent("sessions", isDirectory: true)
@@ -106,8 +107,13 @@ struct AgentProcess: Equatable, Sendable {
                 (try? Data(contentsOf: sessions.appendingPathComponent("\(pid).json")))
                     .flatMap { try? JSONDecoder().decode(ClaudeSession.self, from: $0) }
             }.first
+            guard let session else { return (nil, nil, nil) }
+            if previous?.agent == .claude, previous?.sessionID == session.sessionId, let known = previous?.transcriptPath,
+               FileManager.default.fileExists(atPath: known) {
+                return (session.sessionId, known, session.status)
+            }
             let projects = claudeConfig.appendingPathComponent("projects", isDirectory: true)
-            return (session?.sessionId, session?.transcript(in: projects)?.path, session?.status)
+            return (session.sessionId, session.transcript(in: projects)?.path, session.status)
         case .codex:
             let rollout = pids.lazy.flatMap(openFiles).first { codexSessionID(inRolloutPath: $0) != nil }
             return (rollout.flatMap(codexSessionID(inRolloutPath:)), rollout, nil)
@@ -155,15 +161,17 @@ struct AgentProcess: Equatable, Sendable {
     }
 
     private static func arguments(of pid: Int32) -> [String] {
-        commandLine(of: pid).arguments
+        commandLine(of: pid, includingEnvironment: false).arguments
     }
 
-    private static func environmentValue(_ name: String, of pid: Int32) -> String? {
-        let prefix = name + "="
-        return commandLine(of: pid).environment.first { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }
+    private static func processClaudeConfig(of pid: Int32) -> URL? {
+        let prefix = "CLAUDE_CONFIG_DIR="
+        guard let value = commandLine(of: pid, includingEnvironment: true).environment.first(where: { $0.hasPrefix(prefix) })?
+            .dropFirst(prefix.count), value.hasPrefix("/") else { return nil }
+        return URL(fileURLWithPath: String(value))
     }
 
-    private static func commandLine(of pid: Int32) -> (arguments: [String], environment: [String]) {
+    private static func commandLine(of pid: Int32, includingEnvironment: Bool) -> (arguments: [String], environment: [String]) {
         var mib = [CTL_KERN, KERN_PROCARGS2, pid]
         var size = 0
         guard sysctl(&mib, 3, nil, &size, nil, 0) == 0, size > MemoryLayout<Int32>.size else { return ([], []) }
@@ -174,7 +182,7 @@ struct AgentProcess: Equatable, Sendable {
         while index < size, buffer[index] != 0 { index += 1 }
         while index < size, buffer[index] == 0 { index += 1 }
         var strings: [String] = []
-        while index < size {
+        while index < size, includingEnvironment || strings.count < count {
             let start = index
             while index < size, buffer[index] != 0 { index += 1 }
             guard index > start || strings.count < count else { break }

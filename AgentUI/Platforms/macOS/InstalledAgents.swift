@@ -13,8 +13,7 @@ import Observation
     }
 
     @concurrent private static func detect() async -> [ConversationAgent] {
-        let configuredShell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
-        let shell = FileManager.default.isExecutableFile(atPath: configuredShell) ? configuredShell : "/bin/zsh"
+        let shell = LoginShell.path()
         let lookups = ConversationAgent.allCases.map { "command -v \($0.rawValue) >/dev/null 2>&1 && echo \($0.rawValue)" }
         let script = (lookups + ["true"]).joined(separator: "; ")
         guard let output = try? await CommandRunner.run(URL(fileURLWithPath: shell), ["-l", "-i", "-c", script], at: NSHomeDirectory(),

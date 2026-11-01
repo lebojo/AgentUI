@@ -71,8 +71,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         env["AGENTUI_WORKTREE_ID"] = context.worktree.id.uuidString
         env["AGENTUI_TERMINAL_ID"] = context.terminal.id.uuidString
         if env["LANG"] == nil { env["LANG"] = "en_US.UTF-8" }
-        let configuredShell = env["SHELL"] ?? "/bin/zsh"
-        let shell = FileManager.default.isExecutableFile(atPath: configuredShell) ? configuredShell : "/bin/zsh"
+        let shell = LoginShell.path(environment: env)
         let args = command.isEmpty ? ["-l"] : ["-l", "-i", "-c", "exec \"$@\"", "agentui"] + command
         view.startProcess(executable: shell, args: args, environment: env.map { "\($0.key)=\($0.value)" }, currentDirectory: path)
         if !view.process.running {
@@ -221,10 +220,11 @@ final class ActivityTerminalView: SharedProcessTerminalView {
             process.claudeStatus.flatMap(AgentStatus.init(claudeStatus:))
                 ?? AgentStatus(screen: view.visibleLines, lastOutput: view.lastOutput)
         }
-        if agent != running { agent = running }
+        let agentChanged = agent != running
+        if agentChanged { agent = running }
         if agentStatus != status { agentStatus = status }
         if chatViewers > 0 || chatRelease != nil { journalMonitor.attach(running?.journal) }
-        scheduleTranscriptRefresh()
+        if agentChanged { scheduleTranscriptRefresh() }
     }
 
     func stop() {
@@ -322,11 +322,12 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         refreshingAgents = true
         defer { refreshingAgents = false }
         let shells = entries.compactMap { id, session in
-            session.hasExited ? nil : (id: id, identity: session.identity, pid: session.view.process.shellPid, directory: session.currentDirectory)
+            session.hasExited ? nil : (id: id, identity: session.identity, pid: session.view.process.shellPid,
+                                       directory: session.currentDirectory, previous: session.agent)
         }
         let found = await Task.detached(priority: .utility) {
             shells.reduce(into: [UUID: AgentProcess]()) { result, shell in
-                result[shell.identity] = AgentProcess.find(under: shell.pid, fallbackDirectory: shell.directory)
+                result[shell.identity] = AgentProcess.find(under: shell.pid, fallbackDirectory: shell.directory, previous: shell.previous)
             }
         }.value
         guard !Task.isCancelled else { return }

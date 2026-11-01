@@ -222,7 +222,6 @@ import Observation
             try await RemoteChannel.send(RemoteEvent.failure(Self.incompatibleVersions), on: connection)
             return
         }
-        _ = terminal.flatMap { store.startableContext(for: $0) }.map { store.sessions.start($0) }
         Task { await installedAgents?.refresh() }
         let agentWatch = terminal == nil ? nil : Task { await store.sessions.watchAgents() }
         defer { agentWatch?.cancel() }
@@ -264,6 +263,7 @@ import Observation
                 _ = store.folders
                 _ = store.projects
                 let session = terminal.flatMap { store.sessions.session($0) }
+                if session == nil { _ = terminal.flatMap { store.startableContext(for: $0) } }
                 if !(prefersChat && session?.agent != nil) { _ = session?.outputRevision }
                 _ = session?.hasExited
                 _ = session?.transcript.messages
@@ -285,6 +285,9 @@ import Observation
             if let terminal, store.context(for: terminal) == nil {
                 try await RemoteChannel.send(RemoteEvent.terminalClosed, on: connection)
                 return
+            }
+            if let terminal, store.sessions.session(terminal) == nil, let context = store.startableContext(for: terminal) {
+                store.sessions.start(context)
             }
             let session = terminal.flatMap { store.sessions.session($0) }
             let chat = prefersChat && session?.agent != nil

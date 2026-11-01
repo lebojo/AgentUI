@@ -22,7 +22,7 @@ import Observation
     @ObservationIgnored private var failedRevision: UInt64 = 0
     @ObservationIgnored private var pendingSave: Task<Void, Never>?
     @ObservationIgnored private var restoring = false
-    @ObservationIgnored private var removingWorktrees: Set<UUID> = []
+    private var removingWorktrees: Set<UUID> = []
     @ObservationIgnored private var recentResumes: [String: (terminal: UUID, at: ContinuousClock.Instant)] = [:]
     private let writer: WorkspaceWriter
     var errorMessage: String?
@@ -327,6 +327,7 @@ import Observation
               let w = projects[p].worktrees.firstIndex(where: { $0.id == worktreeID }) else {
             throw WorkspaceError(message: "Projet ou worktree introuvable.")
         }
+        guard !removingWorktrees.contains(worktreeID) else { throw WorkspaceError(message: "Ce worktree est en cours de suppression.") }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let terminal = TerminalRecord(name: trimmed.isEmpty ? TerminalRecord.defaultName : trimmed)
         projects[p].worktrees[w].terminals.append(terminal)
@@ -457,7 +458,7 @@ import Observation
             removingWorktrees.remove(worktreeID)
         }
         let started = worktree.terminals.filter { sessions.isRunning($0.id) }
-        for terminal in worktree.terminals { sessions.close(terminal.id) }
+        for terminal in started { sessions.close(terminal.id) }
         do {
             try await GitService.removeWorktree(project: project, path: worktree.path)
         } catch {

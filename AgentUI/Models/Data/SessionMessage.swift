@@ -49,18 +49,22 @@ struct SessionTranscriptDelta: Sendable {
         if kept.count == current.count, firstChanged == current.count - 1,
            let old = kept.last, let new = current.last,
            old.id == new.id, old.kind == new.kind, old.title == new.title, old.toolState == new.toolState,
-           case let shared = zip(old.text, new.text).prefix(while: { $0 == $1 }).count, shared > 0 {
-            let oldEnd = old.text.index(old.text.startIndex, offsetBy: shared)
-            let newEnd = new.text.index(new.text.startIndex, offsetBy: shared)
+           case let shared = Self.sharedScalarBytes(old.text, new.text), shared > 0 {
             start = current.count
             messages = []
-            append = SessionTextAppend(id: new.id, keeping: old.text.utf8.distance(from: old.text.startIndex, to: oldEnd),
-                                       text: String(new.text[newEnd...]))
+            append = SessionTextAppend(id: new.id, keeping: shared, text: String(decoding: new.text.utf8.dropFirst(shared), as: UTF8.self))
         } else {
             start = firstChanged
             messages = Array(current.dropFirst(firstChanged))
             append = nil
         }
+    }
+
+    private static func sharedScalarBytes(_ old: String, _ new: String) -> Int {
+        let newBytes = Array(new.utf8)
+        var shared = zip(old.utf8, newBytes).prefix { $0 == $1 }.count
+        while shared > 0, shared < newBytes.count, newBytes[shared] & 0xC0 == 0x80 { shared -= 1 }
+        return shared
     }
 }
 
