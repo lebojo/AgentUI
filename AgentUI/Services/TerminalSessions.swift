@@ -155,6 +155,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
             view.send(source: view, data: Array(data)[...])
             return
         }
+        guard !isShellInForeground else { throw WorkspaceError(message: "L’agent s’est arrêté : le message n’a pas été envoyé au shell.") }
         updateTranscript()
         transcript.sent(message)
         if data.last == 13, view.getTerminal().bracketedPasteMode {

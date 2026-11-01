@@ -22,6 +22,7 @@ import Observation
     @ObservationIgnored private var failedRevision: UInt64 = 0
     @ObservationIgnored private var pendingSave: Task<Void, Never>?
     @ObservationIgnored private var restoring = false
+    @ObservationIgnored private var removingWorktrees: Set<UUID> = []
     @ObservationIgnored private var recentResumes: [String: (terminal: UUID, at: ContinuousClock.Instant)] = [:]
     private let writer: WorkspaceWriter
     var errorMessage: String?
@@ -56,6 +57,10 @@ import Observation
 
     func context(for terminalID: UUID?) -> TerminalContext? {
         TerminalContext(terminalID: terminalID, in: projects)
+    }
+
+    func startableContext(for terminalID: UUID) -> TerminalContext? {
+        context(for: terminalID).flatMap { removingWorktrees.contains($0.worktree.id) ? nil : $0 }
     }
 
     subscript(expanded id: UUID) -> Bool {
@@ -446,8 +451,12 @@ import Observation
         }
         guard !worktree.isPrimary else { throw WorkspaceError(message: "Le dossier principal du projet ne peut pas être supprimé.") }
         busyProjects.insert(projectID)
-        defer { busyProjects.remove(projectID) }
-        let started = worktree.terminals.filter { sessions.hasSession($0.id) }
+        removingWorktrees.insert(worktreeID)
+        defer {
+            busyProjects.remove(projectID)
+            removingWorktrees.remove(worktreeID)
+        }
+        let started = worktree.terminals.filter { sessions.isRunning($0.id) }
         for terminal in worktree.terminals { sessions.close(terminal.id) }
         do {
             try await GitService.removeWorktree(project: project, path: worktree.path)

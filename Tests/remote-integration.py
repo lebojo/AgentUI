@@ -219,7 +219,12 @@ try:
                 assert not snapshot["isChat"]
                 found = found or b"AGENTUI_REMOTE_OK" in base64.b64decode(snapshot["output"])
         assert ack and found
-    print("PASS a shell stays a terminal in chat mode, duplex input acknowledgement and real PTY output", flush=True)
+    try:
+        rpc("input", id=terminal, data=base64.b64encode(b"echo CHAT_TEXT_IN_SHELL\r").decode(), message="echo CHAT_TEXT_IN_SHELL")
+        raise AssertionError("A chat message was typed into the shell")
+    except ValueError as error:
+        assert "L’agent s’est arrêté" in str(error), error
+    print("PASS a shell stays a terminal in chat mode, duplex input acknowledgement, real PTY output and no chat text run by the shell", flush=True)
 
     with watch(terminal, chat=False) as sock:
         snapshot = read(sock)["terminal"]["_0"]

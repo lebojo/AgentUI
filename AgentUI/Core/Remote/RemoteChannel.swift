@@ -66,11 +66,15 @@ enum RemoteChannel {
             group.addTask { try await operation() }
             group.addTask {
                 try await Task.sleep(for: timeout)
+                throw TimeoutExpired()
+            }
+            defer { group.cancelAll() }
+            do {
+                return try await group.next()!
+            } catch is TimeoutExpired {
                 connection.cancel()
                 throw failure
             }
-            defer { group.cancelAll() }
-            return try await group.next()!
         }
     }
 
@@ -136,6 +140,8 @@ enum RemoteChannel {
         return RemoteError(message: "Code d’appairage refusé. Recopie le code affiché sur le Mac dans Réglages → Accès local.", isPermanent: true)
     }
 }
+
+private struct TimeoutExpired: Error {}
 
 private actor RemoteCallGate {
     private struct Waiter {

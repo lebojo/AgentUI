@@ -112,7 +112,9 @@ import Observation
                 try listen(with: key)
             } catch {
                 guard !Task.isCancelled else { return }
-                status = error.localizedDescription
+                guard pairingStorageError == nil else { status = error.localizedDescription; return }
+                status = "\(error.localizedDescription) Nouvelle tentative dans 5 secondes…"
+                retryListener()
             }
         }
     }
@@ -215,11 +217,12 @@ import Observation
     }
 
     private func watch(_ connection: NWConnection, version: Int, terminal: UUID?, prefersChat: Bool) async throws {
-        guard version == RemoteProtocol.version, let store else {
+        guard let store else { return }
+        guard version == RemoteProtocol.version else {
             try await RemoteChannel.send(RemoteEvent.failure(Self.incompatibleVersions), on: connection)
             return
         }
-        _ = terminal.flatMap { store.context(for: $0) }.map { store.sessions.start($0) }
+        _ = terminal.flatMap { store.startableContext(for: $0) }.map { store.sessions.start($0) }
         Task { await installedAgents?.refresh() }
         let agentWatch = terminal == nil ? nil : Task { await store.sessions.watchAgents() }
         defer { agentWatch?.cancel() }
@@ -341,7 +344,7 @@ import Observation
         case .input(let id, let data, let message):
             try requireWritable()
             guard data.count <= 65_536, (message?.utf8.count ?? 0) <= 65_536 else { throw RemoteError(message: "Message trop long.") }
-            try await store.sessions.start(try context(id)).send(data, message: message)
+            try await startedSession(id).send(data, message: message)
             return try .success(true)
         case .newTerminal(let project, let worktree):
             try requireWritable()
@@ -371,7 +374,7 @@ import Observation
             return try await .success(ConversationIndex.load(at: context(id).worktree.path, runningMaximumAge: fresh ? .zero : .seconds(10)))
         case .launchAgent(let id, let agent):
             try requireWritable()
-            let session = store.sessions.start(try context(id))
+            let session = try startedSession(id)
             try await session.launch(agent, skippingPermissions: settings?.agentLaunch.skipsPermissions ?? false)
             return try .success(true)
         case .resume(let id, let conversation):
@@ -393,6 +396,13 @@ import Observation
     private func context(_ id: UUID) throws -> TerminalContext {
         guard let context = store?.context(for: id) else { throw RemoteError(message: "Ce terminal n’existe plus sur le Mac.") }
         return context
+    }
+
+    private func startedSession(_ id: UUID) throws -> TerminalSession {
+        guard let store else { throw RemoteError(message: "Le Mac n’est pas prêt.") }
+        _ = try context(id)
+        guard let context = store.startableContext(for: id) else { throw RemoteError(message: "Ce worktree est en cours de suppression.") }
+        return store.sessions.start(context)
     }
 
     private func validatedURL(_ path: String, terminal: UUID) throws -> URL {

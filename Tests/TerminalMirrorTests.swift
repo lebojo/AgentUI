@@ -37,8 +37,6 @@ private final class Delegate: TerminalDelegate {
             require(peer.buffer.scrollTop == host.buffer.scrollTop && peer.buffer.scrollBottom == host.buffer.scrollBottom, "Scrolling margins")
             require(peer.currentAttribute == host.currentAttribute, "Current attributes")
             require(peer.buffer.x == min(host.cols - 1, host.buffer.x) && peer.buffer.y == host.buffer.y, "Cursor position")
-            // Enabling focus reporting emits a synchronous focus notification in SwiftTerm.
-            // UIKit suppression is tested separately; no DSR/DA queries are replayed.
             let responses = String(decoding: peerDelegate.replies, as: UTF8.self)
                 .replacingOccurrences(of: "\u{1b}[I", with: "").replacingOccurrences(of: "\u{1b}[O", with: "")
             require(responses.isEmpty, "Projection must not replay PTY queries")
@@ -64,7 +62,7 @@ private final class Delegate: TerminalDelegate {
         feed(String(repeating: "long running output\r\n", count: 20000))
         feed("\u{1b}[2J\u{1b}[5;3H\u{1b}[1;3;4:3;58;5;123mCHECKPOINT")
         feed("\u{1b}[38;2;")
-        sync(full: true) // Host parser is halfway through CSI after >256 KiB.
+        sync(full: true)
         feed("222;11;22m✓")
         sync()
         let bytes = TerminalScreen(terminal: host, modes: modes).output(after: nil)
@@ -79,6 +77,9 @@ private final class Delegate: TerminalDelegate {
         require(previous!.lines.joined().contains("LIVE"), "Mirror follows live screen even when Mac scrolls up")
         feed(String(repeating: "more scrollback\r\n", count: 250))
         sync()
+        let kept = (peer.buffer.totalLinesTrimmed..<peer.liveLineEnd).compactMap { peer.getScrollInvariantLine(row: $0)?.translateToString(trimRight: true).trimmingCharacters(in: .whitespaces) }
+        require(kept.contains("scrollback") && kept.contains { $0.hasPrefix("… ") && $0.hasSuffix(" lignes non transmises") },
+                "A large burst keeps earlier scrollback and marks the skipped lines")
         host.resize(cols: 60, rows: 15)
         peer.resize(cols: 60, rows: 15)
         sync()

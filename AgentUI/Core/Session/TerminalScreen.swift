@@ -94,8 +94,8 @@ struct TerminalScreen {
         let historyEnd = historyStart + history.count
         let previousEnd = previous.map { $0.historyStart + $0.history.count } ?? historyStart
         var reset = previous == nil || previous?.columns != columns || previous?.rows != rows || previous?.alternate != alternate
-            || previousEnd < historyStart || previousEnd > historyEnd
-        if let previous, !reset {
+            || previousEnd > historyEnd || (alternate && previousEnd < historyStart)
+        if let previous, !reset, previousEnd > historyStart {
             let overlapStart = max(historyStart, previous.historyStart)
             for row in overlapStart..<previousEnd where history[row - historyStart] != previous.history[row - previous.historyStart] {
                 reset = true
@@ -113,15 +113,20 @@ struct TerminalScreen {
 
     private func render(reset: Bool, from appended: Int, previous: TerminalScreen?, styled: Bool = true) -> String {
         let historyEnd = historyStart + history.count
+        let skipped = reset ? 0 : appended - (previous.map { $0.historyStart + $0.history.count } ?? appended)
         var result = ""
         if reset { result += "\u{1b}[?1047\(alternate ? "h" : "l")" }
         result += "\u{1b}[?6;69;7l\u{1b}[r\u{1b}[4l\u{1b}(B\u{f}"
         if reset { result += "\u{1b}[0m\u{1b}[3J\u{1b}[2J" }
+        if skipped > 0 {
+            result += "\u{1b}[1;1H\u{1b}[0m\u{1b}[2K\u{1b}[2m… \(skipped) lignes non transmises\u{1b}[0m"
+            result += "\u{1b}[\(rows);1H\n"
+        }
         for row in appended..<historyEnd {
             result += "\u{1b}[1;1H\u{1b}[0m\u{1b}[2K" + history[row - historyStart]
             result += "\u{1b}[\(rows);1H\n"
         }
-        for row in lines.indices where reset || appended < historyEnd || previous?.lines[row] != lines[row] {
+        for row in lines.indices where reset || skipped > 0 || appended < historyEnd || previous?.lines[row] != lines[row] {
             result += "\u{1b}[\(row + 1);1H\u{1b}[0m\u{1b}[2K" + (styled ? lines[row] : Self.unstyled(lines[row]))
         }
         result += state

@@ -180,6 +180,16 @@ import Foundation
         let bounded = await ChatJournalReader<ClaudeChatDecoder>().read(long)
         try require(bounded.count == 200 && bounded.first?.text == "Message 50" && bounded.last?.text == "Message 249",
                     "A long journal keeps its 200 most recent messages")
+        let late = root.appendingPathComponent("late.jsonl")
+        var lateRecords = try record("assistant", "early", [["type": "tool_use", "id": "early-call", "name": "Bash", "input": ["command": "sleep 600"]]])
+        for index in 0..<250 { lateRecords.append(try record("assistant", "filler-\(index)", "Filler \(index)")) }
+        try lateRecords.write(to: late)
+        let lateReader = ChatJournalReader<ClaudeChatDecoder>()
+        _ = await lateReader.read(late)
+        try append(try record("user", "early-result", [["type": "tool_result", "tool_use_id": "early-call", "content": "done"]], meta: true), to: late)
+        let afterLate = await lateReader.read(late)
+        try require(afterLate.last?.text == "Filler 249" && !afterLate.contains { $0.title == "Résultat de l’outil" },
+                    "A result for a tool call trimmed from the history is not appended out of context")
         print("PASS incremental reads, partial UTF-8 records, replacement and bounded initial history")
 
         let log = root.appendingPathComponent("projects/-tmp-project/\(UUID().uuidString).jsonl")

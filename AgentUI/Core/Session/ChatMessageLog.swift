@@ -11,8 +11,10 @@ protocol ChatJournalDecoder: Sendable {
 struct ChatMessageLog: Sendable {
     private(set) var messages: [SessionMessage] = []
     private var positions: [String: Int] = [:]
+    private var trimmedIDs: Set<String> = []
 
     mutating func upsert(_ message: SessionMessage) {
+        guard !trimmedIDs.contains(message.id) else { return }
         if let index = positions[message.id] {
             messages[index] = message
         } else {
@@ -60,6 +62,8 @@ struct ChatMessageLog: Sendable {
         let count = messages.count
         messages.trimHistory(keepingAtLeast: 1)
         guard messages.count < count else { return }
+        let dropped = count - messages.count
+        trimmedIDs.formUnion(positions.compactMap { $0.value < dropped ? $0.key : nil })
         positions = Dictionary(messages.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { _, last in last })
     }
 
