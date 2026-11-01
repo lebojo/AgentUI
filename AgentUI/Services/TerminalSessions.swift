@@ -41,6 +41,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     private(set) var currentDirectory: String
     private(set) var branch: GitBranch?
     private(set) var agent: AgentProcess?
+    private(set) var agentKind: ConversationAgent?
     private(set) var agentStatus: AgentStatus?
 
     init(context: TerminalContext, command: [String], environment: [String: String]) {
@@ -222,6 +223,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         }
         let agentChanged = agent != running
         if agentChanged { agent = running }
+        if agentKind != running?.agent { agentKind = running?.agent }
         if agentStatus != status { agentStatus = status }
         if chatViewers > 0 || chatRelease != nil { journalMonitor.attach(running?.journal) }
         if agentChanged { scheduleTranscriptRefresh() }
@@ -350,7 +352,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     }
 
     var runningCount: Int { entries.values.filter { !$0.hasExited }.count }
-    var runningAgents: [UUID: ConversationAgent] { entries.compactMapValues { $0.agent?.agent } }
+    var runningAgents: [UUID: ConversationAgent] { entries.compactMapValues(\.agentKind) }
 
     func session(_ id: UUID) -> TerminalSession? { entries[id] }
     func isRunning(_ id: UUID) -> Bool { entries[id]?.hasExited == false }

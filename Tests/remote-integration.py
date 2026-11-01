@@ -346,14 +346,18 @@ try:
         assert any(m.get("toolState") == "completed" and m["title"] == "Read" for m in messages), messages
         assert all("TUI_NOISE" not in m["text"] for m in messages)
     with watch() as sock:
+        sock.settimeout(1)
         deadline = time.monotonic() + 10
         while True:
-            event = read(sock, notifications=True)
+            assert time.monotonic() < deadline, "The phone sidebar never learns which agent runs in a terminal"
+            try:
+                event = read(sock, notifications=True)
+            except socket.timeout:
+                continue
             if "terminalAgents" in event:
                 pairs = event["terminalAgents"]["_0"]
                 if dict(zip(pairs[::2], pairs[1::2])).get(agent) == "claude":
                     break
-            assert time.monotonic() < deadline, "The phone sidebar never learns which agent runs in a terminal"
     print("PASS Claude structured journal over TCP, multiline paste, no duplicate input or TUI scraping", flush=True)
 
     codex_launcher = root / "bin" / "codex"

@@ -209,7 +209,7 @@ import Observation
         connection.stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
-                Task { @MainActor [weak self] in self?.connections[id]?.isPaired = true }
+                Task { @MainActor [weak self] in self?.paired(id) }
             case .failed, .cancelled:
                 Task { @MainActor [weak self] in
                     self?.connections[id] = nil
@@ -244,6 +244,15 @@ import Observation
                 }
             } catch {}
         }
+    }
+
+    private func paired(_ id: UUID) {
+        guard let entry = connections[id] else { return }
+        guard connections.values.count(where: \.isPaired) < Self.maximumConnections else {
+            entry.connection.cancel()
+            return
+        }
+        connections[id]?.isPaired = true
     }
 
     private func readRequest(_ connection: NWConnection) async throws -> RemoteRequest {

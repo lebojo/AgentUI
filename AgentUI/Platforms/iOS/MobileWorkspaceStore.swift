@@ -91,6 +91,7 @@ import Observation
         streamConnection = nil
         streamTerminal = nil
         cancelInputs(keepingQueuedFor: nil)
+        terminalAgents = [:]
         status = .disconnected
     }
 
@@ -171,6 +172,7 @@ import Observation
         } catch {
             guard generation == token, !Task.isCancelled else { return }
             status = .failed(error.localizedDescription)
+            terminalAgents = [:]
             guard (error as? RemoteError)?.isPermanent != true else { wantsConnection = false; return }
             do { try await Task.sleep(for: .seconds(3)) } catch { return }
             if generation == token, wantsConnection { connectionID = UUID() }

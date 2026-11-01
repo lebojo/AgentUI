@@ -244,7 +244,7 @@ private struct SidebarTerminalRow: View {
 
     var body: some View {
         HStack(spacing: Spacing.s) {
-            TerminalIcon(agent: session?.agent?.agent)
+            TerminalIcon(agent: session?.agentKind)
             VStack(alignment: .leading, spacing: Spacing.xxs) {
                 Text(terminal.name).lineLimit(1)
                 HStack(spacing: Spacing.xxs) {

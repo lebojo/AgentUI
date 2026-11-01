@@ -10,7 +10,7 @@ struct MobileSessionDetail: View {
             if let context = store.context {
                 VStack(spacing: 0) {
                     MobileSessionHeader(project: context.project.name, worktree: context.worktree.name,
-                                        agent: store.session?.chatSource.agent)
+                                        agent: store.terminalAgents[context.terminal.id])
                     Divider()
                     if let session = store.session {
                         if session.isChat {
