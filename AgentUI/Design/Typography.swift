@@ -22,4 +22,5 @@ enum Typography {
     static let heroSymbol = Font.system(size: 42, weight: .ultraLight)
     static let emptyStateSymbol = Font.system(size: 26, weight: .light)
     static let statusDot = Font.system(size: 5)
+    static let sendSymbol = Font.title
 }

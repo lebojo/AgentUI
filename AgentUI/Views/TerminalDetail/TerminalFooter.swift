@@ -1,0 +1,19 @@
+import AppKit
+import SwiftUI
+
+struct TerminalFooter: View {
+    let session: TerminalSession?
+    let path: String
+
+    var body: some View {
+        HStack(spacing: Spacing.m) {
+            Image(systemName: "folder").foregroundStyle(Palette.textSecondary)
+            Text((session?.currentDirectory ?? path).replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+                .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+            Spacer(minLength: Spacing.l)
+            Text("⌘T  Nouveau terminal   ⌘D  Diviser").foregroundStyle(Palette.textSecondary)
+        }
+        .font(Typography.s).foregroundStyle(Palette.textSecondary)
+        .padding(.horizontal, Spacing.xl).frame(height: Dimension.Detail.footerHeight)
+    }
+}

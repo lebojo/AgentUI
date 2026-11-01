@@ -185,10 +185,13 @@ The macOS sandbox is disabled so the real shell can reach developer tools and re
 ```
 AgentUI/
 ├── AgentUI/
-│   ├── MyApp.swift, ContentView.swift
+│   ├── MyApp.swift
+│   ├── Core/         # Remote channel, security, chat journals and terminal mirror
 │   ├── Models/       # Workspace, stores, bridge protocol, inspector models
 │   ├── Services/     # Git, agentui CLI, bridge, command execution, persistence
-│   ├── Views/        # Sidebar, terminal, inspector
+│   ├── Platforms/    # macOS and iOS adapters
+│   ├── Views/        # One folder per screen (ContentView, WorkspaceSidebar, TerminalDetail, …), one view per file
+│   │   └── Components/  # Views shared between screens
 │   └── AgentUI.icon  # Icon Composer icon
 ├── Tests/            # Unit tests (run.sh) and integration tests (integration.py)
 └── AgentUI.xcodeproj
