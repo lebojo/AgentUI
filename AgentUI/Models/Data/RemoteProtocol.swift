@@ -147,6 +147,7 @@ enum RemoteEvent: Codable, Sendable {
     case repositoryChanged
     case conversationsChanged
     case installedAgents([ConversationAgent])
+    case terminalAgents([UUID: ConversationAgent])
 }
 
 struct RemoteRejection: Encodable, Sendable {

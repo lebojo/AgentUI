@@ -17,8 +17,8 @@ struct MobileSidebar: View {
     var body: some View {
         List(selection: selection) {
             Section("Projets") {
-                ForEach(filtered.groups) { group in MobileFolderRow(group: group) }
-                ForEach(filtered.ungrouped) { project in MobileProjectRow(project: project) }
+                ForEach(filtered.groups) { group in MobileFolderRow(group: group, agents: store.terminalAgents) }
+                ForEach(filtered.ungrouped) { project in MobileProjectRow(project: project, agents: store.terminalAgents) }
             }
         }
         .listStyle(.sidebar)
@@ -57,11 +57,12 @@ struct MobileSidebar: View {
 
 private struct MobileFolderRow: View {
     let group: SidebarFilterResult.Group
+    let agents: [UUID: ConversationAgent]
 
     var body: some View {
         DisclosureGroup {
-            ForEach(group.subgroups) { subgroup in MobileFolderRow(group: subgroup) }
-            ForEach(group.projects) { project in MobileProjectRow(project: project) }
+            ForEach(group.subgroups) { subgroup in MobileFolderRow(group: subgroup, agents: agents) }
+            ForEach(group.projects) { project in MobileProjectRow(project: project, agents: agents) }
         } label: {
             Label(group.folder.name, systemImage: group.folder.appearance.displaySymbol.rawValue)
         }
@@ -73,11 +74,12 @@ private struct MobileProjectRow: View {
     @State private var expanded = true
 
     let project: Project
+    let agents: [UUID: ConversationAgent]
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
             ForEach(project.worktrees) { worktree in
-                MobileWorktreeRow(worktree: worktree)
+                MobileWorktreeRow(worktree: worktree, agents: agents)
             }
         } label: {
             Label(project.name, systemImage: project.appearance.displaySymbol.rawValue)
@@ -90,11 +92,14 @@ private struct MobileWorktreeRow: View {
     @State private var expanded = true
 
     let worktree: Worktree
+    let agents: [UUID: ConversationAgent]
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
             ForEach(worktree.terminals) { terminal in
-                NavigationLink(value: MobileSidebarSelection.terminal(terminal.id)) { Label(terminal.name, systemImage: "terminal") }
+                NavigationLink(value: MobileSidebarSelection.terminal(terminal.id)) {
+                    Label { Text(terminal.name) } icon: { TerminalIcon(agent: agents[terminal.id]) }
+                }
                     .selectionDisabled(false)
             }
         } label: {
@@ -104,8 +109,6 @@ private struct MobileWorktreeRow: View {
     }
 }
 
-/// A distinct selection type keeps ForEach's implicit project/folder UUID tags
-/// from becoming terminal destinations in NavigationSplitView.
 private enum MobileSidebarSelection: Hashable {
     case terminal(UUID)
 

@@ -28,7 +28,7 @@ subprocess.run(["/usr/bin/git", "-C", str(repo), "-c", "user.name=Test", "-c", "
 app = None
 instance = None
 PAIRING_CODE = "ABCD-EFGH-JKLM"
-NOTIFICATIONS = ("repositoryChanged", "conversationsChanged", "installedAgents")
+NOTIFICATIONS = ("repositoryChanged", "conversationsChanged", "installedAgents", "terminalAgents")
 # Never connect integration clients to the user's running host on the default port.
 with socket.socket() as reservation:
     reservation.bind(("127.0.0.1", 0))
@@ -345,6 +345,15 @@ try:
         assert [m["text"] for m in messages if m["kind"] == "input"] == [prompt], messages
         assert any(m.get("toolState") == "completed" and m["title"] == "Read" for m in messages), messages
         assert all("TUI_NOISE" not in m["text"] for m in messages)
+    with watch() as sock:
+        deadline = time.monotonic() + 10
+        while True:
+            event = read(sock, notifications=True)
+            if "terminalAgents" in event:
+                pairs = event["terminalAgents"]["_0"]
+                if dict(zip(pairs[::2], pairs[1::2])).get(agent) == "claude":
+                    break
+            assert time.monotonic() < deadline, "The phone sidebar never learns which agent runs in a terminal"
     print("PASS Claude structured journal over TCP, multiline paste, no duplicate input or TUI scraping", flush=True)
 
     codex_launcher = root / "bin" / "codex"

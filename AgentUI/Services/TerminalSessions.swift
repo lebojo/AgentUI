@@ -350,6 +350,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     }
 
     var runningCount: Int { entries.values.filter { !$0.hasExited }.count }
+    var runningAgents: [UUID: ConversationAgent] { entries.compactMapValues { $0.agent?.agent } }
 
     func session(_ id: UUID) -> TerminalSession? { entries[id] }
     func isRunning(_ id: UUID) -> Bool { entries[id]?.hasExited == false }

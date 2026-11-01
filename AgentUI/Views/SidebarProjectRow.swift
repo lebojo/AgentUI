@@ -244,14 +244,7 @@ private struct SidebarTerminalRow: View {
 
     var body: some View {
         HStack(spacing: Spacing.s) {
-            Group {
-                if let agent = session?.agent?.agent {
-                    agent.logo.resizable().scaledToFit().frame(width: IconSize.s, height: IconSize.s)
-                } else {
-                    Image(systemName: "terminal").font(Typography.m).foregroundStyle(Palette.textSecondary)
-                }
-            }
-            .accessibilityHidden(true)
+            TerminalIcon(agent: session?.agent?.agent)
             VStack(alignment: .leading, spacing: Spacing.xxs) {
                 Text(terminal.name).lineLimit(1)
                 HStack(spacing: Spacing.xxs) {

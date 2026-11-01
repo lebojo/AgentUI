@@ -259,11 +259,12 @@ import Observation
             return
         }
         Task { await installedAgents?.refresh() }
-        let agentWatch = terminal == nil ? nil : Task { await store.sessions.watchAgents() }
-        defer { agentWatch?.cancel() }
+        let agentWatch = Task { await store.sessions.watchAgents() }
+        defer { agentWatch.cancel() }
         let notifications = Task { await notifyInspectorChanges(on: connection, terminal: terminal) }
         defer { notifications.cancel() }
         var previousAgents: [ConversationAgent]?
+        var previousTerminalAgents: [UUID: ConversationAgent]?
         var previousWorkspace: Workspace?
         var streamed = StreamedSession()
         var watchedChat: TerminalSession?
@@ -304,6 +305,7 @@ import Observation
                 _ = session?.hasExited
                 _ = session?.agent
                 _ = installedAgents?.agents
+                _ = store.sessions.runningAgents
             } onChange: { continuation.yield(()) }
             try await Task.sleep(for: .milliseconds(100))
             let workspace = Workspace(folders: store.folders, projects: store.projects, selection: nil, collapsed: [])
@@ -315,6 +317,11 @@ import Observation
             if previousAgents != agents {
                 try await RemoteChannel.send(RemoteEvent.installedAgents(agents), on: connection)
                 previousAgents = agents
+            }
+            let terminalAgents = store.sessions.runningAgents
+            if previousTerminalAgents != terminalAgents {
+                try await RemoteChannel.send(RemoteEvent.terminalAgents(terminalAgents), on: connection)
+                previousTerminalAgents = terminalAgents
             }
             if let terminal, store.context(for: terminal) == nil {
                 try await RemoteChannel.send(RemoteEvent.terminalClosed, on: connection)

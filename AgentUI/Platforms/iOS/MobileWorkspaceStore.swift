@@ -25,6 +25,7 @@ import Observation
     private(set) var repositoryRevision = 0
     private(set) var conversationRevision = 0
     private(set) var installedAgents: [ConversationAgent] = []
+    private(set) var terminalAgents: [UUID: ConversationAgent] = [:]
     var selection: UUID? {
         didSet { if selection != oldValue { session = nil } }
     }
@@ -70,6 +71,7 @@ import Observation
         let value = address.trimmingCharacters(in: .whitespacesAndNewlines)
         if host != value {
             workspace = Workspace()
+            terminalAgents = [:]
             selection = nil
         }
         host = value
@@ -162,6 +164,7 @@ import Observation
                     case .repositoryChanged: repositoryRevision += 1
                     case .conversationsChanged: conversationRevision += 1
                     case .installedAgents(let agents): installedAgents = agents
+                    case .terminalAgents(let agents): if terminalAgents != agents { terminalAgents = agents }
                     }
                 }
             } onCancel: { connection.cancel() }
