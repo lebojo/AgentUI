@@ -23,10 +23,11 @@ struct AgentJournal: Equatable, Sendable {
     private let transcript: SessionTranscript
     private var attached: AgentJournal?
     private var read: (@Sendable (URL) async -> [SessionMessage])?
-    private var fileWatch: DispatchSourceFileSystemObject?
+    private var fileWatch: FileSystemWatcher?
     private var watchRetry: Task<Void, Never>?
     private var reading: Task<Void, Never>?
     private var readAgain = false
+    private var isSuspended = false
     private var generation = UUID()
 
     init(transcript: SessionTranscript) {
@@ -34,16 +35,30 @@ struct AgentJournal: Equatable, Sendable {
     }
 
     func attach(_ journal: AgentJournal?) {
-        guard journal != attached else { return }
+        guard journal != attached else {
+            if isSuspended { resume() }
+            return
+        }
         let previous = attached
         stopWatching()
         attached = journal
-        guard let journal else {
+        read = journal?.makeReader()
+        isSuspended = false
+        guard journal != nil else {
             if let previous, transcript.source == previous.source { transcript.useTerminal() }
             return
         }
-        read = journal.makeReader()
-        transcript.useJournal([], from: journal.source)
+        resume()
+    }
+
+    func suspend() {
+        guard attached != nil, !isSuspended else { return }
+        stopWatching()
+        isSuspended = true
+    }
+
+    private func resume() {
+        isSuspended = false
         installFileWatch()
         scheduleRead()
     }
@@ -54,22 +69,25 @@ struct AgentJournal: Equatable, Sendable {
         watchRetry?.cancel(); watchRetry = nil
         reading?.cancel(); reading = nil
         readAgain = false
-        read = nil
     }
 
     private func installFileWatch() {
         guard let attached else { return }
         let target = Self.nearestExistingItem(at: attached.url)
         let watchesJournal = target == attached.url
-        fileWatch = FileWatch.make(target, events: [.write, .extend, .rename, .delete]) { [weak self] event in
-            guard let self else { return }
-            if !watchesJournal || !event.isDisjoint(with: [.rename, .delete]) {
-                fileWatch?.cancel(); fileWatch = nil
-                installFileWatch()
-            }
-            scheduleRead()
+        fileWatch = try? FileSystemWatcher(target, events: [.write, .extend, .rename, .delete], queue: .main) { [weak self] event in
+            let movesTarget = !watchesJournal || !event.isDisjoint(with: [.rename, .delete])
+            MainActor.assumeIsolated { self?.changed(movingTarget: movesTarget) }
         }
         if fileWatch == nil { retryFileWatch() }
+    }
+
+    private func changed(movingTarget: Bool) {
+        if movingTarget {
+            fileWatch?.cancel(); fileWatch = nil
+            installFileWatch()
+        }
+        scheduleRead()
     }
 
     private func retryFileWatch() {

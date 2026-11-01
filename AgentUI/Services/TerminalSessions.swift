@@ -96,7 +96,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
             do { try await Task.sleep(for: .seconds(30)) } catch { return }
             guard let self, chatViewers == 0 else { return }
             chatRelease = nil
-            journalMonitor.attach(nil)
+            journalMonitor.suspend()
         }
     }
 
@@ -187,11 +187,11 @@ final class ActivityTerminalView: SharedProcessTerminalView {
 
     func snapshot(previousMessages: [SessionMessage], chat: Bool,
                   screen: TerminalScreen? = nil, previousScreen: TerminalScreen? = nil) -> RemoteTerminalSnapshot {
-        let bytes = chat ? (data: Data(), reset: false) : (screen ?? self.screen()).output(after: previousScreen)
+        let output = chat ? Data() : (screen ?? self.screen()).output(after: previousScreen)
         let messages = chat ? transcript.messages : []
         let delta = SessionTranscriptDelta(previous: previousMessages, current: messages)
         let terminal = view.getTerminal()
-        return RemoteTerminalSnapshot(identity: identity, isChat: chat, output: bytes.data, reset: bytes.reset,
+        return RemoteTerminalSnapshot(identity: identity, isChat: chat, output: output,
                                       columns: terminal.cols, rows: terminal.rows,
                                       transcript: delta.messages, transcriptDropped: delta.dropped, transcriptStart: delta.start,
                                       transcriptAppend: delta.append,
@@ -241,7 +241,8 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     private(set) var branchesByPath: [String: GitBranch] = [:]
     @ObservationIgnored private var refreshingRepositories = false
     @ObservationIgnored private var refreshingAgents = false
-    @ObservationIgnored private var lastAgentRefresh: ContinuousClock.Instant?
+    @ObservationIgnored private var agentWatchers = 0
+    @ObservationIgnored private var agentPolling: Task<Void, Never>?
 
     func branch(for terminalID: UUID, initialPath: String) -> GitBranch? {
         if let session = entries[terminalID] { return session.branch }
@@ -296,10 +297,34 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         return (branches, sessions)
     }
 
-    func refreshAgents() async {
-        guard !refreshingAgents, lastAgentRefresh.map({ $0.duration(to: .now) >= .milliseconds(900) }) ?? true else { return }
+    func watchAgents() async {
+        agentWatchers += 1
+        if agentWatchers == 1 {
+            agentPolling = Task(priority: .utility) { [weak self] in await self?.pollAgents() }
+        }
+        await Self.waitUntilCancelled()
+        agentWatchers -= 1
+        guard agentWatchers == 0 else { return }
+        agentPolling?.cancel()
+        agentPolling = nil
+    }
+
+    private static func waitUntilCancelled() async {
+        let (cancellation, continuation) = AsyncStream<Void>.makeStream()
+        for await _ in cancellation {}
+        continuation.finish()
+    }
+
+    private func pollAgents() async {
+        while !Task.isCancelled {
+            await refreshAgents()
+            do { try await Task.sleep(for: .seconds(1)) } catch { return }
+        }
+    }
+
+    private func refreshAgents() async {
+        guard !refreshingAgents else { return }
         refreshingAgents = true
-        lastAgentRefresh = .now
         defer { refreshingAgents = false }
         let shells = entries.compactMap { id, session in
             session.hasExited ? nil : (id: id, identity: session.identity, pid: session.view.process.shellPid, directory: session.currentDirectory)

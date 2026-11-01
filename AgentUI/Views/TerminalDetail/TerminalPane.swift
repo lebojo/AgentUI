@@ -51,7 +51,7 @@ struct TerminalPane: View {
                 }
                 if session.hasExited {
                     HStack {
-                        Label(exitDescription(session.exitCode), systemImage: "stop.circle")
+                        SessionExitLabel(code: session.exitCode)
                         Spacer()
                         Button("Rouvrir le terminal") {
                             store.sessions.close(context.terminal.id)
@@ -72,14 +72,6 @@ struct TerminalPane: View {
         Task {
             do { try await session.launch(agent, skippingPermissions: settings.agentLaunch.skipsPermissions) }
             catch { store.errorMessage = error.localizedDescription }
-        }
-    }
-
-    private func exitDescription(_ code: Int32?) -> String {
-        switch code {
-        case nil: "Session terminée"
-        case 127: "Commande introuvable (127) : vérifie qu’elle est installée et dans le PATH de ton shell"
-        case let code?: "Session terminée (\(code))"
         }
     }
 }

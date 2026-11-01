@@ -5,6 +5,8 @@ struct CopilotChatDecoder: ChatJournalDecoder {
 
     var messages: [SessionMessage] { log.messages }
 
+    mutating func trim() { log.trim() }
+
     mutating func consume(_ line: Data, offset: UInt64) {
         guard let record = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
               let data = record["data"] as? [String: Any] else { return }
@@ -25,7 +27,6 @@ struct CopilotChatDecoder: ChatJournalDecoder {
             log.finishTool(call, output: result ?? error ?? "", failed: data["success"] as? Bool == false)
         default: return
         }
-        log.trim()
     }
 
     mutating func consumeOversized(_ head: Data) {

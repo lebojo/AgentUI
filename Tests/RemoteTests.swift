@@ -36,6 +36,13 @@ import Foundation
         transcript.sent("ls")
         transcript.update(screen: String(scrollback.dropFirst(500)) + "\n$ ls\nREADME.md\n$ ")
         try require(transcript.messages.last?.text == "ls\nREADME.md\n$ ", "A sliding scrollback window still isolates the new output")
+        let rows = (0..<300).map { "row \($0)" }.joined(separator: "\n")
+        let run = "$ cat rows\n" + rows + "\n"
+        let repeated = SessionTranscript()
+        repeated.update(screen: run + run + "$ ")
+        repeated.sent("cat rows")
+        repeated.update(screen: run + run + run + "$ ")
+        try require(repeated.messages.last?.text == "cat rows\n" + rows + "\n$ ", "A repeated command only shows its own output")
         let outputID = transcript.messages.last?.id
         transcript.update(screen: "A full-screen tool redrew its output")
         try require(transcript.messages.last?.id == outputID, "Redraw updates the current bubble without adding history")

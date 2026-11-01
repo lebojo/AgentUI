@@ -27,7 +27,7 @@ struct AgentConversationList: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: "\(refresh)-\(scenePhase == .background)-\(workspaceVisible)") {
+        .task(id: "\(refresh)-\(scenePhase == .background)-\(workspaceVisible)", priority: .utility) {
             guard workspaceVisible, scenePhase != .background else { return }
             await monitor()
         }

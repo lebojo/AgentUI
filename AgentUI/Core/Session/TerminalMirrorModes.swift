@@ -1,7 +1,5 @@
 import Foundation
 
-/// Only input/display switches not exposed by SwiftTerm. This bounded scanner never
-/// retains output or interprets printable text; the Mac emulator owns the screen.
 struct TerminalMirrorModes {
     private enum State { case ground, escape, csi, osc, string }
     private var state = State.ground
@@ -14,8 +12,8 @@ struct TerminalMirrorModes {
     private(set) var newline = false
     private static let tracked: Set<Int> = [5, 6, 7, 25, 66, 69, 1004]
 
-    mutating func append(_ data: Data) {
-        for byte in data {
+    mutating func append(_ bytes: some Sequence<UInt8>) {
+        for byte in bytes {
             if utf8Remaining > 0 {
                 if (0x80...0xbf).contains(byte) { utf8Remaining -= 1; continue }
                 utf8Remaining = 0

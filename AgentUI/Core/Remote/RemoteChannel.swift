@@ -94,6 +94,10 @@ enum RemoteChannel {
         })
     }
 
+    static func cancelWhenPeerCloses(_ connection: NWConnection) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 1) { _, _, _, _ in connection.cancel() }
+    }
+
     private static func frame(_ value: some Encodable) throws -> Data {
         let data = try JSONEncoder().encode(value)
         guard data.count <= RemoteProtocol.maximumFrame else { throw RemoteError(message: "Réponse trop volumineuse.") }

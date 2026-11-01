@@ -5,11 +5,13 @@ import Observation
     private(set) var source: SessionChatSource = .terminal
     private(set) var messages: [SessionMessage] = []
     @ObservationIgnored private var anchor = ""
+    @ObservationIgnored private var anchorEnd = 0
     @ObservationIgnored private var latest = ""
 
     func sent(_ text: String) {
         guard source == .terminal else { return }
         anchor = String(latest.suffix(2_048))
+        anchorEnd = latest.utf8.count
         messages.append(SessionMessage(kind: .input, text: text))
         messages.append(SessionMessage(kind: .output, text: ""))
         messages.trimHistory(keepingAtLeast: 2)
@@ -22,8 +24,8 @@ import Observation
         guard latest != text else { return }
         latest = text
         let output: String
-        if !anchor.isEmpty, let range = text.utf8.firstRange(of: anchor.utf8) {
-            output = String(text[range.upperBound...]).trimmingCharacters(in: .newlines)
+        if let start = outputStart(in: text) {
+            output = String(text[start...]).trimmingCharacters(in: .newlines)
         } else {
             output = text
         }
@@ -33,6 +35,12 @@ import Observation
             messages.append(SessionMessage(kind: .output, text: output))
         }
         messages.trimHistory(keepingAtLeast: 2)
+    }
+
+    private func outputStart(in text: String) -> String.Index? {
+        guard !anchor.isEmpty else { return nil }
+        let beforeSend = text.utf8.prefix(anchorEnd)
+        return beforeSend.reversed().firstRange(of: anchor.utf8.reversed())?.lowerBound.base
     }
 
     func useJournal(_ messages: [SessionMessage], from source: SessionChatSource) {
@@ -45,6 +53,7 @@ import Observation
         source = .terminal
         messages = []
         anchor = ""
+        anchorEnd = 0
         latest = ""
     }
 }

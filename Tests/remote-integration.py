@@ -233,7 +233,7 @@ try:
         while True:
             event = read(sock)
             if "terminal" in event and event["terminal"]["_0"]["identity"] != original:
-                assert event["terminal"]["_0"]["reset"]
+                assert b"\x1b[3J\x1b[2J" in base64.b64decode(event["terminal"]["_0"]["output"])
                 break
         command = "printf '\\116\\105\\127_SESSION_OUTPUT\\n'\r"
         rpc("input", id=terminal, data=base64.b64encode(command.encode()).decode())

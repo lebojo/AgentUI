@@ -21,8 +21,6 @@ import Observation
     @ObservationIgnored private var listener: NWListener?
     @ObservationIgnored private var listenerStart: Task<Void, Never>?
     @ObservationIgnored private var listenerRetry: Task<Void, Never>?
-    @ObservationIgnored private var agentWatchers = 0
-    @ObservationIgnored private var agentRefresh: Task<Void, Never>?
     @ObservationIgnored private var jobs: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var connections: [UUID: (connection: NWConnection, peer: String)] = [:]
     @ObservationIgnored private let pathMonitor = NWPathMonitor()
@@ -200,6 +198,7 @@ import Observation
                 if case .watch(let version, let terminal, let prefersChat) = request {
                     try await self.watch(connection, version: version, terminal: terminal, prefersChat: prefersChat)
                 } else {
+                    RemoteChannel.cancelWhenPeerCloses(connection)
                     let reply: RemoteReply
                     do { reply = try await self.handle(request) }
                     catch { reply = RemoteReply(error: error.localizedDescription) }
@@ -222,9 +221,8 @@ import Observation
         }
         _ = terminal.flatMap { store.context(for: $0) }.map { store.sessions.start($0) }
         Task { await installedAgents?.refresh() }
-        let refreshesAgents = terminal != nil
-        if refreshesAgents { beginAgentRefresh(store) }
-        defer { if refreshesAgents { endAgentRefresh() } }
+        let agentWatch = terminal == nil ? nil : Task { await store.sessions.watchAgents() }
+        defer { agentWatch?.cancel() }
         let notifications = Task { await notifyInspectorChanges(on: connection, terminal: terminal) }
         defer { notifications.cancel() }
         var sessionIdentity: UUID?
@@ -317,24 +315,6 @@ import Observation
                 if chat { previousMessages = messages; previousSource = source }
             }
         }
-    }
-
-    private func beginAgentRefresh(_ store: WorkspaceStore) {
-        agentWatchers += 1
-        guard agentWatchers == 1 else { return }
-        agentRefresh = Task { [weak store] in
-            while !Task.isCancelled {
-                await store?.sessions.refreshAgents()
-                do { try await Task.sleep(for: .seconds(1)) } catch { return }
-            }
-        }
-    }
-
-    private func endAgentRefresh() {
-        agentWatchers -= 1
-        guard agentWatchers == 0 else { return }
-        agentRefresh?.cancel()
-        agentRefresh = nil
     }
 
     private func notifyInspectorChanges(on connection: NWConnection, terminal: UUID?) async {
@@ -450,7 +430,7 @@ import Observation
                   item.pointee.ifa_flags & UInt32(IFF_LOOPBACK) == 0 else { continue }
             var buffer = [CChar](repeating: 0, count: Int(NI_MAXHOST))
             if getnameinfo(address, socklen_t(address.pointee.sa_len), &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST) == 0 {
-                let value = String(cString: buffer)
+                let value = String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self)
                 if (try? RemoteProtocol.host(value)) != nil { addresses.append(value) }
             }
         }

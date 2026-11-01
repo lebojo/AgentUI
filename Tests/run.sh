@@ -11,7 +11,7 @@ swift_flags=(-parse-as-library -swift-version 6 -enable-upcoming-feature Nonisol
 trap 'rm -f "$test_binary" "$store_binary" "$conversation_binary" "$remote_binary" "$claude_binary"' EXIT
 xcrun swiftc "${swift_flags[@]}" \
   AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/BridgeProtocol.swift \
-  AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Models/GitBranch.swift AgentUI/Services/AgentCLI.swift AgentUI/Services/BridgeMailbox.swift AgentUI/Services/DirectoryWatcher.swift \
+  AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Models/GitBranch.swift AgentUI/Services/AgentCLI.swift AgentUI/Services/BridgeMailbox.swift AgentUI/Services/FileSystemWatcher.swift \
   AgentUI/Models/InspectorModels.swift AgentUI/Models/GitDiff.swift AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/GitConfiguration.swift AgentUI/Services/GitFilterGuard.swift AgentUI/Services/FileEvents.swift AgentUI/Services/InspectorService.swift \
   AgentUI/Models/InspectorStore.swift AgentUI/Models/InspectorPreviews.swift AgentUI/Services/WorkspaceWriter.swift \
   AgentUI/Models/UsageModels.swift AgentUI/Models/UsageStore.swift AgentUI/Services/UsageService.swift \
@@ -47,6 +47,6 @@ xcrun swiftc "${swift_flags[@]}" \
 xcrun swiftc "${swift_flags[@]}" \
   AgentUI/Models/Data/SessionMessage.swift AgentUI/Core/Session/SessionTranscript.swift \
   AgentUI/Core/Session/ChatMessageLog.swift AgentUI/Core/Session/ClaudeChatDecoder.swift AgentUI/Core/Session/CodexChatDecoder.swift \
-  AgentUI/Core/Session/CopilotChatDecoder.swift AgentUI/Core/Session/ChatJournalReader.swift AgentUI/Platforms/macOS/FileWatch.swift \
+  AgentUI/Core/Session/CopilotChatDecoder.swift AgentUI/Core/Session/ChatJournalReader.swift AgentUI/Services/FileSystemWatcher.swift \
   AgentUI/Platforms/macOS/AgentJournalMonitor.swift Tests/ChatJournalTests.swift -o "$claude_binary"
 "$claude_binary"

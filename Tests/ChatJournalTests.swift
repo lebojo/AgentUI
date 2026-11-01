@@ -175,13 +175,18 @@ import Foundation
         let finished = await oversizedReader.read(oversized)
         try require(finished.first?.toolState == .completed && finished.last?.text == "Après",
                     "A tool result above the record limit still completes its call and later records are read")
+        let long = root.appendingPathComponent("long.jsonl")
+        try (0..<250).map { try record("assistant", "long-\($0)", "Message \($0)") }.reduce(Data(), +).write(to: long)
+        let bounded = await ChatJournalReader<ClaudeChatDecoder>().read(long)
+        try require(bounded.count == 200 && bounded.first?.text == "Message 50" && bounded.last?.text == "Message 249",
+                    "A long journal keeps its 200 most recent messages")
         print("PASS incremental reads, partial UTF-8 records, replacement and bounded initial history")
 
         let log = root.appendingPathComponent("projects/-tmp-project/\(UUID().uuidString).jsonl")
         let transcript = SessionTranscript()
         let monitor = AgentJournalMonitor(transcript: transcript)
         monitor.attach(AgentJournal(source: .claude, url: log))
-        try require(transcript.source == .claude && transcript.messages.isEmpty, "A Claude journal attaches before its file exists")
+        try await eventually("A Claude journal attaches before its file exists") { transcript.source == .claude && transcript.messages.isEmpty }
         try FileManager.default.createDirectory(at: log.deletingLastPathComponent(), withIntermediateDirectories: true)
         try user.write(to: log)
         try await eventually("A journal created after attaching is followed") { transcript.messages.count == 1 }
@@ -193,6 +198,12 @@ import Foundation
         try await eventually("An atomic replacement is followed") { transcript.messages.last?.text == "Replaced" }
         try append(try record("assistant", "after", "After replacement"), to: log)
         try await eventually("The watch follows the replacement file") { transcript.messages.last?.text == "After replacement" }
+        monitor.suspend()
+        try append(try record("assistant", "suspended", "While suspended"), to: log)
+        try require(transcript.messages.last?.text == "After replacement", "A suspended journal keeps its messages")
+        monitor.attach(AgentJournal(source: .claude, url: log))
+        try require(transcript.messages.last?.text == "After replacement", "Reattaching keeps the chat until the journal is read")
+        try await eventually("Reattaching reads what was appended while suspended") { transcript.messages.last?.text == "While suspended" }
         monitor.attach(nil)
         try require(transcript.source == .terminal, "Detaching the Claude journal returns to the terminal transcript")
         print("PASS Claude journal monitor follows creation, appends and replacement")

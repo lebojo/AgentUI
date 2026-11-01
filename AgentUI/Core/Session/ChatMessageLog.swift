@@ -5,14 +5,20 @@ protocol ChatJournalDecoder: Sendable {
     var messages: [SessionMessage] { get }
     mutating func consume(_ line: Data, offset: UInt64)
     mutating func consumeOversized(_ head: Data)
+    mutating func trim()
 }
 
 struct ChatMessageLog: Sendable {
     private(set) var messages: [SessionMessage] = []
+    private var positions: [String: Int] = [:]
 
     mutating func upsert(_ message: SessionMessage) {
-        if let index = messages.firstIndex(where: { $0.id == message.id }) { messages[index] = message }
-        else { messages.append(message) }
+        if let index = positions[message.id] {
+            messages[index] = message
+        } else {
+            positions[message.id] = messages.count
+            messages.append(message)
+        }
     }
 
     mutating func addText(_ text: String, id: String, kind: SessionMessage.Kind) {
@@ -31,7 +37,7 @@ struct ChatMessageLog: Sendable {
     mutating func finishTool(_ call: String, output: String, state: SessionMessage.ToolState) {
         let id = "tool:\(call)"
         let hasOutput = !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if let index = messages.firstIndex(where: { $0.id == id }) {
+        if let index = positions[id] {
             if hasOutput { messages[index].text = Self.bounded(output) }
             messages[index].toolState = state
         } else {
@@ -48,11 +54,13 @@ struct ChatMessageLog: Sendable {
             finishTool(String(value[..<end]), output: "Résultat trop volumineux pour être affiché.", state: .completed)
             remaining = value[end...]
         }
-        trim()
     }
 
     mutating func trim() {
+        let count = messages.count
         messages.trimHistory(keepingAtLeast: 1)
+        guard messages.count < count else { return }
+        positions = Dictionary(messages.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { _, last in last })
     }
 
     static func bounded(_ text: String) -> String {

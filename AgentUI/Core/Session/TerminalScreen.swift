@@ -90,7 +90,7 @@ struct TerminalScreen {
         return history[index]
     }
 
-    func output(after previous: TerminalScreen?) -> (data: Data, reset: Bool) {
+    func output(after previous: TerminalScreen?) -> Data {
         let historyEnd = historyStart + history.count
         let previousEnd = previous.map { $0.historyStart + $0.history.count } ?? historyStart
         var reset = previous == nil || previous?.columns != columns || previous?.rows != rows || previous?.alternate != alternate
@@ -102,13 +102,13 @@ struct TerminalScreen {
                 break
             }
         }
-        if !reset, previous?.lines == lines, previous?.state == state, previousEnd == historyEnd { return (Data(), false) }
+        if !reset, previous?.lines == lines, previous?.state == state, previousEnd == historyEnd { return Data() }
         let appended = reset ? historyStart : max(historyStart, previousEnd)
         let result = render(reset: reset, from: appended, previous: previous)
-        guard result.utf8.count > Self.outputLimit else { return (Data(result.utf8), reset) }
+        guard result.utf8.count > Self.outputLimit else { return Data(result.utf8) }
         let withoutScrollback = appended < historyEnd ? render(reset: reset, from: historyEnd, previous: previous) : result
-        guard withoutScrollback.utf8.count > Self.outputLimit else { return (Data(withoutScrollback.utf8), reset) }
-        return (Data(render(reset: reset, from: historyEnd, previous: previous, styled: false).utf8), reset)
+        guard withoutScrollback.utf8.count > Self.outputLimit else { return Data(withoutScrollback.utf8) }
+        return Data(render(reset: reset, from: historyEnd, previous: previous, styled: false).utf8)
     }
 
     private func render(reset: Bool, from appended: Int, previous: TerminalScreen?, styled: Bool = true) -> String {

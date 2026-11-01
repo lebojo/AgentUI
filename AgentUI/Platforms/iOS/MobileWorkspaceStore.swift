@@ -31,6 +31,7 @@ import Observation
     @ObservationIgnored private var pairingDerivation: (code: String, task: Task<PairingKey?, Never>)?
     @ObservationIgnored private var generation = UUID()
     @ObservationIgnored private var streamConnection: NWConnection?
+    @ObservationIgnored private var streamTerminal: UUID?
     @ObservationIgnored private var pendingInputs: [UUID: (Error?) -> Void] = [:]
     @ObservationIgnored private var inputTimeouts: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var queuedInputs: [QueuedInput] = []
@@ -78,31 +79,34 @@ import Observation
         generation = UUID()
         streamConnection?.cancel()
         streamConnection = nil
-        cancelInputs()
+        streamTerminal = nil
+        cancelInputs(keepingQueuedFor: nil)
         status = .disconnected
     }
 
     func watch(prefersChat: Bool) async {
         guard wantsConnection else { return }
-        cancelInputs()
+        let selectedID = selection
+        cancelInputs(keepingQueuedFor: selectedID)
         if session?.isChat == true, !prefersChat { session = nil }
         let token = UUID()
         generation = token
         streamReady = false
         let resumesStream = status == .connected
         if status != .connected { status = .connecting }
-        let selectedID = selection
         do {
             let key = try await requiredPairingKey()
             guard generation == token else { return }
             let connection = NWConnection(host: try RemoteProtocol.host(host), port: NWEndpoint.Port(rawValue: RemoteProtocol.port)!,
                                           using: RemoteChannel.parameters(key: key))
             streamConnection = connection
+            streamTerminal = selectedID
             defer {
                 connection.cancel()
                 if generation == token {
                     streamConnection = nil
-                    cancelInputs()
+                    streamTerminal = nil
+                    cancelInputs(keepingQueuedFor: selection == selectedID ? nil : selection)
                 }
             }
             try await withTaskCancellationHandler {
@@ -176,11 +180,11 @@ import Observation
     }
 
     private func enqueueInput(_ data: Data, terminal: UUID, message: String?, completion: @escaping (Error?) -> Void) {
-        guard isConnected, let connection = streamConnection, selection == terminal else {
+        guard isConnected, selection == terminal else {
             completion(RemoteError(message: "Reconnecte-toi au Mac avant d’envoyer."))
             return
         }
-        guard streamReady else {
+        guard streamReady, streamTerminal == terminal, let connection = streamConnection else {
             queuedInputs.append(QueuedInput(data: data, terminal: terminal, message: message, completion: completion))
             return
         }
@@ -234,12 +238,13 @@ import Observation
         return key
     }
 
-    private func cancelInputs() {
+    private func cancelInputs(keepingQueuedFor terminal: UUID?) {
         for timeout in inputTimeouts.values { timeout.cancel() }
         inputTimeouts.removeAll()
-        let pending = Array(pendingInputs.values) + queuedInputs.map(\.completion)
+        let dropped = queuedInputs.filter { terminal == nil || $0.terminal != terminal }
+        let pending = Array(pendingInputs.values) + dropped.map(\.completion)
         pendingInputs.removeAll()
-        queuedInputs.removeAll()
+        queuedInputs.removeAll { terminal == nil || $0.terminal != terminal }
         for completion in pending {
             completion(RemoteError(message: "Connexion interrompue. Vérifie la session avant de renvoyer."))
         }

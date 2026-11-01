@@ -8,6 +8,7 @@ import Observation
     private(set) var messages: [SessionMessage] = []
     private(set) var chatSource: SessionChatSource = .terminal
     private(set) var hasExited = false
+    private(set) var exitCode: Int32?
     private(set) var canvasSize = CGSize.zero
     @ObservationIgnored let view: TerminalView?
     @ObservationIgnored private var applyingOutput = false
@@ -25,6 +26,7 @@ import Observation
 
     @discardableResult func apply(_ snapshot: RemoteTerminalSnapshot) -> Bool {
         if hasExited != snapshot.hasExited { hasExited = snapshot.hasExited }
+        if exitCode != snapshot.exitCode { exitCode = snapshot.exitCode }
         if chatSource != snapshot.chatSource { chatSource = snapshot.chatSource }
         guard snapshot.transcriptDropped <= messages.count,
               snapshot.transcriptStart <= messages.count - snapshot.transcriptDropped else { return false }

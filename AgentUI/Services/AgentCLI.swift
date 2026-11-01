@@ -41,7 +41,7 @@ enum AgentCLI {
             let responseURL = directory.appendingPathComponent("\(request.id.uuidString).response")
             defer { try? FileManager.default.removeItem(at: responseURL) }
             let changes = DispatchSemaphore(value: 0)
-            let watcher = try? DirectoryWatcher(directory, queue: .global(qos: .userInitiated)) { changes.signal() }
+            let watcher = try? FileSystemWatcher(directory, queue: .global(qos: .userInitiated)) { _ in changes.signal() }
             defer { watcher?.cancel() }
             let recheck: DispatchTimeInterval = watcher == nil ? .milliseconds(50) : .seconds(1)
             try JSONEncoder().encode(request).write(to: requestURL, options: .atomic)

@@ -43,6 +43,7 @@ actor ChatJournalReader<Decoder: ChatJournalDecoder> {
                 discarding = true
             }
         }
+        decoder.trim()
         return decoder.messages
     }
 

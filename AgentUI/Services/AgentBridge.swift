@@ -4,7 +4,7 @@ import AppKit
 @MainActor final class AgentBridge {
     let directory: URL
     private let store: WorkspaceStore
-    private var watcher: DirectoryWatcher?
+    private var watcher: FileSystemWatcher?
     private var active: Set<UUID> = []
 
     init(store: WorkspaceStore) throws {
@@ -20,7 +20,7 @@ import AppKit
             "PATH": bin.path + ":" + (ProcessInfo.processInfo.environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin")
         ]
         do {
-            watcher = try DirectoryWatcher(directory, queue: .main) { [weak self] in
+            watcher = try FileSystemWatcher(directory, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.drain() }
             }
         } catch { throw WorkspaceError(message: "Impossible d’initialiser la commande agentui.") }

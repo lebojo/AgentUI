@@ -31,7 +31,7 @@ struct MobileSessionDetail: View {
                             }
                         } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
                         if session.hasExited {
-                            Label("Session terminée", systemImage: "stop.circle").font(Typography.caption).padding(Spacing.s)
+                            SessionExitLabel(code: session.exitCode).font(Typography.caption).padding(Spacing.s)
                         }
                     } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
                     if !store.isConnected {

@@ -10,6 +10,8 @@ struct CodexChatDecoder: ChatJournalDecoder {
 
     var messages: [SessionMessage] { log.messages }
 
+    mutating func trim() { log.trim() }
+
     mutating func consume(_ line: Data, offset: UInt64) {
         guard let record = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
               record["type"] as? String == "response_item", let item = record["payload"] as? [String: Any] else { return }
@@ -24,7 +26,6 @@ struct CodexChatDecoder: ChatJournalDecoder {
             log.finishTool(call, output: result.text, state: result.state)
         default: return
         }
-        log.trim()
     }
 
     mutating func consumeOversized(_ head: Data) {

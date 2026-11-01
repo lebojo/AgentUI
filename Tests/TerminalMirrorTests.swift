@@ -27,7 +27,7 @@ private final class Delegate: TerminalDelegate {
             let screen = TerminalScreen(terminal: host, modes: modes, previous: previous)
             require(screen.history == TerminalScreen(terminal: host, modes: modes).history, "Reused scrollback rows match a fresh encoding")
             let delta = screen.output(after: full ? nil : previous)
-            peer.feed(byteArray: Array(delta.data))
+            peer.feed(byteArray: Array(delta))
             let actual = TerminalScreen(terminal: peer, modes: modes)
             require(actual.history == screen.history, "Bounded scrollback survives checkpoint and incremental scrolling")
             require(actual.lines == screen.lines, "Mirror must reproduce every cell and attribute")
@@ -67,7 +67,7 @@ private final class Delegate: TerminalDelegate {
         sync(full: true) // Host parser is halfway through CSI after >256 KiB.
         feed("222;11;22m✓")
         sync()
-        let bytes = TerminalScreen(terminal: host, modes: modes).output(after: nil).data
+        let bytes = TerminalScreen(terminal: host, modes: modes).output(after: nil)
         require(bytes.count < 10000, "Reconnect cost is bounded by screen size, not process lifetime")
         print("PASS full checkpoint after >256 KiB, including split escape sequence")
 
@@ -99,8 +99,8 @@ private final class Delegate: TerminalDelegate {
         }
         wide.feed(text: colorful)
         let checkpoint = TerminalScreen(terminal: wide, modes: TerminalMirrorModes()).output(after: nil)
-        require(checkpoint.data.count <= TerminalScreen.outputLimit, "A checkpoint stays within the frame budget")
-        widePeer.feed(byteArray: Array(checkpoint.data))
+        require(checkpoint.count <= TerminalScreen.outputLimit, "A checkpoint stays within the frame budget")
+        widePeer.feed(byteArray: Array(checkpoint))
         let mirrored = TerminalScreen(terminal: widePeer, modes: TerminalMirrorModes())
         require(mirrored.history.isEmpty, "The oversized checkpoint drops its scrollback")
         require(mirrored.lines == TerminalScreen(terminal: wide, modes: TerminalMirrorModes()).lines, "Dropping scrollback keeps the live screen exact")
@@ -116,8 +116,8 @@ private final class Delegate: TerminalDelegate {
         }
         huge.feed(text: frame)
         let alternate = TerminalScreen(terminal: huge, modes: TerminalMirrorModes()).output(after: nil)
-        require(alternate.data.count <= TerminalScreen.outputLimit, "A styled alternate screen without scrollback stays within the frame budget")
-        hugePeer.feed(byteArray: Array(alternate.data))
+        require(alternate.count <= TerminalScreen.outputLimit, "A styled alternate screen without scrollback stays within the frame budget")
+        hugePeer.feed(byteArray: Array(alternate))
         let plain = { (terminal: Terminal) in (0..<160).map { terminal.getLine(row: $0)?.translateToString(trimRight: true) ?? "" } }
         require(plain(hugePeer) == plain(huge), "The unstyled fallback keeps the screen text exact")
         print("PASS oversized checkpoint keeps the live screen within the frame budget")

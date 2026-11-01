@@ -5,6 +5,8 @@ struct ClaudeChatDecoder: ChatJournalDecoder {
 
     var messages: [SessionMessage] { log.messages }
 
+    mutating func trim() { log.trim() }
+
     mutating func consume(_ line: Data, offset: UInt64) {
         guard let record = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
               record["isSidechain"] as? Bool != true else { return }
@@ -33,7 +35,6 @@ struct ClaudeChatDecoder: ChatJournalDecoder {
                 }
             }
         }
-        log.trim()
     }
 
     mutating func consumeOversized(_ head: Data) {

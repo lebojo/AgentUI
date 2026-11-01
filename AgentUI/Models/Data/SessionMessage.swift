@@ -71,8 +71,11 @@ enum SessionChatSource: String, Codable, Sendable {
 extension Array where Element == SessionMessage {
     mutating func trimHistory(keepingAtLeast minimum: Int) {
         var bytes = reduce(0) { $0 + $1.text.utf8.count }
-        while count > minimum && (count > 200 || bytes > 262_144) {
-            bytes -= removeFirst().text.utf8.count
+        var dropped = 0
+        while count - dropped > minimum && (count - dropped > 200 || bytes > 262_144) {
+            bytes -= self[dropped].text.utf8.count
+            dropped += 1
         }
+        removeFirst(dropped)
     }
 }
