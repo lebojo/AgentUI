@@ -3,6 +3,10 @@ import SwiftUI
 struct SessionMarkdown: View {
     let text: String
 
+    private var webLinksOnly: OpenURLAction {
+        OpenURLAction { url in ["http", "https"].contains(url.scheme) ? .systemAction : .discarded }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.m) {
             ForEach(Array(text.components(separatedBy: "```").enumerated()), id: \.offset) { index, block in
@@ -18,6 +22,7 @@ struct SessionMarkdown: View {
                 }
             }
         }
+        .environment(\.openURL, webLinksOnly)
     }
 
     private func prose(_ block: String) -> Text {

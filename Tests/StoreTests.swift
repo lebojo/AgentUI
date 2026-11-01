@@ -7,7 +7,6 @@ import Observation
     func close(_ id: UUID) {}
     func start(_ context: TerminalContext, command: [String] = []) {}
     func isRunning(_ id: UUID) -> Bool { true }
-    func hasSession(_ id: UUID) -> Bool { true }
 }
 
 private final class ChangeFlag: @unchecked Sendable {

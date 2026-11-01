@@ -26,7 +26,7 @@ import Observation
     @ObservationIgnored private let pathMonitor = NWPathMonitor()
 
     private static let maximumConnections = 32
-    private static let maximumConnectionsPerPeer = 8
+    private static let maximumConnectionsPerPeer = 16
     private static let incompatibleVersions = "Versions incompatibles. Mets à jour AgentUI sur le Mac et sur cet appareil."
 
     init(pairingStore: any PairingCodeStore = PairingCodeStores.make(account: "localHost.pairingCode")) {
@@ -261,7 +261,8 @@ import Observation
         for await _ in changes {
             try Task.checkCancellation()
             withObservationTracking {
-                _ = store.state
+                _ = store.folders
+                _ = store.projects
                 let session = terminal.flatMap { store.sessions.session($0) }
                 if !(prefersChat && session?.agent != nil) { _ = session?.outputRevision }
                 _ = session?.hasExited
@@ -271,9 +272,7 @@ import Observation
                 _ = installedAgents?.agents
             } onChange: { continuation.yield(()) }
             try await Task.sleep(for: .milliseconds(100))
-            var workspace = store.state
-            workspace.selection = nil
-            workspace.collapsed = []
+            let workspace = Workspace(folders: store.folders, projects: store.projects, selection: nil, collapsed: [])
             if previousWorkspace != workspace {
                 try await RemoteChannel.send(RemoteEvent.workspace(workspace), on: connection)
                 previousWorkspace = workspace
@@ -302,12 +301,13 @@ import Observation
                 previousScreen = nil
                 continuation.yield(())
             }
-            if let session, previousRevision != session.outputRevision || previousExit != session.hasExited
-                || (chat && (previousMessages != session.transcript.messages || previousSource != session.transcript.source)) {
-                previousRevision = session.outputRevision
-                let chatUnchanged = chat && previousExit == session.hasExited
-                    && previousMessages == session.transcript.messages && previousSource == session.transcript.source
-                guard !chatUnchanged else { continue }
+            guard let session else { continue }
+            let exitChanged = previousExit != session.hasExited
+            let changed = chat
+                ? exitChanged || previousMessages != session.transcript.messages || previousSource != session.transcript.source
+                : exitChanged || previousRevision != session.outputRevision
+            previousRevision = session.outputRevision
+            if changed {
                 let screen = chat ? nil : session.screen()
                 let snapshot = session.snapshot(previousMessages: previousMessages, chat: chat, screen: screen, previousScreen: previousScreen)
                 let messages = session.transcript.messages

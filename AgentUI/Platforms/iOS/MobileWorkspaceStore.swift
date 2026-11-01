@@ -116,6 +116,7 @@ import Observation
                     let event: RemoteEvent = try await (first ? RemoteChannel.firstEvent(after: request, on: connection) : RemoteChannel.receive(on: connection))
                     first = false
                     guard generation == token, !Task.isCancelled else { return }
+                    if case .failure(let message) = event { throw RemoteError(message: message, isPermanent: true) }
                     if status != .connected { status = .connected }
                     if !streamReady {
                         streamReady = true
@@ -147,8 +148,7 @@ import Observation
                     case .terminalClosed:
                         if selection == selectedID { selection = nil }
                         return
-                    case .failure(let message):
-                        throw RemoteError(message: message, isPermanent: true)
+                    case .failure: break
                     case .inputResult(let request, let error):
                         inputTimeouts.removeValue(forKey: request)?.cancel()
                         pendingInputs.removeValue(forKey: request)?(error.map { RemoteError(message: $0) })

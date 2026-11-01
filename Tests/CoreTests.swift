@@ -246,6 +246,32 @@ import Foundation
         let withTranscript = AgentProcess.find(under: shell.processIdentifier, fallbackDirectory: "/", claudeConfig: fakeHome.appendingPathComponent(".claude"))
         try require(withTranscript?.transcriptPath == fakeHome.appendingPathComponent(".claude/projects/-Users-me-My-Project/\(sessionID).jsonl").path,
                     "Locate the Claude transcript of the agent session")
+        let customConfig = root.appendingPathComponent("custom-claude-config")
+        try FileManager.default.createDirectory(at: customConfig.appendingPathComponent("sessions"), withIntermediateDirectories: true)
+        let thirdPartyBin = root.appendingPathComponent("third-party-bin")
+        try FileManager.default.createDirectory(at: thirdPartyBin, withIntermediateDirectories: true)
+        let thirdPartyClaude = thirdPartyBin.appendingPathComponent("claude")
+        try FileManager.default.copyItem(at: URL(fileURLWithPath: "/bin/sleep"), to: thirdPartyClaude)
+        let signing = Process()
+        signing.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+        signing.arguments = ["--force", "--sign", "-", thirdPartyClaude.path]
+        try signing.run()
+        signing.waitUntilExit()
+        let customShell = Process()
+        customShell.executableURL = URL(fileURLWithPath: "/bin/sh")
+        customShell.arguments = ["-c", "\"$0\" 10; true", thirdPartyClaude.path]
+        customShell.currentDirectoryURL = root
+        customShell.environment = ["PATH": "/usr/bin:/bin", "CLAUDE_CONFIG_DIR": customConfig.path]
+        try customShell.run()
+        defer { customShell.terminate() }
+        var customChild: Int32 = 0
+        for _ in 0..<50 where customChild == 0 {
+            customChild = agentChild(of: customShell.processIdentifier)
+            if customChild == 0 { try await Task.sleep(for: .milliseconds(50)) }
+        }
+        try #"{"pid":\#(customChild),"sessionId":"custom-session"}"#.write(to: customConfig.appendingPathComponent("sessions/\(customChild).json"), atomically: true, encoding: .utf8)
+        let custom = AgentProcess.find(under: customShell.processIdentifier, fallbackDirectory: "/", claudeConfig: fakeHome.appendingPathComponent(".claude"))
+        try require(custom?.sessionID == "custom-session", "The CLAUDE_CONFIG_DIR of the running Claude process locates its session")
         let launched = Date()
         let attached = AgentProcess(agent: .claude, startedAt: launched, directory: "/p", sessionID: "s", transcriptPath: "/p/s.jsonl")
         let missedRead = AgentProcess(agent: .claude, startedAt: launched, directory: "/p", sessionID: nil).keepingTranscript(of: attached)

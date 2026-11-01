@@ -465,6 +465,8 @@ import Observation
             throw error
         }
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
+        let reopened = projects[index].worktrees.first { $0.id == worktreeID }?.terminals ?? []
+        for terminal in reopened { sessions.close(terminal.id) }
         projects[index].worktrees.removeAll { $0.id == worktreeID }
         if selectedContext == nil {
             selection = projects[index].worktrees.flatMap(\.terminals).first?.id

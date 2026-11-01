@@ -178,7 +178,7 @@ try:
         assert sock.cipher()[0] == "ECDHE-PSK-CHACHA20-POLY1305", sock.cipher()
     print("PASS unencrypted and wrong-code clients refused, forward-secret cipher", flush=True)
 
-    idle = [socket.create_connection(("127.0.0.1", port), timeout=5) for _ in range(8)]
+    idle = [socket.create_connection(("127.0.0.1", port), timeout=5) for _ in range(16)]
     time.sleep(1)
     try:
         rpc("workspace", version=PROTOCOL)

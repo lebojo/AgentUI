@@ -11,7 +11,7 @@ struct LocalSessionChat: View {
         }
         .task(id: session.identity) {
             session.acquireChat()
-            while !Task.isCancelled { try? await Task.sleep(for: .seconds(3_600)) }
+            await Task.waitUntilCancelled()
             session.releaseChat()
         }
     }

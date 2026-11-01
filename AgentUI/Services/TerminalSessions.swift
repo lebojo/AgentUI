@@ -303,17 +303,11 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         if agentWatchers == 1 {
             agentPolling = Task(priority: .utility) { [weak self] in await self?.pollAgents() }
         }
-        await Self.waitUntilCancelled()
+        await Task.waitUntilCancelled()
         agentWatchers -= 1
         guard agentWatchers == 0 else { return }
         agentPolling?.cancel()
         agentPolling = nil
-    }
-
-    private static func waitUntilCancelled() async {
-        let (cancellation, continuation) = AsyncStream<Void>.makeStream()
-        for await _ in cancellation {}
-        continuation.finish()
     }
 
     private func pollAgents() async {
@@ -358,7 +352,6 @@ final class ActivityTerminalView: SharedProcessTerminalView {
 
     func session(_ id: UUID) -> TerminalSession? { entries[id] }
     func isRunning(_ id: UUID) -> Bool { entries[id]?.hasExited == false }
-    func hasSession(_ id: UUID) -> Bool { entries[id] != nil }
     @discardableResult func start(_ context: TerminalContext, command: [String] = []) -> TerminalSession {
         if let session = entries[context.terminal.id] { return session }
         let session = TerminalSession(context: context, command: command, environment: environment)

@@ -32,7 +32,8 @@ struct AgentProcess: Equatable, Sendable {
             let pid = pending.removeFirst()
             guard pid > 0, visited.insert(pid).inserted else { continue }
             if let agent = agent(of: pid) {
-                let session = resolveSession(of: agent, in: subtree(of: pid), claudeConfig: claudeConfig)
+                let config = environmentValue("CLAUDE_CONFIG_DIR", of: pid).flatMap { $0.hasPrefix("/") ? URL(fileURLWithPath: $0) : nil }
+                let session = resolveSession(of: agent, in: subtree(of: pid), claudeConfig: config ?? claudeConfig)
                 return AgentProcess(agent: agent, startedAt: startDate(of: pid) ?? .distantPast,
                                     directory: TerminalProcessDirectory.read(pid: pid) ?? fallbackDirectory,
                                     sessionID: session.id, transcriptPath: session.path, claudeStatus: session.status)
@@ -154,23 +155,33 @@ struct AgentProcess: Equatable, Sendable {
     }
 
     private static func arguments(of pid: Int32) -> [String] {
+        commandLine(of: pid).arguments
+    }
+
+    private static func environmentValue(_ name: String, of pid: Int32) -> String? {
+        let prefix = name + "="
+        return commandLine(of: pid).environment.first { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }
+    }
+
+    private static func commandLine(of pid: Int32) -> (arguments: [String], environment: [String]) {
         var mib = [CTL_KERN, KERN_PROCARGS2, pid]
         var size = 0
-        guard sysctl(&mib, 3, nil, &size, nil, 0) == 0, size > MemoryLayout<Int32>.size else { return [] }
+        guard sysctl(&mib, 3, nil, &size, nil, 0) == 0, size > MemoryLayout<Int32>.size else { return ([], []) }
         var buffer = [UInt8](repeating: 0, count: size)
-        guard sysctl(&mib, 3, &buffer, &size, nil, 0) == 0 else { return [] }
+        guard sysctl(&mib, 3, &buffer, &size, nil, 0) == 0 else { return ([], []) }
         let count = buffer.withUnsafeBytes { Int($0.loadUnaligned(as: Int32.self)) }
         var index = MemoryLayout<Int32>.size
         while index < size, buffer[index] != 0 { index += 1 }
         while index < size, buffer[index] == 0 { index += 1 }
-        var result: [String] = []
-        while index < size, result.count < count {
+        var strings: [String] = []
+        while index < size {
             let start = index
             while index < size, buffer[index] != 0 { index += 1 }
-            result.append(String(decoding: buffer[start..<index], as: UTF8.self))
+            guard index > start || strings.count < count else { break }
+            strings.append(String(decoding: buffer[start..<index], as: UTF8.self))
             index += 1
         }
-        return result
+        return (Array(strings.prefix(count)), Array(strings.dropFirst(count)))
     }
 
     private static func startDate(of pid: Int32) -> Date? {
