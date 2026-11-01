@@ -25,6 +25,7 @@ import Observation
     private(set) var addresses: [String] = []
     @ObservationIgnored private let pairingStore: any PairingCodeStore
     @ObservationIgnored private var pairingKey: PairingKey?
+    @ObservationIgnored private var pairingUpdate: Task<PairingKey, Error>?
     @ObservationIgnored private weak var store: WorkspaceStore?
     @ObservationIgnored private var settings: SettingsStore?
     @ObservationIgnored private var installedAgents: InstalledAgents?
@@ -36,6 +37,7 @@ import Observation
     @ObservationIgnored private let pathMonitor = NWPathMonitor()
 
     private static let maximumConnections = 32
+    private static let maximumUnpairedConnections = 64
     private static let maximumConnectionsPerPeer = 16
     private static let incompatibleVersions = "Versions incompatibles. Mets à jour AgentUI sur le Mac et sur cet appareil."
 
@@ -77,7 +79,10 @@ import Observation
         do { stored = try await Task.detached(operation: { try codes.load() }).value }
         catch { throw storageFailure(error.localizedDescription) }
         guard let code = stored else {
-            do { return try await storeNewPairingCode() }
+            do {
+                if let pairingUpdate { return try await pairingUpdate.value }
+                return try await storeNewPairingCode()
+            }
             catch { throw storageFailure(error.localizedDescription) }
         }
         guard let key = try? await PairingKey.derive(from: code) else {
@@ -96,14 +101,21 @@ import Observation
     }
 
     @discardableResult private func storeNewPairingCode() async throws -> PairingKey {
-        let code = RemotePairing.newCode()
-        let key = try await PairingKey.derive(from: code)
+        let previous = pairingUpdate
         let codes = pairingStore
-        try await Task.detached { try codes.save(code) }.value
-        pairingCode = code
-        pairingKey = key
-        pairingStorageError = nil
-        return key
+        let update = Task { [weak self] in
+            _ = await previous?.result
+            let code = RemotePairing.newCode()
+            let key = try await PairingKey.derive(from: code)
+            try await Task.detached { try codes.save(code) }.value
+            self?.pairingCode = code
+            self?.pairingKey = key
+            self?.pairingStorageError = nil
+            return key
+        }
+        pairingUpdate = update
+        defer { if pairingUpdate == update { pairingUpdate = nil } }
+        return try await update.value
     }
 
     func stop() {
@@ -187,6 +199,7 @@ import Observation
     private func accept(_ connection: NWConnection) {
         guard case .hostPort(let host, _) = connection.endpoint, (try? RemoteProtocol.host(String(describing: host))) != nil,
               connections.values.count(where: \.isPaired) < Self.maximumConnections,
+              connections.values.count(where: { !$0.isPaired }) < Self.maximumUnpairedConnections,
               connections.values.count(where: { $0.peer == String(describing: host) }) < Self.maximumConnectionsPerPeer else {
             connection.cancel()
             return

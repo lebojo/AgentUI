@@ -118,12 +118,12 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     func send(_ data: Data, message: String? = nil) async throws {
         guard data.count <= 65_536 else { throw WorkspaceError(message: "Message trop long (64 Ko maximum).") }
         let previous = pendingWrite
-        let write = Task {
+        let next = Task {
             _ = await previous?.result
             try await write(data, message: message)
         }
-        pendingWrite = write
-        try await write.value
+        pendingWrite = next
+        try await next.value
     }
 
     func launch(_ agent: ConversationAgent, skippingPermissions: Bool) async throws {

@@ -5,6 +5,10 @@ import Observation
 @MainActor @Observable final class MobileWorkspaceStore {
     enum Status: Equatable { case disconnected, connecting, connected, failed(String) }
 
+    private struct InterruptedInput: LocalizedError {
+        var errorDescription: String? { "Connexion interrompue. Vérifie la session avant de renvoyer." }
+    }
+
     private struct QueuedInput {
         let data: Data
         let terminal: UUID
@@ -139,7 +143,7 @@ import Observation
                             session = MobileTerminalSession(identity: snapshot.identity, isChat: snapshot.isChat) { [weak self] data in
                                 guard let self, let selectedID, self.isConnected else { return }
                                 self.enqueueInput(data, terminal: selectedID, message: nil) { error in
-                                    if let error, self.error == nil { self.error = error.localizedDescription }
+                                    if let error, !(error is InterruptedInput), self.error == nil { self.error = error.localizedDescription }
                                 }
                             }
                         }
@@ -249,7 +253,7 @@ import Observation
         pendingInputs.removeAll()
         queuedInputs.removeAll { terminal == nil || $0.terminal != terminal }
         for completion in pending {
-            completion(RemoteError(message: "Connexion interrompue. Vérifie la session avant de renvoyer."))
+            completion(InterruptedInput())
         }
     }
 

@@ -34,6 +34,7 @@ struct UsageBar: View {
                     .buttonStyle(.plain)
                     .help("Afficher le détail de l’usage")
                     .accessibilityHint("Affiche le détail de l’usage")
+
                     Button { withAnimation(Motion.standard) { isCollapsed.toggle() } } label: {
                         Image(systemName: "chevron.down")
                             .font(Typography.xxs.weight(.semibold))
@@ -84,6 +85,7 @@ private struct UsageBarRow: View {
         let preferred = [usage.session, usage.weekly].compactMap { $0 }
         return preferred.isEmpty ? Array(usage.windows.prefix(2)) : preferred
     }
+
     private var countdown: String? {
         state.usage?.headline?.resetText(from: now)
     }
