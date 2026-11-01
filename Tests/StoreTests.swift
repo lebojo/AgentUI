@@ -7,6 +7,8 @@ import Observation
     func close(_ id: UUID) {}
     func start(_ context: TerminalContext, command: [String] = []) {}
     func isRunning(_ id: UUID) -> Bool { true }
+    var onAgentsRefreshed: (() -> Void)?
+    func agentResumes() -> [UUID: AgentResume?] { [:] }
 }
 
 private final class ChangeFlag: @unchecked Sendable {
@@ -240,5 +242,19 @@ private final class ChangeFlag: @unchecked Sendable {
         try require(nestedStore.folders.map(\.name) == ["Work"] && nestedStore.projects.allSatisfy { $0.folderID == work },
                     "A flat reimport removes the subfolders it emptied")
         print("PASS nested repository import with hierarchy, selection, flat mode and reimport")
+
+        try require(legacyTerminals.allSatisfy { $0.resume == nil }, "Terminals saved by older versions have no agent session")
+        let resume = AgentResume(agent: .claude, sessionID: "abc-123", skipsPermissions: true)
+        try require(resume.command == ["claude", "--resume", "abc-123", "--dangerously-skip-permissions"], "Resume keeps the permission bypass")
+        try require(AgentResume(agent: .codex, sessionID: "thread").command == ["codex", "resume", "thread"], "Codex resume command")
+        try require(AgentResume(agent: .claude, sessionID: "--evil").command == nil, "Option-like session identifiers are never resumed")
+        split.applyAgentResumes([titled.terminal.id: resume])
+        try require(split.context(for: titled.terminal.id)?.terminal.resume == resume, "A running agent session is attached to its terminal")
+        try await split.flushPersistence()
+        let reloadedTerminals = try WorkspaceDisk.load(from: splitFile).projects.flatMap(\.worktrees).flatMap(\.terminals)
+        try require(reloadedTerminals.first { $0.id == titled.terminal.id }?.resume == resume, "The agent session survives a relaunch")
+        split.applyAgentResumes([titled.terminal.id: nil])
+        try require(split.context(for: titled.terminal.id)?.terminal.resume == nil, "A finished agent session is forgotten")
+        print("PASS agent sessions resume after relaunch")
     }
 }

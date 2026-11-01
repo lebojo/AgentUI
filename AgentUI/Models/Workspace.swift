@@ -17,6 +17,7 @@ struct TerminalRecord: Identifiable, Codable, Equatable, Sendable {
     var id = UUID()
     var name: String
     var hasCustomName = false
+    var resume: AgentResume? = nil
 }
 
 extension TerminalRecord {
@@ -26,6 +27,7 @@ extension TerminalRecord {
         name = try container.decode(String.self, forKey: .name)
         let automaticNames = [Self.defaultName] + ConversationAgent.allCases.map(\.title)
         hasCustomName = try container.decodeIfPresent(Bool.self, forKey: .hasCustomName) ?? !automaticNames.contains(name)
+        resume = try? container.decodeIfPresent(AgentResume.self, forKey: .resume)
     }
 }
 

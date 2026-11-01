@@ -24,6 +24,7 @@ import Observation
     @ObservationIgnored private var restoring = false
     private var removingWorktrees: Set<UUID> = []
     @ObservationIgnored private var recentResumes: [String: (terminal: UUID, at: ContinuousClock.Instant)] = [:]
+    @ObservationIgnored private var resumedAgentSessions = false
     private let writer: WorkspaceWriter
     var errorMessage: String?
     var busyProjects: Set<UUID> = []
@@ -42,6 +43,7 @@ import Observation
             canSave = false
             errorMessage = "Impossible de lire l’organisation. Le fichier original a été préservé : \(fileURL.path)\n\(error.localizedDescription)"
         }
+        sessions.onAgentsRefreshed = { [weak self] in self?.recordAgentSessions() }
     }
 
     var isReadOnly: Bool { !canSave }
@@ -333,6 +335,36 @@ import Observation
             }
         }
         if changed { save() }
+    }
+
+    func recordAgentSessions() { applyAgentResumes(sessions.agentResumes()) }
+
+    func applyAgentResumes(_ resumes: [UUID: AgentResume?]) {
+        guard !resumes.isEmpty else { return }
+        var changed = false
+        for p in projects.indices {
+            for w in projects[p].worktrees.indices {
+                for t in projects[p].worktrees[w].terminals.indices {
+                    let terminal = projects[p].worktrees[w].terminals[t]
+                    guard let resume = resumes[terminal.id], terminal.resume != resume else { continue }
+                    projects[p].worktrees[w].terminals[t].resume = resume
+                    changed = true
+                }
+            }
+        }
+        if changed { save() }
+    }
+
+    func resumeAgentSessions() {
+        guard !resumedAgentSessions else { return }
+        resumedAgentSessions = true
+        for project in projects {
+            for worktree in project.worktrees {
+                for terminal in worktree.terminals where terminal.resume != nil {
+                    sessions.start(TerminalContext(project: project, worktree: worktree, terminal: terminal))
+                }
+            }
+        }
     }
 
     func useAutomaticName(_ terminalID: UUID) {

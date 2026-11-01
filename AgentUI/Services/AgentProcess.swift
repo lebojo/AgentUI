@@ -8,6 +8,12 @@ struct AgentProcess: Equatable, Sendable {
     let sessionID: String?
     var transcriptPath: String? = nil
     var claudeStatus: String? = nil
+    var skipsPermissions = false
+
+    var resume: AgentResume? {
+        guard let sessionID, AgentConversation.isValidSessionID(sessionID) else { return nil }
+        return AgentResume(agent: agent, sessionID: sessionID, skipsPermissions: skipsPermissions)
+    }
 
     var transcriptTitle: String? {
         guard agent == .codex, let transcriptPath, let sessionID else { return nil }
@@ -36,7 +42,8 @@ struct AgentProcess: Equatable, Sendable {
                 let session = resolveSession(of: agent, in: subtree(of: pid), claudeConfig: config, previous: previous)
                 return AgentProcess(agent: agent, startedAt: startDate(of: pid) ?? .distantPast,
                                     directory: TerminalProcessDirectory.read(pid: pid) ?? fallbackDirectory,
-                                    sessionID: session.id, transcriptPath: session.path, claudeStatus: session.status)
+                                    sessionID: session.id, transcriptPath: session.path, claudeStatus: session.status,
+                                    skipsPermissions: arguments(of: pid).contains(agent.permissionBypassFlag))
             }
             pending += children(of: pid)
         }

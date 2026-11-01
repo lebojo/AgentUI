@@ -27,6 +27,25 @@ enum ConversationAgent: String, Codable, CaseIterable, Identifiable, Sendable {
     func launchCommand(skippingPermissions: Bool) -> [String] {
         [rawValue] + (skippingPermissions ? [permissionBypassFlag] : [])
     }
+
+    func resumeCommand(sessionID: String, skippingPermissions: Bool = false) -> [String]? {
+        guard AgentConversation.isValidSessionID(sessionID) else { return nil }
+        let command = switch self {
+        case .claude: ["claude", "--resume", sessionID]
+        case .codex: ["codex", "resume", sessionID]
+        case .copilot: ["copilot", "--resume", sessionID]
+        case .openCode: ["opencode", "--session", sessionID]
+        }
+        return command + (skippingPermissions ? [permissionBypassFlag] : [])
+    }
+}
+
+struct AgentResume: Codable, Equatable, Sendable {
+    let agent: ConversationAgent
+    let sessionID: String
+    var skipsPermissions = false
+
+    var command: [String]? { agent.resumeCommand(sessionID: sessionID, skippingPermissions: skipsPermissions) }
 }
 
 struct AgentConversation: Codable, Identifiable, Equatable, Sendable {
@@ -47,13 +66,5 @@ struct AgentConversation: Codable, Identifiable, Equatable, Sendable {
 
     var canResume: Bool { Self.isValidSessionID(sessionID) }
 
-    var resumeCommand: [String]? {
-        guard canResume else { return nil }
-        return switch agent {
-        case .claude: ["claude", "--resume", sessionID]
-        case .codex: ["codex", "resume", sessionID]
-        case .copilot: ["copilot", "--resume", sessionID]
-        case .openCode: ["opencode", "--session", sessionID]
-        }
-    }
+    var resumeCommand: [String]? { agent.resumeCommand(sessionID: sessionID) }
 }

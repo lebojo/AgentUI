@@ -28,6 +28,7 @@ import Observation
     private(set) var agent: AgentProcess?
     private(set) var agentKind: ConversationAgent?
     private(set) var agentStatus: AgentStatus?
+    @ObservationIgnored private(set) var hadAgent = false
 
     init(context: TerminalContext, command: [String], environment: [String: String]) {
         path = context.worktree.path
@@ -212,6 +213,7 @@ import Observation
             process.claudeStatus.flatMap(AgentStatus.init(claudeStatus:))
                 ?? AgentStatus(screen: view.visibleLines, lastOutput: view.lastOutput)
         }
+        if running != nil { hadAgent = true }
         let agentChanged = agent != running
         if agentChanged { agent = running }
         if agentKind != running?.agent { agentKind = running?.agent }
@@ -310,7 +312,9 @@ import Observation
         }
     }
 
-    private func refreshAgents() async {
+    @ObservationIgnored var onAgentsRefreshed: (() -> Void)?
+
+    func refreshAgents() async {
         guard !refreshingAgents else { return }
         refreshingAgents = true
         defer { refreshingAgents = false }
@@ -325,6 +329,18 @@ import Observation
         }.value
         guard !Task.isCancelled else { return }
         for session in entries.values { session.updateAgent(found[session.identity]) }
+        onAgentsRefreshed?()
+    }
+
+    func agentResumes() -> [UUID: AgentResume?] {
+        entries.reduce(into: [:]) { result, entry in
+            let session = entry.value
+            if let agent = session.agent {
+                if let resume = agent.resume { result.updateValue(resume, forKey: entry.key) }
+            } else if session.hasExited || session.hadAgent {
+                result.updateValue(nil, forKey: entry.key)
+            }
+        }
     }
 
     func conversationTitles() async -> [UUID: String] {
@@ -349,6 +365,7 @@ import Observation
     func isRunning(_ id: UUID) -> Bool { entries[id]?.hasExited == false }
     @discardableResult func start(_ context: TerminalContext, command: [String] = []) -> TerminalSession {
         if let session = entries[context.terminal.id] { return session }
+        let command = command.isEmpty ? context.terminal.resume?.command ?? [] : command
         let session = TerminalSession(context: context, command: command, environment: environment)
         entries[context.terminal.id] = session
         return session

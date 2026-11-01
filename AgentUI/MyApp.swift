@@ -26,7 +26,7 @@ import AppKit
         if store.sessions.runningCount > 0 {
             let alert = NSAlert()
             alert.messageText = "Quitter AgentUI ?"
-            alert.informativeText = "Les terminaux et leurs processus seront arrêtés. L’organisation de tes projets sera conservée."
+            alert.informativeText = "Les terminaux et leurs processus seront arrêtés. L’organisation de tes projets sera conservée et les sessions d’agents reprendront au prochain lancement."
             alert.addButton(withTitle: "Quitter")
             alert.addButton(withTitle: "Annuler")
             guard alert.runModal() == .alertFirstButtonReturn else { return .terminateCancel }
@@ -75,6 +75,7 @@ struct AgentUIApplication: App {
                     delegate.store = store
                     delegate.host = host
                     host.configure(store: store, settings: settings, installedAgents: installedAgents)
+                    store.resumeAgentSessions()
                     if delegate.closeCommand == nil { delegate.closeCommand = CloseTerminalCommand(store: store) }
                     if delegate.bridge == nil {
                         do { delegate.bridge = try AgentBridge(store: store) }
