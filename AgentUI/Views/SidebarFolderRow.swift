@@ -39,7 +39,9 @@ struct SidebarFolderRow: View {
                         .foregroundStyle(folder.appearance.color)
                 }
                 .fontWeight(.medium).lineLimit(1)
+
                 Spacer(minLength: Spacing.xs)
+
                 Text("\(group.total)")
                     .font(Typography.caption).monospacedDigit().foregroundStyle(Palette.textSecondary)
             }
