@@ -8,13 +8,20 @@ import Observation
     @ObservationIgnored private var anchorEnd = 0
     @ObservationIgnored private var latest = ""
 
-    func sent(_ text: String) {
-        guard source == .terminal else { return }
+    @discardableResult func sent(_ text: String) -> String? {
+        guard source == .terminal else { return nil }
         anchor = String(latest.suffix(2_048))
         anchorEnd = latest.utf8.count
-        messages.append(SessionMessage(kind: .input, text: text))
+        let input = SessionMessage(kind: .input, text: text)
+        messages.append(input)
         messages.append(SessionMessage(kind: .output, text: ""))
         messages.trimHistory(keepingAtLeast: 2)
+        return input.id
+    }
+
+    func withdraw(_ inputID: String) {
+        guard let index = messages.firstIndex(where: { $0.id == inputID }) else { return }
+        messages.removeSubrange(index...)
     }
 
     func update(screen: String) {

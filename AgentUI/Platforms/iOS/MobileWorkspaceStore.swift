@@ -71,6 +71,7 @@ import Observation
         let value = address.trimmingCharacters(in: .whitespacesAndNewlines)
         if host != value {
             workspace = Workspace()
+            installedAgents = []
             terminalAgents = [:]
             selection = nil
         }

@@ -157,11 +157,14 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         }
         guard !isShellInForeground else { throw WorkspaceError(message: "L’agent s’est arrêté : le message n’a pas été envoyé au shell.") }
         updateTranscript()
-        transcript.sent(message)
-        if data.last == 13, view.getTerminal().bracketedPasteMode {
-            try await submitAsSinglePaste(data.dropLast())
-        } else {
+        let sentID = transcript.sent(message)
+        guard data.last == 13, view.getTerminal().bracketedPasteMode else {
             view.send(source: view, data: Array(data)[...])
+            return
+        }
+        do { try await submitAsSinglePaste(data.dropLast()) } catch {
+            if let sentID { transcript.withdraw(sentID) }
+            throw error
         }
     }
 
@@ -207,6 +210,9 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
     func processTerminated(source: TerminalView, exitCode: Int32?) {
         hasExited = true
+        agent = nil
+        agentKind = nil
+        agentStatus = nil
         journalMonitor.attach(nil)
         self.exitCode = exitCode.flatMap { $0 & 0x7f == 0 ? ($0 >> 8) & 0xff : nil }
     }

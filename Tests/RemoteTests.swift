@@ -6,10 +6,10 @@ import Foundation
     }
 
     @MainActor static func main() throws {
-        for address in ["192.168.1.42", "10.0.0.1", "172.16.0.1", "172.31.255.254", "127.0.0.1", "::1", "fd00::1", " 192.168.0.1\n"] {
+        for address in ["192.168.1.42", "10.0.0.1", "172.16.0.1", "172.31.255.254", "127.0.0.1", "::1", "fd00::1", " 192.168.0.1\n", "::ffff:192.168.1.42"] {
             _ = try RemoteProtocol.host(address)
         }
-        for address in ["", "8.8.8.8", "172.32.0.1", "192.169.1.1", "https://192.168.1.1", "mac.local", "192.168.1.1:80", "2001:4860:4860::8888"] {
+        for address in ["", "8.8.8.8", "172.32.0.1", "192.169.1.1", "https://192.168.1.1", "mac.local", "192.168.1.1:80", "2001:4860:4860::8888", "::ffff:8.8.8.8"] {
             do {
                 _ = try RemoteProtocol.host(address)
                 throw RemoteError(message: "FAIL: accepted " + address)

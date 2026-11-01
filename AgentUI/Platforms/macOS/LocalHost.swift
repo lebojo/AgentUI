@@ -208,8 +208,6 @@ import Observation
         connections[id] = (connection, String(describing: host), false)
         connection.stateUpdateHandler = { [weak self] state in
             switch state {
-            case .ready:
-                Task { @MainActor [weak self] in self?.paired(id) }
             case .failed, .cancelled:
                 Task { @MainActor [weak self] in
                     self?.connections[id] = nil
@@ -233,6 +231,7 @@ import Observation
                     try await RemoteChannel.send(RemoteRejection(Self.incompatibleVersions), on: connection)
                     return
                 }
+                guard self.admitPaired(id) else { return }
                 if case .watch(let version, let terminal, let prefersChat) = request {
                     try await self.watch(connection, version: version, terminal: terminal, prefersChat: prefersChat)
                 } else {
@@ -240,19 +239,16 @@ import Observation
                     let reply: RemoteReply
                     do { reply = try await self.handle(request) }
                     catch { reply = RemoteReply(error: error.localizedDescription) }
-                    try await RemoteChannel.send(reply, on: connection)
+                    try await RemoteChannel.push(reply, on: connection)
                 }
             } catch {}
         }
     }
 
-    private func paired(_ id: UUID) {
-        guard let entry = connections[id] else { return }
-        guard connections.values.count(where: \.isPaired) < Self.maximumConnections else {
-            entry.connection.cancel()
-            return
-        }
+    private func admitPaired(_ id: UUID) -> Bool {
+        guard connections[id] != nil, connections.values.count(where: \.isPaired) < Self.maximumConnections else { return false }
         connections[id]?.isPaired = true
+        return true
     }
 
     private func readRequest(_ connection: NWConnection) async throws -> RemoteRequest {
@@ -292,7 +288,7 @@ import Observation
                         _ = try await handle(.input(id: terminalID, data: data, message: message))
                         failure = nil
                     } catch { failure = error.localizedDescription }
-                    try await RemoteChannel.send(RemoteEvent.inputResult(request: requestID, error: failure), on: connection)
+                    try await RemoteChannel.push(RemoteEvent.inputResult(request: requestID, error: failure), on: connection)
                 }
             } catch {}
         }
@@ -319,21 +315,21 @@ import Observation
             try await Task.sleep(for: .milliseconds(100))
             let workspace = Workspace(folders: store.folders, projects: store.projects, selection: nil, collapsed: [])
             if previousWorkspace != workspace {
-                try await RemoteChannel.send(RemoteEvent.workspace(workspace), on: connection)
+                try await RemoteChannel.push(RemoteEvent.workspace(workspace), on: connection)
                 previousWorkspace = workspace
             }
             let agents = installedAgents?.agents ?? []
             if previousAgents != agents {
-                try await RemoteChannel.send(RemoteEvent.installedAgents(agents), on: connection)
+                try await RemoteChannel.push(RemoteEvent.installedAgents(agents), on: connection)
                 previousAgents = agents
             }
             let terminalAgents = store.sessions.runningAgents
             if previousTerminalAgents != terminalAgents {
-                try await RemoteChannel.send(RemoteEvent.terminalAgents(terminalAgents), on: connection)
+                try await RemoteChannel.push(RemoteEvent.terminalAgents(terminalAgents), on: connection)
                 previousTerminalAgents = terminalAgents
             }
             if let terminal, store.context(for: terminal) == nil {
-                try await RemoteChannel.send(RemoteEvent.terminalClosed, on: connection)
+                try await RemoteChannel.push(RemoteEvent.terminalClosed, on: connection)
                 return
             }
             if let terminal, store.sessions.session(terminal) == nil { store.startSession(for: terminal) }
@@ -357,7 +353,7 @@ import Observation
                 let snapshot = session.snapshot(previousMessages: streamed.messages, chat: chat, screen: screen, previousScreen: streamed.screen)
                 let messages = session.transcript.messages
                 let source = session.transcript.source
-                try await RemoteChannel.send(RemoteEvent.terminal(snapshot), on: connection)
+                try await RemoteChannel.push(RemoteEvent.terminal(snapshot), on: connection)
                 streamed.screen = screen
                 streamed.hasExited = snapshot.hasExited
                 if chat { streamed.messages = messages; streamed.source = source }
@@ -371,10 +367,10 @@ import Observation
         let conversations = FileEvents.changes(in: ConversationIndex.watchedDirectories, latency: .seconds(1), every: .seconds(15))
         await withTaskGroup { group in
             group.addTask {
-                for await _ in repository.dropFirst() { try? await RemoteChannel.send(RemoteEvent.repositoryChanged, on: connection) }
+                for await _ in repository.dropFirst() { try? await RemoteChannel.push(RemoteEvent.repositoryChanged, on: connection) }
             }
             group.addTask {
-                for await _ in conversations.dropFirst() { try? await RemoteChannel.send(RemoteEvent.conversationsChanged, on: connection) }
+                for await _ in conversations.dropFirst() { try? await RemoteChannel.push(RemoteEvent.conversationsChanged, on: connection) }
             }
         }
     }

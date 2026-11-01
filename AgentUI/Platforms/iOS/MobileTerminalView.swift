@@ -28,8 +28,8 @@ import Observation
         if hasExited != snapshot.hasExited { hasExited = snapshot.hasExited }
         if exitCode != snapshot.exitCode { exitCode = snapshot.exitCode }
         if chatSource != snapshot.chatSource { chatSource = snapshot.chatSource }
-        guard snapshot.transcriptDropped <= messages.count,
-              snapshot.transcriptStart <= messages.count - snapshot.transcriptDropped else { return false }
+        guard (0...messages.count).contains(snapshot.transcriptDropped),
+              (0...(messages.count - snapshot.transcriptDropped)).contains(snapshot.transcriptStart) else { return false }
         let changesTranscript = snapshot.transcriptDropped > 0 || snapshot.transcriptStart < messages.count - snapshot.transcriptDropped
             || !snapshot.transcript.isEmpty || snapshot.transcriptAppend != nil
         if changesTranscript {

@@ -31,7 +31,7 @@ struct SessionTextAppend: Codable, Sendable {
     let text: String
 
     func applied(to previous: String) -> String? {
-        guard keeping <= previous.utf8.count else { return nil }
+        guard (0...previous.utf8.count).contains(keeping) else { return nil }
         return String(decoding: previous.utf8.prefix(keeping), as: UTF8.self) + text
     }
 }

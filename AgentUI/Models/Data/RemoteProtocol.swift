@@ -26,6 +26,10 @@ enum RemoteProtocol {
         }
         if let address = IPv6Address(value) {
             let b = Array(address.rawValue)
+            let mappedIPv4 = b[..<10].allSatisfy { $0 == 0 } && b[10] == 0xff && b[11] == 0xff
+            if mappedIPv4, (try? host(b[12...].map(String.init).joined(separator: "."))) != nil {
+                return .ipv6(address)
+            }
             if b[0] & 0xfe == 0xfc || (b[0] == 0xfe && b[1] & 0xc0 == 0x80)
                 || value == "::1" {
                 return .ipv6(address)

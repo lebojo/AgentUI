@@ -95,6 +95,12 @@ enum RemoteChannel {
         }
     }
 
+    static func push(_ value: some Encodable & Sendable, on connection: NWConnection) async throws {
+        try await withTimeout(.seconds(30), on: connection, failure: CancellationError()) {
+            try await send(value, on: connection)
+        }
+    }
+
     static func enqueue(_ value: some Encodable, on connection: NWConnection, failure: @escaping @Sendable (Error) -> Void) throws {
         connection.send(content: try frame(value), completion: .contentProcessed { error in
             if let error { failure(translated(error)) }
