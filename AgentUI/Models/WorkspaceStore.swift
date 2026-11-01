@@ -28,6 +28,8 @@ import Observation
     var errorMessage: String?
     var busyProjects: Set<UUID> = []
     private(set) var isImporting = false
+    var pendingImport: RepositoryImport?
+    @ObservationIgnored private var queuedImports: [RepositoryImport] = []
     let sessions = TerminalSessions()
     private let fileURL: URL
     private var canSave = true
@@ -173,69 +175,125 @@ import Observation
         }
     }
 
-    func addLocation(_ url: URL, folderID: UUID? = nil) async throws {
-        guard !isReadOnly, !isImporting else { return }
-        isImporting = true
-        defer { isImporting = false }
-        let discovery = try await RepositoryDiscovery.scan(in: url)
-        let repositories = discovery.repositories
-        if repositories.isEmpty, let warning = discovery.warning {
-            throw WorkspaceError(message: warning)
-        }
-        isImporting = false
-        if repositories.isEmpty || (repositories.count == 1 && repositories[0].path == WorkspacePath.canonical(url)) {
+    func addLocation(_ url: URL, folderID: UUID? = nil, review: Bool = true) async throws {
+        guard let plan = try await planImport(of: url, into: folderID) else { return }
+        if plan.repositoryPaths.isEmpty || plan.repositoryPaths == [WorkspacePath.canonical(url)] {
             _ = try addProject(url, folderID: folderID)
         } else {
-            await importFolder(url, discovery: discovery, into: folderID)
+            await submit(plan, review: review)
         }
     }
 
-    func importFolder(_ url: URL, discovery discovered: RepositoryDiscoveryResult? = nil, into targetFolderID: UUID? = nil) async {
-        guard !isReadOnly, !isImporting else { return }
+    func importFolder(_ url: URL, into folderID: UUID? = nil, review: Bool = true) async {
+        do {
+            guard let plan = try await planImport(of: url, into: folderID) else { return }
+            guard !plan.repositoryPaths.isEmpty else {
+                throw WorkspaceError(message: plan.warning ?? "Aucun dépôt Git trouvé dans ce dossier. Choisis le dossier qui contient tes dépôts, ou utilise Ajouter un projet pour un dossier sans Git.")
+            }
+            await submit(plan, review: review)
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func showNextImport() {
+        guard pendingImport == nil, !queuedImports.isEmpty else { return }
+        pendingImport = queuedImports.removeFirst()
+    }
+
+    func importRepositories(_ plan: RepositoryImport, keeping paths: Set<String>, flattened: Bool) async {
+        guard !isReadOnly, !isImporting, let tree = plan.tree.keeping(paths) else { return }
         isImporting = true
         defer { isImporting = false }
-        do {
-            let discovery: RepositoryDiscoveryResult
-            if let discovered { discovery = discovered }
-            else {
-                discovery = try await RepositoryDiscovery.scan(in: url)
-            }
-            let repositories = discovery.repositories
-            guard !repositories.isEmpty else {
-                throw WorkspaceError(message: discovery.warning ?? "Aucun dépôt Git trouvé dans ce dossier. Choisis le dossier qui contient tes dépôts, ou utilise Ajouter un projet pour un dossier sans Git.")
-            }
-            let sourcePath = WorkspacePath.canonical(url)
-            let folderID: UUID
-            if let targetFolderID, folders.contains(where: { $0.id == targetFolderID }) {
-                folderID = targetFolderID
-            } else if let folder = folders.first(where: { $0.sourcePath == sourcePath }) {
-                folderID = folder.id
-            } else {
-                let folder = ProjectFolder(name: url.lastPathComponent, sourcePath: sourcePath)
-                folderID = folder.id
-                folders.append(folder)
-            }
-            var addedIDs: [UUID] = []
-            for repository in repositories {
-                let path = WorkspacePath.canonical(repository)
-                if let index = projects.firstIndex(where: { $0.path == path }) {
-                    projects[index].folderID = folderID
-                } else {
-                    let project = Project(url: repository, folderID: folderID)
-                    projects.append(project)
-                    addedIDs.append(project.id)
-                }
-            }
-            revealFolder(folderID)
-            if selection == nil {
-                selection = projects.first(where: { $0.folderID == folderID })?.worktrees.first?.terminals.first?.id
-            }
-            save()
-            for id in addedIDs { await refreshWorktrees(id) }
-            if let warning = discovery.warning {
+        let filledFolders = Set(folders.map(\.id).filter { !isEmptyFolder($0) })
+        let rootID = importRootFolder(for: plan)
+        var addedIDs: [UUID] = []
+        if flattened {
+            for path in tree.repositoryPaths { placeRepository(path, in: rootID, added: &addedIDs) }
+        } else {
+            place(tree.children ?? [tree], in: rootID, added: &addedIDs)
+        }
+        removeEmptiedImportFolders(filledFolders)
+        revealFolder(rootID)
+        if selection == nil {
+            let imported = Set(tree.repositoryPaths)
+            selection = projects.first(where: { imported.contains($0.path) })?.worktrees.first?.terminals.first?.id
+        }
+        save()
+        for id in addedIDs { await refreshWorktrees(id) }
+    }
+
+    private func planImport(of url: URL, into folderID: UUID?) async throws -> RepositoryImport? {
+        guard !isReadOnly, !isImporting else { return nil }
+        isImporting = true
+        defer { isImporting = false }
+        let discovery = try await RepositoryDiscovery.scan(in: url)
+        if discovery.repositories.isEmpty, let warning = discovery.warning {
+            throw WorkspaceError(message: warning)
+        }
+        return RepositoryImport(source: url, discovery: discovery, target: folders.first { $0.id == folderID })
+    }
+
+    private func submit(_ plan: RepositoryImport, review: Bool) async {
+        guard review, plan.needsReview else {
+            await importRepositories(plan, keeping: Set(plan.repositoryPaths), flattened: false)
+            if let warning = plan.warning {
                 errorMessage = "Les dépôts accessibles ont été ajoutés.\n\n" + warning
             }
-        } catch { errorMessage = error.localizedDescription }
+            return
+        }
+        queuedImports.append(plan)
+        showNextImport()
+    }
+
+    private func importRootFolder(for plan: RepositoryImport) -> UUID {
+        if let target = plan.targetFolderID, folders.contains(where: { $0.id == target }) { return target }
+        if let folder = folders.first(where: { $0.sourcePath == plan.tree.path }) { return folder.id }
+        let folder = ProjectFolder(name: plan.destinationName, sourcePath: plan.tree.path)
+        folders.append(folder)
+        return folder.id
+    }
+
+    private func importedFolder(named name: String, path: String, parentID: UUID) -> UUID {
+        guard let index = folders.firstIndex(where: { $0.sourcePath == path }) else {
+            let folder = ProjectFolder(name: name, sourcePath: path, parentID: parentID)
+            folders.append(folder)
+            return folder.id
+        }
+        let id = folders[index].id
+        if canMoveFolder(id, to: parentID) { folders[index].parentID = parentID }
+        return id
+    }
+
+    private func isEmptyFolder(_ id: UUID) -> Bool {
+        !projects.contains { $0.folderID == id } && !folders.contains { $0.parentID == id }
+    }
+
+    private func removeEmptiedImportFolders(_ filledFolders: Set<UUID>) {
+        while let emptied = folders.first(where: { $0.sourcePath != nil && filledFolders.contains($0.id) && isEmptyFolder($0.id) }) {
+            folders.removeAll { $0.id == emptied.id }
+            collapsed.remove(emptied.id)
+        }
+    }
+
+    private func place(_ items: [RepositoryImportItem], in folderID: UUID, added: inout [UUID]) {
+        for item in items {
+            switch item {
+            case .repository(let path, _):
+                placeRepository(path, in: folderID, added: &added)
+            case .folder(let path, let name, let children):
+                let subfolderID = importedFolder(named: name, path: path, parentID: folderID)
+                place(children, in: subfolderID, added: &added)
+            }
+        }
+    }
+
+    private func placeRepository(_ path: String, in folderID: UUID, added: inout [UUID]) {
+        if let index = projects.firstIndex(where: { $0.path == path }) {
+            projects[index].folderID = folderID
+        } else {
+            let project = Project(url: URL(fileURLWithPath: path), folderID: folderID)
+            projects.append(project)
+            added.append(project.id)
+        }
     }
 
     func moveProject(_ id: UUID, to folderID: UUID?) {

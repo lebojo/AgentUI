@@ -337,6 +337,9 @@
 					WorkspaceSidebar.swift,
 					WorkspaceStore.swift,
 					WorkspaceWriter.swift,
+					RepositoryImport.swift,
+					RepositoryImportRow.swift,
+					RepositoryImportSheet.swift,
 				);
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "Mobile*.swift";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -450,6 +453,9 @@
 					WorkspaceSidebar.swift,
 					WorkspaceStore.swift,
 					WorkspaceWriter.swift,
+					RepositoryImport.swift,
+					RepositoryImportRow.swift,
+					RepositoryImportSheet.swift,
 				);
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "Mobile*.swift";
 				GENERATE_INFOPLIST_FILE = YES;

@@ -110,7 +110,7 @@ private struct SidebarFooter: View {
             Divider()
             HStack(spacing: Spacing.s) {
                 Image(systemName: "terminal")
-                Text(store.isImporting ? "Recherche des dépôts…" : "\(store.terminalCount) terminaux")
+                Text(store.isImporting ? "Import des dépôts…" : "\(store.terminalCount) terminaux")
                 Spacer()
                 if store.isImporting { ProgressView().controlSize(.mini) }
                 else { Text("\(store.sessions.runningCount) ouverts") }

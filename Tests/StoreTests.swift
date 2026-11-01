@@ -16,6 +16,12 @@ private final class ChangeFlag: @unchecked Sendable {
     var value: Bool { lock.lock(); defer { lock.unlock() }; return changed }
 }
 
+@MainActor private func planned(_ url: URL, in store: WorkspaceStore, into folderID: UUID) async throws -> RepositoryImport? {
+    await store.importFolder(url, into: folderID)
+    defer { store.pendingImport = nil }
+    return store.pendingImport
+}
+
 @main struct StoreTests {
     static func require(_ condition: @autoclosure () -> Bool, _ message: String) throws {
         if !condition() { throw WorkspaceError(message: "FAIL: " + message) }
@@ -190,5 +196,49 @@ private final class ChangeFlag: @unchecked Sendable {
         split.closeTerminal(resumed.terminal.id)
         try split.resume(conversation, projectID: splitProject.id, worktreeID: splitProject.worktrees[0].id)
         print("PASS a conversation is not resumed twice")
+
+        let company = root.appendingPathComponent("Company")
+        let mono = company.appendingPathComponent("Mono")
+        let packages = mono.appendingPathComponent("packages")
+        for repository in [company.appendingPathComponent("Site"), mono, packages.appendingPathComponent("Core"), packages.appendingPathComponent("UI")] {
+            try fm.createDirectory(at: repository, withIntermediateDirectories: true)
+            _ = try await GitService.run(["init", "-q", "-b", "main"], at: repository.path)
+        }
+        let nestedStore = WorkspaceStore(fileURL: root.appendingPathComponent("nested-import.json"))
+        await nestedStore.importFolder(company, review: false)
+        func importedFolder(_ name: String) -> ProjectFolder? { nestedStore.folders.first { $0.name == name } }
+        func folderName(of project: String) -> String? {
+            let folderID = nestedStore.projects.first { $0.name == project }?.folderID
+            return nestedStore.folders.first { $0.id == folderID }?.name
+        }
+        try require(nestedStore.projects.count == 4, "Every nested repository is imported")
+        try require(importedFolder("Mono")?.parentID == importedFolder("Company")?.id && importedFolder("packages")?.parentID == importedFolder("Mono")?.id,
+                    "Virtual folders mirror the directory hierarchy")
+        try require(folderName(of: "Site") == "Company" && folderName(of: "Mono") == "Mono" && folderName(of: "Core") == "packages" && folderName(of: "UI") == "packages",
+                    "Each repository lands in the folder matching its location")
+        let reimported = nestedStore.state
+        await nestedStore.importFolder(company, review: false)
+        try require(nestedStore.state == reimported, "Reimporting a nested hierarchy changes nothing")
+
+        let flatStore = WorkspaceStore(fileURL: root.appendingPathComponent("flat.json"))
+        await flatStore.importFolder(company)
+        guard let plan = flatStore.pendingImport else { throw WorkspaceError(message: "FAIL: Several repositories open the import review") }
+        let site = WorkspacePath.canonical(company.appendingPathComponent("Site"))
+        let ui = WorkspacePath.canonical(packages.appendingPathComponent("UI"))
+        await flatStore.importRepositories(plan, keeping: [site, ui], flattened: true)
+        try require(flatStore.folders.map(\.name) == ["Company"] && Set(flatStore.projects.map(\.name)) == ["Site", "UI"]
+                    && flatStore.projects.allSatisfy { $0.folderID == flatStore.folders[0].id },
+                    "A flat import puts only the selected repositories in a single folder")
+        try require(!flatStore.isImporting, "The import indicator is cleared once the import finishes")
+
+        let work = nestedStore.addFolder("Work")
+        guard let rootPlan = try await planned(company, in: nestedStore, into: work) else { throw WorkspaceError(message: "FAIL: reimport plan") }
+        await nestedStore.importRepositories(rootPlan, keeping: Set(rootPlan.repositoryPaths), flattened: false)
+        try require(importedFolder("Mono")?.parentID == work && importedFolder("Company") == nil,
+                    "Reimporting into another folder moves the existing hierarchy there and drops the emptied folder")
+        await nestedStore.importRepositories(rootPlan, keeping: Set(rootPlan.repositoryPaths), flattened: true)
+        try require(nestedStore.folders.map(\.name) == ["Work"] && nestedStore.projects.allSatisfy { $0.folderID == work },
+                    "A flat reimport removes the subfolders it emptied")
+        print("PASS nested repository import with hierarchy, selection, flat mode and reimport")
     }
 }

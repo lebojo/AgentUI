@@ -92,32 +92,37 @@ enum RepositoryDiscovery {
     @concurrent static func scan(in folder: URL) async throws -> RepositoryDiscoveryResult {
         let fm = FileManager.default
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isPackageKey, .isSymbolicLinkKey]
-        let excluded: Set<String> = ["node_modules", "Pods", "Carthage", "DerivedData", "venv"]
         let root = URL(fileURLWithPath: WorkspacePath.canonical(folder))
-        var pending = [root]
+        var pending: [(directory: URL, enclosing: String?)] = [(root, nil)]
         var visited: Set<String> = []
-        var found: [URL] = []
+        var found: Set<String> = []
         var skipped: Set<String> = []
-        while let directory = pending.popLast() {
+        while let (directory, enclosing) = pending.popLast() {
             try Task.checkCancellation()
             let canonical = WorkspacePath.canonical(directory)
             guard !visited.contains(canonical) else { continue }
-            if GitRepository.atRoot(directory) != nil {
-                visited.insert(canonical)
-                found.append(URL(fileURLWithPath: canonical))
-                continue
+            var gitStorage = enclosing
+            if let repository = GitRepository.atRoot(directory) {
+                let storage = WorkspacePath.canonical(repository.commonDirectory)
+                if let enclosing, belongs(storage, to: enclosing) {
+                    visited.insert(canonical)
+                    continue
+                }
+                found.insert(canonical)
+                gitStorage = storage
             }
             do {
                 let values = try directory.resourceValues(forKeys: keys)
                 if values.isSymbolicLink == true { continue }
                 visited.insert(canonical)
+                let excluded = gitStorage == nil ? excludedDirectories : excludedDirectories.union(buildDirectories)
                 let children = try fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: Array(keys), options: [.skipsHiddenFiles])
                 for child in children {
                     do {
                         let values = try child.resourceValues(forKeys: keys)
                         guard !excluded.contains(child.lastPathComponent), values.isPackage != true,
                               values.isDirectory == true || values.isSymbolicLink == true else { continue }
-                        pending.append(child)
+                        pending.append((child, gitStorage))
                     } catch { skipped.insert(child.path) }
                 }
             } catch {
@@ -126,8 +131,15 @@ enum RepositoryDiscovery {
             }
         }
         return RepositoryDiscoveryResult(
-            repositories: found.sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending },
+            repositories: found.sorted { $0.localizedStandardCompare($1) == .orderedAscending }.map { URL(fileURLWithPath: $0) },
             skippedDirectories: skipped.sorted())
+    }
+
+    private static let excludedDirectories: Set<String> = ["node_modules", "Pods", "Carthage", "DerivedData", "venv"]
+    private static let buildDirectories: Set<String> = ["target", "build", "dist", "vendor"]
+
+    private static func belongs(_ storage: String, to enclosing: String) -> Bool {
+        storage == enclosing || storage.hasPrefix(enclosing + "/")
     }
 }
 

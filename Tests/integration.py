@@ -80,12 +80,12 @@ try:
     subprocess.run(['/usr/bin/git','-C',str(nested),'init','-b','develop'],check=True,capture_output=True)
     request('debug.addLocation',path=str(repo.parent))
     imported = cli('list')['workspace']
-    assert len(imported['folders']) == 1 and imported['folders'][0]['name'] == 'Studio'
-    assert {p['path'] for p in imported['projects']} == {str(repo),str(nested)}
-    assert all(p['folderID'] == imported['folders'][0]['id'] for p in imported['projects'])
+    folders = {f['name']: f for f in imported['folders']}
+    assert set(folders) == {'Studio','Clients'} and folders['Clients']['parentID'] == folders['Studio']['id']
+    assert {p['path']: p['folderID'] for p in imported['projects']} == {str(repo): folders['Studio']['id'], str(nested): folders['Clients']['id']}
     request('debug.import',path=str(repo.parent))
     assert cli('list')['workspace'] == imported, 'Reimport must preserve folders, IDs and sessions'
-    print('PASS automatic container import, nested Git filtering and idempotent reimport', flush=True)
+    print('PASS automatic container import, folder hierarchy and idempotent reimport', flush=True)
 
     project = cli('project','add',str(repo))
     pid, wid = project['projectID'], project['worktreeID']

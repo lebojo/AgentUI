@@ -38,6 +38,11 @@ enum Dimension {
         static let width: CGFloat = 440
     }
 
+    enum ImportSheet {
+        static let width: CGFloat = 480
+        static let listHeight: CGFloat = 300
+    }
+
     enum PreviewSheet {
         static let minWidth: CGFloat = 560
         static let idealWidth: CGFloat = 780

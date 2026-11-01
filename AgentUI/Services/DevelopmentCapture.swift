@@ -50,9 +50,9 @@ import SwiftTerm
         case "debug.wake":
             if let id = request.projectID { store.wakeProject(id) }
         case "debug.import":
-            if let path = request.path { await store.importFolder(URL(fileURLWithPath: path)) }
+            if let path = request.path { await store.importFolder(URL(fileURLWithPath: path), review: false) }
         case "debug.addLocation":
-            if let path = request.path { try await store.addLocation(URL(fileURLWithPath: path)) }
+            if let path = request.path { try await store.addLocation(URL(fileURLWithPath: path), review: false) }
         case "debug.git":
             guard let id = request.name.flatMap(UUID.init(uuidString:)), let context = store.context(for: id) else {
                 throw WorkspaceError(message: "Unknown test terminal")

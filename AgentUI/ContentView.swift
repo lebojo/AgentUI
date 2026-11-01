@@ -52,6 +52,9 @@ struct ContentView: View {
         .sheet(item: $sheet) { item in
             WorkspaceEditor(store: store, sheet: item)
         }
+        .sheet(item: $store.pendingImport, onDismiss: store.showNextImport) { plan in
+            RepositoryImportSheet(store: store, plan: plan)
+        }
         .alert("Impossible de terminer l’opération", isPresented: $store.errorMessage.isPresent) {
             Button("OK") { store.errorMessage = nil }
         } message: { Text(store.errorMessage ?? "") }
