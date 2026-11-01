@@ -63,6 +63,11 @@ import Observation
         context(for: terminalID).flatMap { removingWorktrees.contains($0.worktree.id) ? nil : $0 }
     }
 
+    func startSession(for terminalID: UUID) {
+        guard let context = startableContext(for: terminalID) else { return }
+        sessions.start(context)
+    }
+
     subscript(expanded id: UUID) -> Bool {
         get { isExpanded(id) }
         set { setExpanded(id, newValue) }
@@ -466,8 +471,8 @@ import Observation
             throw error
         }
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
-        let reopened = projects[index].worktrees.first { $0.id == worktreeID }?.terminals ?? []
-        for terminal in reopened { sessions.close(terminal.id) }
+        let remaining = projects[index].worktrees.first { $0.id == worktreeID }?.terminals ?? []
+        for terminal in remaining { sessions.close(terminal.id) }
         projects[index].worktrees.removeAll { $0.id == worktreeID }
         if selectedContext == nil {
             selection = projects[index].worktrees.flatMap(\.terminals).first?.id

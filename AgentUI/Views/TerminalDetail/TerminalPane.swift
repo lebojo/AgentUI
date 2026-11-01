@@ -31,17 +31,15 @@ struct TerminalPane: View {
                 .font(Typography.s).padding(.horizontal, Spacing.l).frame(height: Dimension.Detail.paneTitleHeight)
                 .background(isFocused ? Palette.accent.opacity(0.12) : Color.clear)
                 .contentShape(Rectangle())
-                .onTapGesture { store.selection = context.terminal.id }
+                .onTapGesture { select() }
                 Divider()
             }
             if let session {
                 if displayMode == .chat, session.agent != nil {
                     LocalSessionChat(session: session)
-                        .simultaneousGesture(TapGesture().onEnded { store.selection = context.terminal.id })
+                        .simultaneousGesture(TapGesture().onEnded { select() })
                 } else {
-                    NativeTerminalView(session: session, appearance: settings.terminal, isFocused: isFocused) {
-                        if store.selection != context.terminal.id { store.selection = context.terminal.id }
-                    }
+                    NativeTerminalView(session: session, appearance: settings.terminal, isFocused: isFocused) { select() }
                     .id(ObjectIdentifier(session))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     if displayMode == .chat, !session.hasExited, !installedAgents.agents.isEmpty {
@@ -55,7 +53,7 @@ struct TerminalPane: View {
                         Spacer()
                         Button("Rouvrir le terminal") {
                             store.sessions.close(context.terminal.id)
-                            store.sessions.start(context)
+                            store.startSession(for: context.terminal.id)
                         }
                     }
                     .font(Typography.body).padding(Spacing.l).background(Palette.bar)
@@ -64,11 +62,15 @@ struct TerminalPane: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: context.terminal.id) { store.sessions.start(context) }
+        .task(id: context.terminal.id) { store.startSession(for: context.terminal.id) }
+    }
+
+    private func select() {
+        if store.selection != context.terminal.id { store.selection = context.terminal.id }
     }
 
     private func launch(_ agent: ConversationAgent, in session: TerminalSession) {
-        store.selection = context.terminal.id
+        select()
         Task {
             do { try await session.launch(agent, skippingPermissions: settings.agentLaunch.skipsPermissions) }
             catch { store.errorMessage = error.localizedDescription }

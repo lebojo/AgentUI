@@ -134,7 +134,7 @@ import Observation
                         guard selection == selectedID else { continue }
                         if session?.identity != snapshot.identity || session?.isChat != snapshot.isChat {
                             session = MobileTerminalSession(identity: snapshot.identity, isChat: snapshot.isChat) { [weak self] data in
-                                guard let self, let selectedID else { return }
+                                guard let self, let selectedID, self.isConnected else { return }
                                 self.enqueueInput(data, terminal: selectedID, message: nil) { error in
                                     if let error, self.error == nil { self.error = error.localizedDescription }
                                 }

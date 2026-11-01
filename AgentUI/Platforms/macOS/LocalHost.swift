@@ -3,6 +3,16 @@ import Network
 import Observation
 
 @MainActor @Observable final class LocalHost {
+    private struct StreamedSession {
+        var identity: UUID?
+        var chat: Bool?
+        var screen: TerminalScreen?
+        var messages: [SessionMessage] = []
+        var source: SessionChatSource?
+        var revision = -1
+        var hasExited: Bool?
+    }
+
     var enabled = UserDefaults.standard.bool(forKey: "localHost.enabled") {
         didSet {
             UserDefaults.standard.set(enabled, forKey: "localHost.enabled")
@@ -67,7 +77,7 @@ import Observation
         guard let key = try? await PairingKey.derive(from: code) else {
             let message = "Le code d’appairage enregistré est illisible. Génère un nouveau code pour appairer à nouveau tes appareils."
             pairingStorageError = message
-            throw RemoteError(message: message)
+            throw RemoteError(message: message, isPermanent: true)
         }
         if let pairingKey { return pairingKey }
         pairingCode = code
@@ -112,7 +122,7 @@ import Observation
                 try listen(with: key)
             } catch {
                 guard !Task.isCancelled else { return }
-                guard pairingStorageError == nil else { status = error.localizedDescription; return }
+                guard (error as? RemoteError)?.isPermanent != true else { status = error.localizedDescription; return }
                 status = "\(error.localizedDescription) Nouvelle tentative dans 5 secondes…"
                 retryListener()
             }
@@ -227,17 +237,11 @@ import Observation
         defer { agentWatch?.cancel() }
         let notifications = Task { await notifyInspectorChanges(on: connection, terminal: terminal) }
         defer { notifications.cancel() }
-        var sessionIdentity: UUID?
-        var streamsChat: Bool?
         var previousAgents: [ConversationAgent]?
-        var previousScreen: TerminalScreen?
         var previousWorkspace: Workspace?
+        var streamed = StreamedSession()
         var watchedChat: TerminalSession?
-        var previousSource: SessionChatSource?
         defer { watchedChat?.releaseChat() }
-        var previousMessages: [SessionMessage] = []
-        var previousRevision = -1
-        var previousExit: Bool?
         let (changes, continuation) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
         let inputTask = Task {
             defer { continuation.finish() }
@@ -286,39 +290,31 @@ import Observation
                 try await RemoteChannel.send(RemoteEvent.terminalClosed, on: connection)
                 return
             }
-            if let terminal, store.sessions.session(terminal) == nil, let context = store.startableContext(for: terminal) {
-                store.sessions.start(context)
-            }
+            if let terminal, store.sessions.session(terminal) == nil { store.startSession(for: terminal) }
             let session = terminal.flatMap { store.sessions.session($0) }
             let chat = prefersChat && session?.agent != nil
-            if sessionIdentity != session?.identity || streamsChat != chat {
+            if streamed.identity != session?.identity || streamed.chat != chat {
                 watchedChat?.releaseChat()
                 watchedChat = chat ? session : nil
                 watchedChat?.acquireChat()
-                streamsChat = chat
-                previousSource = nil
-                sessionIdentity = session?.identity
-                previousRevision = -1
-                previousExit = nil
-                previousMessages = []
-                previousScreen = nil
+                streamed = StreamedSession(identity: session?.identity, chat: chat)
                 continuation.yield(())
             }
             guard let session else { continue }
-            let exitChanged = previousExit != session.hasExited
+            let exitChanged = streamed.hasExited != session.hasExited
             let changed = chat
-                ? exitChanged || previousMessages != session.transcript.messages || previousSource != session.transcript.source
-                : exitChanged || previousRevision != session.outputRevision
-            previousRevision = session.outputRevision
+                ? exitChanged || streamed.messages != session.transcript.messages || streamed.source != session.transcript.source
+                : exitChanged || streamed.revision != session.outputRevision
+            streamed.revision = session.outputRevision
             if changed {
                 let screen = chat ? nil : session.screen()
-                let snapshot = session.snapshot(previousMessages: previousMessages, chat: chat, screen: screen, previousScreen: previousScreen)
+                let snapshot = session.snapshot(previousMessages: streamed.messages, chat: chat, screen: screen, previousScreen: streamed.screen)
                 let messages = session.transcript.messages
                 let source = session.transcript.source
                 try await RemoteChannel.send(RemoteEvent.terminal(snapshot), on: connection)
-                previousScreen = screen
-                previousExit = snapshot.hasExited
-                if chat { previousMessages = messages; previousSource = source }
+                streamed.screen = screen
+                streamed.hasExited = snapshot.hasExited
+                if chat { streamed.messages = messages; streamed.source = source }
             }
         }
     }

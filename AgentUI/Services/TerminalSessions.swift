@@ -133,7 +133,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
         isLaunchingAgent = true
         defer { isLaunchingAgent = false }
         let command = agent.launchCommand(skippingPermissions: skippingPermissions).joined(separator: " ")
-        try await send(Data((command + "\r").utf8))
+        try await send(Data(("\u{15}" + command + "\r").utf8))
         try await waitForForegroundCommand()
     }
 
