@@ -5,8 +5,8 @@ enum DiffLayout: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .unified: "Unifié"
-        case .split: "Côte à côte"
+        case .unified: String(localized: "Unified")
+        case .split: String(localized: "Side by Side")
         }
     }
     var symbol: String {
@@ -37,9 +37,9 @@ struct GitDiffSection: Identifiable, Sendable {
         case staged, unstaged, untracked
         var title: String {
             switch self {
-            case .staged: "Modifications indexées"
-            case .unstaged: "Modifications non indexées"
-            case .untracked: "Nouveau fichier non suivi"
+            case .staged: String(localized: "Staged Changes")
+            case .unstaged: String(localized: "Unstaged Changes")
+            case .untracked: String(localized: "New Untracked File")
             }
         }
     }
@@ -56,7 +56,7 @@ struct GitDiffSection: Identifiable, Sendable {
     init(kind: Kind, patch: String, isComplete: Bool = true) {
         var lines = GitDiffLine.revealingMixedLineEndings(GitDiffLine.parse(patch))
         if !isComplete {
-            lines.append(GitDiffLine(id: lines.count, kind: .meta, text: "Aperçu limité à 128 Ko", oldNumber: nil, newNumber: nil))
+            lines.append(GitDiffLine(id: lines.count, kind: .meta, text: String(localized: "Preview limited to 128 KB"), oldNumber: nil, newNumber: nil))
         }
         self.kind = kind
         self.patch = patch

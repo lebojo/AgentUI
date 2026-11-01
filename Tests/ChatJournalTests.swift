@@ -188,7 +188,7 @@ import Foundation
         _ = await lateReader.read(late)
         try append(try record("user", "early-result", [["type": "tool_result", "tool_use_id": "early-call", "content": "done"]], meta: true), to: late)
         let afterLate = await lateReader.read(late)
-        try require(afterLate.last?.text == "Filler 249" && !afterLate.contains { $0.title == "Résultat de l’outil" },
+        try require(afterLate.last?.text == "Filler 249" && !afterLate.contains { $0.title == "Tool Result" },
                     "A result for a tool call trimmed from the history is not appended out of context")
         print("PASS incremental reads, partial UTF-8 records, replacement and bounded initial history")
 

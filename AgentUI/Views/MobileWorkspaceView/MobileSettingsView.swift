@@ -16,34 +16,34 @@ struct MobileSettingsView: View {
             Form {
                 SessionDisplaySettingsSection(mode: $mode)
                 Section {
-                    TextField("IP du Mac, p. ex. 192.168.1.42", text: $address)
+                    TextField("Mac IP address, e.g. 192.168.1.42", text: $address)
                         .keyboardType(.numbersAndPunctuation)
                         .textContentType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .accessibilityLabel("Adresse IP du Mac")
-                    TextField("Code d’appairage, p. ex. ABCD-EFGH-JKLM", text: $pairingCode)
+                        .accessibilityLabel("Mac IP Address")
+                    TextField("Pairing code, e.g. ABCD-EFGH-JKLM", text: $pairingCode)
                         .font(Typography.body.monospaced())
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
-                        .accessibilityLabel("Code d’appairage")
+                        .accessibilityLabel("Pairing Code")
                     if store.status == .connecting {
-                        HStack { ProgressView(); Text("Connexion au Mac…") }
+                        HStack { ProgressView(); Text("Connecting to the Mac…") }
                     } else { Text(store.statusText).foregroundStyle(Palette.textSecondary) }
                     if let error { Text(error).foregroundStyle(Palette.danger) }
-                    Button(store.isConnected ? "Reconnecter" : "Se connecter") {
+                    Button(store.isConnected ? "Reconnect" : "Connect") {
                         do { try store.connect(to: address, pairingCode: pairingCode); error = nil }
                         catch { self.error = error.localizedDescription }
                     }.disabled(address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pairingCode.isEmpty)
                     if store.wantsConnection {
-                        Button("Se déconnecter", role: .destructive) { store.disconnect() }
+                        Button("Disconnect", role: .destructive) { store.disconnect() }
                     }
-                } header: { Text("Mac hôte") } footer: {
-                    Text("Sur le Mac, active Réglages → Accès local puis recopie son IP et son code d’appairage. Les deux appareils doivent être sur le même réseau. La session continue sur le Mac lorsque tu quittes l’app mobile.")
+                } header: { Text("Host Mac") } footer: {
+                    Text("On the Mac, turn on Settings → Local Access, then copy its IP address and pairing code. Both devices must be on the same network. The session continues on the Mac when you leave the mobile app.")
                 }
             }
-            .navigationTitle("Réglages")
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Terminé") { dismiss() } } }
+            .navigationTitle("Settings")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .onAppear {
                 address = store.host
                 pairingCode = store.pairingCode

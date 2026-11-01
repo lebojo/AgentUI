@@ -18,16 +18,16 @@ enum Removal: Hashable, Sendable {
     }
     var actionTitle: String {
         switch self {
-        case .project: "Retirer le projet"
-        case .terminal: "Fermer le terminal"
-        case .worktree: "Supprimer le worktree"
+        case .project: String(localized: "Remove Project")
+        case .terminal: String(localized: "Close Terminal")
+        case .worktree: String(localized: "Delete Worktree")
         }
     }
     var shortTitle: String {
         switch self {
-        case .project: "Retirer"
-        case .terminal: "Fermer"
-        case .worktree: "Supprimer"
+        case .project: String(localized: "Remove")
+        case .terminal: String(localized: "Close")
+        case .worktree: String(localized: "Delete")
         }
     }
     var systemImage: String {
@@ -39,24 +39,24 @@ enum Removal: Hashable, Sendable {
     }
     var title: String {
         switch self {
-        case .project: "Retirer ce projet de la barre latérale ?"
-        case .terminal: "Fermer ce terminal ?"
-        case .worktree(_, _, let name): "Supprimer définitivement le worktree « \(name) » ?"
+        case .project: String(localized: "Remove this project from the sidebar?")
+        case .terminal: String(localized: "Close this terminal?")
+        case .worktree(_, _, let name): String(localized: "Permanently delete the worktree “\(name)”?")
         }
     }
     var confirmation: String {
         switch self {
-        case .project: "Retirer"
-        case .terminal: "Fermer"
-        case .worktree: "Supprimer pour toujours"
+        case .project: String(localized: "Remove")
+        case .terminal: String(localized: "Close")
+        case .worktree: String(localized: "Delete Forever")
         }
     }
     var message: String {
         switch self {
         case .project, .terminal:
-            "Les processus des terminaux concernés seront arrêtés. Les fichiers et les worktrees sur disque seront conservés."
+            String(localized: "The processes of the affected terminals will be stopped. Files and worktrees on disk will be kept.")
         case .worktree:
-            "Ses terminaux seront fermés et son dossier sera effacé du disque, y compris les modifications non commitées. Cette action est irréversible. La branche et ses commits restent dans le dépôt."
+            String(localized: "Its terminals will be closed and its folder will be erased from disk, including uncommitted changes. This can’t be undone. The branch and its commits stay in the repository.")
         }
     }
 }

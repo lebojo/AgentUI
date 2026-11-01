@@ -5,12 +5,12 @@ struct TerminalPaletteEditor: View {
 
     var body: some View {
         Group {
-            ColorPicker("Fond", selection: color(\.background), supportsOpacity: false)
-            ColorPicker("Texte", selection: color(\.foreground), supportsOpacity: false)
-            ColorPicker("Curseur", selection: color(\.cursor), supportsOpacity: false)
-            ColorPicker("Sélection", selection: color(\.selection), supportsOpacity: false)
-            LabeledContent("Couleurs ANSI") { ansiRow(0..<8) }
-            LabeledContent("Couleurs ANSI vives") { ansiRow(8..<16) }
+            ColorPicker("Background", selection: color(\.background), supportsOpacity: false)
+            ColorPicker("Text", selection: color(\.foreground), supportsOpacity: false)
+            ColorPicker("Cursor", selection: color(\.cursor), supportsOpacity: false)
+            ColorPicker("Selection", selection: color(\.selection), supportsOpacity: false)
+            LabeledContent("ANSI Colors") { ansiRow(0..<8) }
+            LabeledContent("Bright ANSI Colors") { ansiRow(8..<16) }
         }
         .disabled(!appearance.isEditable)
     }
@@ -18,7 +18,7 @@ struct TerminalPaletteEditor: View {
     private func ansiRow(_ indices: Range<Int>) -> some View {
         HStack(spacing: Spacing.xs) {
             ForEach(indices, id: \.self) { index in
-                ColorPicker("Couleur ANSI \(index)", selection: color(\.ansi[index]), supportsOpacity: false)
+                ColorPicker("ANSI Color \(index)", selection: color(\.ansi[index]), supportsOpacity: false)
                     .labelsHidden()
             }
         }

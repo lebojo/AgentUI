@@ -13,7 +13,7 @@ import AppKit
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         let bin = directory.appendingPathComponent("bin")
         try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
-        try FileManager.default.createSymbolicLink(at: bin.appendingPathComponent("agentui"), withDestinationURL: Bundle.main.executableURL!)
+        try Self.installLauncher(at: bin.appendingPathComponent("agentui"))
         store.sessions.environment = [
             "AGENTUI_INSTANCE": directory.path,
             "AGENTUI_CLI": bin.appendingPathComponent("agentui").path,
@@ -23,7 +23,7 @@ import AppKit
             watcher = try FileSystemWatcher(directory, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.drain() }
             }
-        } catch { throw WorkspaceError(message: "Impossible d’initialiser la commande agentui.") }
+        } catch { throw WorkspaceError(message: String(localized: "Couldn’t set up the agentui command.")) }
         #if DEBUG
         if ProcessInfo.processInfo.environment["AGENTUI_STATE_DIRECTORY"] != nil {
             let stateDirectory = WorkspaceDisk.applicationDirectory
@@ -53,7 +53,7 @@ import AppKit
         let response: BridgeResponse
         do {
             let request = try await BridgeMailbox.request(at: file)
-            guard request.id == id else { throw WorkspaceError(message: "Identifiant de requête invalide.") }
+            guard request.id == id else { throw WorkspaceError(message: String(localized: "Invalid request ID.")) }
             var result = try await execute(request)
             if request.action != "list" && !request.action.hasPrefix("debug.") {
                 do { try await store.flushPersistence() }
@@ -63,7 +63,7 @@ import AppKit
         } catch { response = BridgeResponse(ok: false, message: error.localizedDescription) }
         do {
             try await BridgeMailbox.write(response, to: directory.appendingPathComponent("\(id.uuidString).response"))
-        } catch { store.errorMessage = "Impossible de répondre à agentui : \(error.localizedDescription)" }
+        } catch { store.errorMessage = String(localized: "Couldn’t reply to agentui: \(error.localizedDescription)") }
     }
 
     private func execute(_ request: BridgeRequest) async throws -> BridgeResponse {
@@ -73,7 +73,7 @@ import AppKit
         }
         #endif
         if request.action == "list" { return BridgeResponse(ok: true, workspace: store.state) }
-        guard !store.isReadOnly else { throw WorkspaceError(message: "L’organisation enregistrée est illisible. Répare-la puis utilise Réessayer dans l’application avant de créer des terminaux.") }
+        guard !store.isReadOnly else { throw WorkspaceError(message: String(localized: "The saved organization is unreadable. Fix it, then use Retry in the app before creating terminals.")) }
         if request.action == "project.add", let path = request.path {
             let project = try store.addProject(URL(fileURLWithPath: path))
             return BridgeResponse(ok: true, projectID: project.id, worktreeID: project.worktrees[0].id, path: project.path)
@@ -81,7 +81,7 @@ import AppKit
         if request.action == "worktree.delete" { return try await deleteWorktree(request) }
         guard let projectID = request.projectID,
               let project = store.projects.first(where: { $0.id == projectID }) else {
-            throw WorkspaceError(message: "Projet introuvable. Utilise --project UUID ou exécute la commande dans un terminal AgentUI.")
+            throw WorkspaceError(message: String(localized: "Project not found. Use --project UUID or run the command in an AgentUI terminal."))
         }
         let context: TerminalContext
         switch request.action {
@@ -90,11 +90,11 @@ import AppKit
             context = try store.addTerminal(projectID: projectID, worktreeID: worktreeID, command: request.command, select: false)
             if let name = request.name { store.rename(context.terminal.id, to: name) }
         case "worktree.create":
-            guard let branch = request.branch else { throw WorkspaceError(message: "Le nom de branche est requis : --branch feature/ma-tache.") }
+            guard let branch = request.branch else { throw WorkspaceError(message: String(localized: "A branch name is required: --branch feature/my-task.")) }
             context = try await store.createWorktree(projectID: projectID, branch: branch, command: request.command, select: false)
             if let name = request.name { store.rename(context.terminal.id, to: name) }
         default:
-            throw WorkspaceError(message: "Commande inconnue : \(request.action)")
+            throw WorkspaceError(message: String(localized: "Unknown command: \(request.action)"))
         }
         return BridgeResponse(ok: true, projectID: context.project.id, worktreeID: context.worktree.id,
                               terminalID: context.terminal.id, path: context.worktree.path)
@@ -104,15 +104,21 @@ import AppKit
         guard let worktreeID = request.worktreeID,
               let project = store.projects.first(where: { $0.worktrees.contains { $0.id == worktreeID } }),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }) else {
-            throw WorkspaceError(message: "Worktree introuvable. Récupère son UUID avec agentui list.")
+            throw WorkspaceError(message: String(localized: "Worktree not found. Get its UUID with agentui list."))
         }
         if let projectID = request.projectID, projectID != project.id {
-            throw WorkspaceError(message: "Ce worktree n’appartient pas au projet indiqué.")
+            throw WorkspaceError(message: String(localized: "This worktree doesn’t belong to the specified project."))
         }
         if request.force != true, try await GitService.hasLocalChanges(at: worktree.path) {
-            throw WorkspaceError(message: "Le worktree « \(worktree.name) » contient des modifications non commitées ou des fichiers non suivis. Relance avec --force pour les effacer.")
+            throw WorkspaceError(message: String(localized: "The worktree “\(worktree.displayName)” has uncommitted changes or untracked files. Run again with --force to erase them."))
         }
         try await store.deleteWorktree(projectID: project.id, worktreeID: worktreeID)
         return BridgeResponse(ok: true, projectID: project.id, worktreeID: worktreeID, path: worktree.path)
+    }
+
+    private static func installLauncher(at url: URL) throws {
+        let executable = Bundle.main.executableURL!.path.replacingOccurrences(of: "'", with: "'\\''")
+        try "#!/bin/sh\nexec '\(executable)' --cli \"$@\"\n".write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
     }
 }

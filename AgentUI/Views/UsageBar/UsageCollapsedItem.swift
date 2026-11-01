@@ -23,6 +23,6 @@ struct UsageCollapsedItem: View {
         }
         .font(Typography.s.weight(.medium))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(window.map { "\(provider.title), \($0.kind.title) : \($0.percentText) utilisés" } ?? "\(provider.title), usage indisponible")
+        .accessibilityLabel(window.map { "\(provider.title), " + String(localized: "\($0.kind.title): \($0.percentText) used") } ?? "\(provider.title), " + String(localized: "usage unavailable"))
     }
 }

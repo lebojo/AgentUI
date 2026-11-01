@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct InspectorNotice: View {
-    let title: String
+    let title: LocalizedStringKey
     let message: String
     var symbol = "exclamationmark.circle"
 

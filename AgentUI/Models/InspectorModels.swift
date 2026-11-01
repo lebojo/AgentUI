@@ -5,8 +5,8 @@ enum InspectorTab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .files: "Fichiers"
-        case .agents: "Agents"
+        case .files: String(localized: "Files")
+        case .agents: String(localized: "Agents")
         case .git: "Git"
         case .checks: "Checks"
         }
@@ -43,12 +43,12 @@ struct GitChange: Codable, Identifiable, Equatable, Sendable {
     var isUntracked: Bool { indexStatus == "?" && worktreeStatus == "?" }
     var status: String { isUntracked ? "?" : [indexStatus, worktreeStatus].filter { $0 != " " }.joined() }
     var description: String {
-        if isUntracked { return "Non suivi" }
-        if status.contains("U") || ["AA", "DD"].contains(status) { return "Conflit" }
-        if status.contains("R") { return "Renommé" }
-        if status.contains("D") { return "Supprimé" }
-        if status.contains("A") { return "Ajouté" }
-        return "Modifié"
+        if isUntracked { return String(localized: "Untracked") }
+        if status.contains("U") || ["AA", "DD"].contains(status) { return String(localized: "Conflict") }
+        if status.contains("R") { return String(localized: "Renamed") }
+        if status.contains("D") { return String(localized: "Deleted") }
+        if status.contains("A") { return String(localized: "Added") }
+        return String(localized: "Modified")
     }
 
     static func parsePorcelain(_ data: Data) -> [GitChange] {
@@ -125,8 +125,8 @@ enum GitHosting: String, Codable, Sendable {
 
     var noRunsMessage: String {
         switch self {
-        case .github: "Aucune exécution GitHub Actions pour ce commit."
-        case .gitlab: "Aucun pipeline GitLab pour ce commit."
+        case .github: String(localized: "No GitHub Actions runs for this commit.")
+        case .gitlab: String(localized: "No GitLab pipelines for this commit.")
         }
     }
 

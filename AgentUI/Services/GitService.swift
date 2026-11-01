@@ -9,12 +9,12 @@ enum GitService {
 
     @concurrent static func createWorktree(project: Project, branch: String, root: URL = WorkspaceDisk.worktreesDirectory, timeout: TimeInterval = 90) async throws -> Worktree {
         guard !branch.isEmpty, !branch.hasPrefix("-") else {
-            throw WorkspaceError(message: "Indique un nom de branche, par exemple feature/interface.")
+            throw WorkspaceError(message: String(localized: "Enter a branch name, for example feature/interface."))
         }
         _ = try await run(["check-ref-format", "--branch", branch], at: project.path, timeout: 10)
         let source = try await branchSource(branch, at: project.path)
         if source == .checkedOut {
-            throw WorkspaceError(message: "La branche « \(branch) » est déjà utilisée par un autre worktree ou par le dossier du projet.")
+            throw WorkspaceError(message: String(localized: "The branch “\(branch)” is already used by another worktree or by the project folder."))
         }
         if source == .new { _ = try await run(["rev-parse", "--verify", "HEAD"], at: project.path, timeout: 10) }
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -23,7 +23,7 @@ enum GitService {
             let arguments = source == .new ? ["worktree", "add", "-b", branch, destination.path, "HEAD"] : ["worktree", "add", destination.path, branch]
             _ = try await run(arguments, at: project.path, timeout: timeout)
         } catch {
-            let reason = error is CancellationError ? "Création annulée." : error.localizedDescription
+            let reason = error is CancellationError ? String(localized: "Creation cancelled.") : error.localizedDescription
             throw WorktreeCreationError(path: WorkspacePath.canonical(destination), branch: branch, reason: reason)
         }
         return Worktree(name: branch, path: WorkspacePath.canonical(destination), terminals: [TerminalRecord(name: "Terminal")])
@@ -31,7 +31,7 @@ enum GitService {
 
     @concurrent static func removeWorktree(project: Project, path: String, timeout: TimeInterval = 90) async throws {
         guard WorkspacePath.canonical(URL(fileURLWithPath: path)) != project.path else {
-            throw WorkspaceError(message: "Le dossier principal du projet ne peut pas être supprimé.")
+            throw WorkspaceError(message: String(localized: "The project’s main folder can’t be deleted."))
         }
         if FileManager.default.fileExists(atPath: path) {
             _ = try await run(["worktree", "remove", "--force", path], at: project.path, timeout: timeout)
@@ -96,6 +96,6 @@ struct WorktreeCreationError: LocalizedError {
     let branch: String
     let reason: String
     var errorDescription: String? {
-        "\(reason) La création peut être partielle. Les fichiers existants sont conservés. Vérifie la branche « \(branch) » et le dossier \(path) avant de réessayer."
+        String(localized: "\(reason) Creation may be partial. Existing files are kept. Check the branch “\(branch)” and the folder \(path) before trying again.")
     }
 }

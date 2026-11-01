@@ -16,7 +16,7 @@ struct MobileWorktreeRow: View {
                     .selectionDisabled(false)
             }
         } label: {
-            Label(worktree.name, systemImage: "arrow.triangle.branch").foregroundStyle(Palette.textSecondary)
+            Label(worktree.displayName, systemImage: "arrow.triangle.branch").foregroundStyle(Palette.textSecondary)
         }
         .selectionDisabled()
     }

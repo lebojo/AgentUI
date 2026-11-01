@@ -9,10 +9,10 @@ struct SidebarFooter: View {
             Divider()
             HStack(spacing: Spacing.s) {
                 Image(systemName: "terminal")
-                Text(store.isImporting ? "Import des dépôts…" : "\(store.terminalCount) terminaux")
+                Text(store.isImporting ? "Importing repositories…" : "\(store.terminalCount) terminals")
                 Spacer()
                 if store.isImporting { ProgressView().controlSize(.mini) }
-                else { Text("\(store.sessions.runningCount) ouverts") }
+                else { Text("\(store.sessions.runningCount) open") }
             }
             .font(Typography.s).foregroundStyle(Palette.textSecondary)
             .padding(.horizontal, Spacing.l).padding(.vertical, Spacing.l)

@@ -43,7 +43,7 @@ struct ChatMessageLog: Sendable {
             if hasOutput { messages[index].text = Self.bounded(output) }
             messages[index].toolState = state
         } else {
-            upsert(SessionMessage(id: id, kind: .tool, text: Self.bounded(output), title: "Résultat de l’outil", toolState: state))
+            upsert(SessionMessage(id: id, kind: .tool, text: Self.bounded(output), title: String(localized: "Tool Result"), toolState: state))
         }
     }
 
@@ -53,7 +53,7 @@ struct ChatMessageLog: Sendable {
         while let marker = remaining.range(of: "\"\(key)\":\"") {
             let value = remaining[marker.upperBound...]
             guard let end = value.firstIndex(of: "\"") else { break }
-            finishTool(String(value[..<end]), output: "Résultat trop volumineux pour être affiché.", state: .completed)
+            finishTool(String(value[..<end]), output: String(localized: "Result too large to display."), state: .completed)
             remaining = value[end...]
         }
     }
@@ -69,7 +69,7 @@ struct ChatMessageLog: Sendable {
 
     static func bounded(_ text: String) -> String {
         guard text.utf8.count > 65_536 else { return text }
-        return String(decoding: text.utf8.prefix(65_500), as: UTF8.self) + "\n… (contenu tronqué)"
+        return String(decoding: text.utf8.prefix(65_500), as: UTF8.self) + "\n… " + String(localized: "(content truncated)")
     }
 
     static func json(_ value: [String: Any]) -> String {

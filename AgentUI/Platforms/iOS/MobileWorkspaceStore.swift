@@ -6,7 +6,7 @@ import Observation
     enum Status: Equatable { case disconnected, connecting, connected, failed(String) }
 
     private struct InterruptedInput: LocalizedError {
-        var errorDescription: String? { "Connexion interrompue. Vérifie la session avant de renvoyer." }
+        var errorDescription: String? { String(localized: "Connection interrupted. Check the session before sending again.") }
     }
 
     private struct QueuedInput {
@@ -57,9 +57,9 @@ import Observation
     var context: TerminalContext? { TerminalContext(terminalID: selection, in: workspace.projects) }
     var statusText: String {
         switch status {
-        case .disconnected: "Déconnecté"
-        case .connecting: "Connexion au Mac…"
-        case .connected: "Connecté à \(host)"
+        case .disconnected: String(localized: "Disconnected")
+        case .connecting: String(localized: "Connecting to the Mac…")
+        case .connected: String(localized: "Connected to \(host)")
         case .failed(let message): message
         }
     }
@@ -194,7 +194,7 @@ import Observation
 
     private func enqueueInput(_ data: Data, terminal: UUID, message: String?, completion: @escaping (Error?) -> Void) {
         guard isConnected, selection == terminal else {
-            completion(RemoteError(message: "Reconnecte-toi au Mac avant d’envoyer."))
+            completion(RemoteError(message: String(localized: "Reconnect to the Mac before sending.")))
             return
         }
         guard streamReady, streamTerminal == terminal, let connection = streamConnection else {
@@ -214,7 +214,7 @@ import Observation
         inputTimeouts[id] = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(15)) } catch { return }
             guard let self, pendingInputs[id] != nil else { return }
-            finishInput(id, error: RemoteError(message: "Envoi non confirmé. Vérifie la session avant de renvoyer."))
+            finishInput(id, error: RemoteError(message: String(localized: "Sending not confirmed. Check the session before sending again.")))
             connection.cancel()
         }
     }
@@ -245,7 +245,7 @@ import Observation
         let key = await derivation.value
         if pairingDerivation?.code == code { pairingDerivation = nil }
         guard let key else {
-            throw RemoteError(message: "Saisis le code d’appairage affiché sur le Mac dans Réglages → Accès local.", isPermanent: true)
+            throw RemoteError(message: String(localized: "Enter the pairing code shown on the Mac in Settings → Local Access."), isPermanent: true)
         }
         if pairingCode == code { pairingKey = key }
         return key
@@ -285,7 +285,7 @@ import Observation
     let store: MobileWorkspaceStore
 
     private func request<Value: Decodable & Sendable>(_ request: RemoteRequest) async throws -> Value {
-        guard store.wantsConnection, store.host == host else { throw RemoteError(message: "Le Mac est déconnecté.") }
+        guard store.wantsConnection, store.host == host else { throw RemoteError(message: String(localized: "The Mac is disconnected.")) }
         return try await RemoteChannel.call(request, host: host, key: try await store.requiredPairingKey())
     }
 

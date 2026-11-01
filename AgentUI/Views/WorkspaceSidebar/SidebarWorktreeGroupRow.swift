@@ -16,7 +16,7 @@ struct SidebarWorktreeGroupRow: View {
 
     private var worktrees: [Worktree] {
         project.worktrees(in: group.id).filter { worktree in
-            showAll || matches(worktree.name) || worktree.terminals.contains { matches($0.name) }
+            showAll || matches(worktree.displayName) || worktree.terminals.contains { matches($0.name) }
         }
     }
 
@@ -26,7 +26,7 @@ struct SidebarWorktreeGroupRow: View {
                 SidebarWorktreeRow(sheet: $sheet, removal: $removal, store: store, project: project, worktree: worktree, query: query, showAll: showAll)
             }
             if project.worktrees(in: group.id).isEmpty {
-                Text("Glisse un worktree ici").font(Typography.caption).foregroundStyle(Palette.textSecondary)
+                Text("Drag a worktree here").font(Typography.caption).foregroundStyle(Palette.textSecondary)
             }
         } label: {
             HStack(spacing: Spacing.s) {
@@ -44,9 +44,9 @@ struct SidebarWorktreeGroupRow: View {
                 return store.moveWorktree(id, to: group.id)
             } isTargeted: { isDropTargeted = $0 }
             .contextMenu {
-                Button("Renommer…", systemImage: "pencil") { sheet = .rename(group.id, group.name) }
+                Button("Rename…", systemImage: "pencil") { sheet = .rename(group.id, group.name) }
                 Divider()
-                Button("Dissoudre le groupe", systemImage: "rectangle.stack.badge.minus") { store.removeWorktreeGroup(group.id) }
+                Button("Dissolve Group", systemImage: "rectangle.stack.badge.minus") { store.removeWorktreeGroup(group.id) }
             }
         }
     }

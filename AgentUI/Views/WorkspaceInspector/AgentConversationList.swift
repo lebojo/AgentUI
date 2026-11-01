@@ -19,10 +19,10 @@ struct AgentConversationList: View {
                     AgentConversationRow(conversation: conversation) { resume(conversation) }
                 }.listStyle(.plain)
             } else if let error {
-                InspectorNotice(title: "Conversations indisponibles", message: error)
+                InspectorNotice(title: "Conversations Unavailable", message: error)
             } else if conversations != nil {
-                ContentUnavailableView("Aucune conversation", systemImage: "bubble.left.and.bubble.right",
-                                       description: Text("Les conversations Claude, Codex, Copilot et OpenCode lancées dans ce dossier apparaîtront ici."))
+                ContentUnavailableView("No Conversations", systemImage: "bubble.left.and.bubble.right",
+                                       description: Text("Claude, Codex, Copilot and OpenCode conversations started in this folder will appear here."))
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -31,7 +31,7 @@ struct AgentConversationList: View {
             guard workspaceVisible, scenePhase != .background else { return }
             await monitor()
         }
-        .alert("Reprise impossible", isPresented: $resumeError.isPresent) {
+        .alert("Couldn’t Resume", isPresented: $resumeError.isPresent) {
             Button("OK") { resumeError = nil }
         } message: { Text(resumeError ?? "") }
     }

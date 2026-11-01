@@ -6,9 +6,9 @@ struct SessionMessageRow: View, Equatable {
 
     private var author: String {
         switch message.kind {
-        case .input: "Vous"
+        case .input: String(localized: "You")
         case .assistant: agent?.title ?? "Agent"
-        case .output, .tool, .notice: "Sortie de la session"
+        case .output, .tool, .notice: String(localized: "Session Output")
         }
     }
 
@@ -18,7 +18,7 @@ struct SessionMessageRow: View, Equatable {
                 Text(verbatim: message.text).font(Typography.code).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.top, Spacing.s)
             } label: {
-                Label(message.title ?? "Outil", systemImage: message.toolState == .failed ? "exclamationmark.circle" : (message.toolState == .completed ? "checkmark.circle" : "gearshape"))
+                Label(message.title ?? String(localized: "Tool"), systemImage: message.toolState == .failed ? "exclamationmark.circle" : (message.toolState == .completed ? "checkmark.circle" : "gearshape"))
                     .font(Typography.caption).foregroundStyle(message.toolState == .failed ? Palette.danger : Palette.textSecondary)
             }.padding(Spacing.l).background(Palette.fill.opacity(0.3), in: RoundedRectangle(cornerRadius: Radius.m))
         } else {

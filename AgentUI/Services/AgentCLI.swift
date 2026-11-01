@@ -1,26 +1,26 @@
 import Foundation
 
 enum AgentCLI {
-    static let help = """
-    agentui — organiser les terminaux et worktrees de l’application ouverte
+    static let help = String(localized: """
+    agentui — organize the terminals and worktrees of the running app
 
     agentui list
-    agentui project add /chemin/du/projet
-    agentui terminal create [--name NOM] [--project UUID] [--worktree UUID] [-- COMMANDE ARGUMENTS…]
-    agentui worktree create --branch BRANCHE [--name NOM] [--project UUID] [-- COMMANDE ARGUMENTS…]
+    agentui project add /path/to/project
+    agentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]
+    agentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]
     agentui worktree delete --worktree UUID [--force]
 
-    Depuis un terminal AgentUI, le projet et le worktree sont implicites.
-    Les commandes enfant sont passées comme arguments, sans interprétation shell.
-    Exemples :
-      agentui terminal create --name Review -- claude "Relis les modifications"
-      agentui worktree create --branch feature/tests -- codex "Ajoute les tests"
-    Chaque création renvoie les identifiants et le chemin au format JSON.
-    Une branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.
-    worktree delete ferme ses terminaux et efface son dossier ; la branche et ses commits restent dans le dépôt.
-    Sans --force, un worktree avec des modifications non commitées ou des fichiers non suivis est conservé.
-    Le dossier principal d’un projet et le worktree du terminal courant ne peuvent pas être supprimés.
-    """
+    From an AgentUI terminal, the project and worktree are implicit.
+    Child commands are passed as arguments, without shell interpretation.
+    Examples:
+      agentui terminal create --name Review -- claude "Review the changes"
+      agentui worktree create --branch feature/tests -- codex "Add the tests"
+    Each creation returns the identifiers and path as JSON.
+    An existing branch is opened as is; otherwise it is created from the project’s HEAD.
+    worktree delete closes its terminals and erases its folder; the branch and its commits stay in the repository.
+    Without --force, a worktree with uncommitted changes or untracked files is kept.
+    A project’s main folder and the current terminal’s worktree can’t be deleted.
+    """)
 
     static func run(arguments: [String]) -> Int32 {
         if arguments.isEmpty || arguments == ["--help"] || arguments == ["help"] {
@@ -30,11 +30,11 @@ enum AgentCLI {
         do {
             let environment = ProcessInfo.processInfo.environment
             guard let instance = environment["AGENTUI_INSTANCE"] else {
-                throw WorkspaceError(message: "Exécute agentui depuis un terminal de l’application.")
+                throw WorkspaceError(message: String(localized: "Run agentui from a terminal in the app."))
             }
             let directory = URL(fileURLWithPath: instance)
             guard FileManager.default.fileExists(atPath: directory.path) else {
-                throw WorkspaceError(message: "Cette instance d’AgentUI est fermée.")
+                throw WorkspaceError(message: String(localized: "This AgentUI instance is closed."))
             }
             let request = try parse(arguments, environment: environment)
             let requestURL = directory.appendingPathComponent("\(request.id.uuidString).request")
@@ -54,11 +54,11 @@ enum AgentCLI {
                     return response.ok ? 0 : 1
                 }
                 if !FileManager.default.fileExists(atPath: directory.path) {
-                    throw WorkspaceError(message: "L’application a été fermée avant la réponse.")
+                    throw WorkspaceError(message: String(localized: "The app was closed before responding."))
                 }
                 _ = changes.wait(timeout: min(deadline, .now() + recheck))
             }
-            throw WorkspaceError(message: "AgentUI n’a pas répondu sous 120 secondes. L’opération peut continuer ; vérifie agentui list avant de réessayer.")
+            throw WorkspaceError(message: String(localized: "AgentUI didn’t respond within 120 seconds. The operation may still be running; check agentui list before trying again."))
         } catch {
             let response = BridgeResponse(ok: false, message: error.localizedDescription)
             if let data = try? JSONEncoder().encode(response) { print(String(decoding: data, as: UTF8.self)) }
@@ -77,7 +77,7 @@ enum AgentCLI {
         }
         let commands = [["terminal", "create"], ["worktree", "create"], ["worktree", "delete"]]
         guard arguments.count >= 2, commands.contains(Array(arguments[0...1])) else {
-            throw WorkspaceError(message: "Commande inconnue. Consulte agentui --help.")
+            throw WorkspaceError(message: String(localized: "Unknown command. See agentui --help."))
         }
         request.action = arguments[0] + "." + arguments[1]
         let isDeletion = request.action == "worktree.delete"
@@ -89,27 +89,27 @@ enum AgentCLI {
             let option = arguments[index]
             if option == "--" && !isDeletion { request.command = Array(arguments.dropFirst(index + 1)); break }
             if option == "--force" && isDeletion { request.force = true; index += 1; continue }
-            guard index + 1 < arguments.count else { throw WorkspaceError(message: "Valeur manquante pour \(option).") }
+            guard index + 1 < arguments.count else { throw WorkspaceError(message: String(localized: "Missing value for \(option).")) }
             let value = arguments[index + 1]
             switch option {
             case "--name": request.name = value
             case "--branch": request.branch = value
             case "--project":
-                guard let id = UUID(uuidString: value) else { throw WorkspaceError(message: "UUID de projet invalide.") }
+                guard let id = UUID(uuidString: value) else { throw WorkspaceError(message: String(localized: "Invalid project UUID.")) }
                 request.projectID = id
             case "--worktree":
-                guard let id = UUID(uuidString: value) else { throw WorkspaceError(message: "UUID de worktree invalide.") }
+                guard let id = UUID(uuidString: value) else { throw WorkspaceError(message: String(localized: "Invalid worktree UUID.")) }
                 request.worktreeID = id
-            default: throw WorkspaceError(message: "Option inconnue : \(option)")
+            default: throw WorkspaceError(message: String(localized: "Unknown option: \(option)"))
             }
             index += 2
         }
         if isDeletion {
             guard let target = request.worktreeID else {
-                throw WorkspaceError(message: "Indique le worktree à supprimer : --worktree UUID (voir agentui list).")
+                throw WorkspaceError(message: String(localized: "Specify the worktree to delete: --worktree UUID (see agentui list)."))
             }
             if target == currentWorktreeID {
-                throw WorkspaceError(message: "Ce terminal appartient au worktree à supprimer. Lance la commande depuis un autre worktree.")
+                throw WorkspaceError(message: String(localized: "This terminal belongs to the worktree being deleted. Run the command from another worktree."))
             }
         }
         return request

@@ -40,9 +40,9 @@ enum AgentStatus: Equatable, Sendable {
 
     var title: String {
         switch self {
-        case .working: "Working"
-        case .ready: "Ready"
-        case .waitingForInput: "Waiting input"
+        case .working: String(localized: "Working")
+        case .ready: String(localized: "Ready")
+        case .waitingForInput: String(localized: "Waiting input")
         }
     }
 }

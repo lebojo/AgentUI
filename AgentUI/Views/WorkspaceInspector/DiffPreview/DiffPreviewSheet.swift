@@ -17,18 +17,18 @@ struct DiffPreviewSheet: View {
                     }
                 }
                 Spacer()
-                Picker("Affichage du diff", selection: $layout) {
+                Picker("Diff Layout", selection: $layout) {
                     ForEach(DiffLayout.allCases) { item in
                         Label(item.title, systemImage: item.symbol).tag(item)
                     }
                 }
                 .pickerStyle(.segmented).labelsHidden().fixedSize()
-                Button("Fermer") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
             }.padding()
             Divider()
             if diff.sections.isEmpty {
-                ContentUnavailableView("Aucun diff", systemImage: "doc.text.magnifyingglass",
-                                       description: Text("Aucun diff disponible pour ce fichier."))
+                ContentUnavailableView("No Diff", systemImage: "doc.text.magnifyingglass",
+                                       description: Text("No diff available for this file."))
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {

@@ -119,7 +119,7 @@ struct TerminalScreen {
         result += "\u{1b}[?6;69;7l\u{1b}[r\u{1b}[4l\u{1b}(B\u{f}"
         if reset { result += "\u{1b}[0m\u{1b}[3J\u{1b}[2J" }
         if skipped > 0 {
-            result += "\u{1b}[1;1H\u{1b}[0m\u{1b}[2K\u{1b}[2m… \(skipped) lignes non transmises\u{1b}[0m"
+            result += "\u{1b}[1;1H\u{1b}[0m\u{1b}[2K\u{1b}[2m… \(String(localized: "\(skipped) lines not sent"))\u{1b}[0m"
             result += "\u{1b}[\(rows);1H\n"
         }
         for row in appended..<historyEnd {

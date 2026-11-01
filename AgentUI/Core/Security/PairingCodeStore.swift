@@ -63,8 +63,8 @@ enum KeychainError: Error, Equatable, LocalizedError, Sendable {
 
     var errorDescription: String? {
         switch self {
-        case .unexpectedStatus(let status): "Impossible d’enregistrer le code d’appairage dans le trousseau (erreur \(status))."
-        case .unreadable(let status): "Impossible de lire le code d’appairage dans le trousseau (erreur \(status)). Déverrouille le trousseau puis réactive l’accès local."
+        case .unexpectedStatus(let status): String(localized: "Couldn’t save the pairing code to the keychain (error \(status)).")
+        case .unreadable(let status): String(localized: "Couldn’t read the pairing code from the keychain (error \(status)). Unlock the keychain, then turn Local Access back on.")
         }
     }
 }

@@ -33,7 +33,7 @@ import AppKit
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        menuItem.title = canCloseTerminal ? "Fermer le terminal" : "Fermer la fenêtre"
+        menuItem.title = canCloseTerminal ? String(localized: "Close Terminal") : String(localized: "Close Window")
         return NSApp.keyWindow != nil
     }
 

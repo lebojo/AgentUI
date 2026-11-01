@@ -16,25 +16,25 @@ struct MobileSidebar: View {
 
     var body: some View {
         List(selection: selection) {
-            Section("Projets") {
+            Section("Projects") {
                 ForEach(filtered.groups) { group in MobileFolderRow(group: group) }
                 ForEach(filtered.ungrouped) { project in MobileProjectRow(project: project) }
             }
         }
         .environment(store)
         .listStyle(.sidebar)
-        .searchable(text: $search, prompt: "Filtrer les projets et terminaux")
+        .searchable(text: $search, prompt: "Filter projects and terminals")
         .onChange(of: SidebarFilterInput(folders: store.workspace.folders, projects: store.workspace.projects, query: search), initial: true) { _, input in
             filtered = input.filtered()
         }
         .overlay {
             if store.workspace.projects.isEmpty {
                 ContentUnavailableView {
-                    Label(store.isConnected ? "Aucun projet" : "Ton Mac, à portée de main", systemImage: "laptopcomputer.and.iphone")
+                    Label(store.isConnected ? "No Projects" : "Your Mac, Within Reach", systemImage: "laptopcomputer.and.iphone")
                 } description: {
-                    Text(store.isConnected ? "Ajoute un projet dans AgentUI sur le Mac." : "Connecte-toi au réseau local pour continuer une session.")
+                    Text(store.isConnected ? "Add a project in AgentUI on the Mac." : "Connect to the local network to continue a session.")
                 } actions: {
-                    Button("Se connecter", action: showSettings).buttonStyle(.borderedProminent)
+                    Button("Connect", action: showSettings).buttonStyle(.borderedProminent)
                 }
             } else if filtered.groups.isEmpty && filtered.ungrouped.isEmpty {
                 ContentUnavailableView.search(text: search)
@@ -45,12 +45,12 @@ struct MobileSidebar: View {
                 Image(systemName: store.isConnected ? "network" : "network.slash")
                 Text(store.statusText).lineLimit(2)
                 Spacer()
-                Button("Réglages", systemImage: "gearshape", action: showSettings).labelStyle(.iconOnly)
+                Button("Settings", systemImage: "gearshape", action: showSettings).labelStyle(.iconOnly)
             }.font(Typography.caption).padding(Spacing.l).background(Palette.bar)
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Réglages", systemImage: "gearshape", action: showSettings)
+                Button("Settings", systemImage: "gearshape", action: showSettings)
             }
         }
     }

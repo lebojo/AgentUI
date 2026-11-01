@@ -11,14 +11,14 @@ struct ExplorerDirectory: View {
 
     var body: some View {
         Group {
-            if let error { InspectorNotice(title: "Dossier inaccessible", message: error) }
+            if let error { InspectorNotice(title: "Folder Unavailable", message: error) }
             else if !loaded { ProgressView().controlSize(.small) }
-            else if entries.isEmpty { Text("Dossier vide").font(Typography.caption).foregroundStyle(Palette.textSecondary) }
+            else if entries.isEmpty { Text("Empty Folder").font(Typography.caption).foregroundStyle(Palette.textSecondary) }
             ForEach(entries) { entry in
                 ExplorerRow(entry: entry, source: source)
             }
             if omitted > 0 {
-                InspectorNotice(title: "Liste tronquée", message: "\(omitted) autres éléments non affichés sur cet appareil", symbol: "ellipsis.circle")
+                InspectorNotice(title: "Truncated List", message: String(localized: "\(omitted) more items not shown on this device"), symbol: "ellipsis.circle")
             }
         }
         .task(id: url) {

@@ -11,18 +11,18 @@ struct UsageSignInButton: View {
         if usage.pendingSignIns.contains(provider) {
             HStack(spacing: Spacing.s) {
                 ProgressView().controlSize(.small)
-                Text("En attente de la connexion…").font(Typography.body).foregroundStyle(Palette.textSecondary)
+                Text("Waiting for sign-in…").font(Typography.body).foregroundStyle(Palette.textSecondary)
             }
         } else {
-            Button("Se connecter…", action: signIn)
+            Button("Sign In…", action: signIn)
                 .disabled(workspace.isReadOnly)
-                .help("Ouvre un terminal AgentUI qui lance « \(provider.signInCommand.joined(separator: " ")) »")
+                .help("Opens an AgentUI terminal that runs “\(provider.signInCommand.joined(separator: " "))”")
         }
     }
 
     private func signIn() {
         do {
-            try workspace.addTerminalInCurrentContext(name: "Connexion \(provider.title)", command: provider.signInCommand)
+            try workspace.addTerminalInCurrentContext(name: String(localized: "\(provider.title) Sign-In"), command: provider.signInCommand)
             usage.watchSignIn(provider)
             dismiss()
         } catch {

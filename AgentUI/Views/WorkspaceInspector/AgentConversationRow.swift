@@ -5,8 +5,8 @@ struct AgentConversationRow: View {
     let resume: () -> Void
 
     private var resumeHelp: String {
-        if !conversation.canResume { return "Identifiant de session non pris en charge" }
-        return conversation.isRunning ? "Cette conversation est déjà ouverte" : "Reprendre dans un nouveau terminal"
+        if !conversation.canResume { return String(localized: "Session ID not supported") }
+        return conversation.isRunning ? String(localized: "This conversation is already open") : String(localized: "Resume in a new terminal")
     }
 
     var body: some View {
@@ -24,7 +24,7 @@ struct AgentConversationRow: View {
                     Text(conversation.updatedAt, format: .relative(presentation: .named))
                     if conversation.isRunning {
                         Text("·")
-                        Text("En cours").foregroundStyle(Palette.success)
+                        Text("Running").foregroundStyle(Palette.success)
                     }
                 }
                 .font(Typography.caption)
@@ -35,7 +35,7 @@ struct AgentConversationRow: View {
                 .buttonStyle(.borderless)
                 .disabled(conversation.isRunning || !conversation.canResume)
                 .help(resumeHelp)
-                .accessibilityLabel("Reprendre \(conversation.title)")
+                .accessibilityLabel("Resume \(conversation.title)")
         }
         .padding(.vertical, Spacing.xxs)
     }

@@ -32,9 +32,9 @@ struct ContentView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             if store.isReadOnly {
                 HStack {
-                    Label("Organisation illisible. Les modifications sont désactivées pour préserver tes données.", systemImage: "exclamationmark.triangle")
+                    Label("Unreadable organization. Changes are disabled to protect your data.", systemImage: "exclamationmark.triangle")
                     Spacer()
-                    Button("Réessayer") { store.retryLoading() }
+                    Button("Retry") { store.retryLoading() }
                 }
                 .font(Typography.body).padding(Spacing.l).background(Palette.bar)
             } else if let error = store.persistenceError {
@@ -42,7 +42,7 @@ struct ContentView: View {
                     Label(error, systemImage: "exclamationmark.triangle")
                         .lineLimit(2).help(error)
                     Spacer()
-                    Button("Réessayer la sauvegarde") { Task { try? await store.flushPersistence() } }
+                    Button("Retry Saving") { Task { try? await store.flushPersistence() } }
                 }
                 .font(Typography.body).padding(Spacing.l).background(Palette.bar)
             }
@@ -55,7 +55,7 @@ struct ContentView: View {
         .sheet(item: $store.pendingImport, onDismiss: store.showNextImport) { plan in
             RepositoryImportSheet(store: store, plan: plan)
         }
-        .alert("Impossible de terminer l’opération", isPresented: $store.errorMessage.isPresent) {
+        .alert("Couldn’t Complete the Operation", isPresented: $store.errorMessage.isPresent) {
             Button("OK") { store.errorMessage = nil }
         } message: { Text(store.errorMessage ?? "") }
         .background { RemovalConfirmation(removal: $removal, store: store) }

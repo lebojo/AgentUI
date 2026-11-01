@@ -27,10 +27,10 @@ struct WorkspaceSplitView<Sidebar: View, Detail: View, Inspector: View>: View {
                 }
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
-                        Button("Panneau de droite", systemImage: "sidebar.right") { inspectorVisible.toggle() }
+                        Button("Right Panel", systemImage: "sidebar.right") { inspectorVisible.toggle() }
                             .labelStyle(.iconOnly)
-                            .help(inspectorVisible ? "Masquer le panneau de droite" : "Afficher le panneau de droite")
-                            .accessibilityLabel("Afficher ou masquer le panneau de droite")
+                            .help(inspectorVisible ? "Hide Right Panel" : "Show Right Panel")
+                            .accessibilityLabel("Show or hide the right panel")
                     }
                 }
         }

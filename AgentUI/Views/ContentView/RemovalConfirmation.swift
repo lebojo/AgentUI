@@ -12,7 +12,7 @@ struct RemovalConfirmation: View {
     var body: some View {
         ZStack {
             dialog(allowingSkip: true)
-                .dialogSuppressionToggle("Ne plus me demander", isSuppressed: $skipsConfirmation)
+                .dialogSuppressionToggle("Don’t ask again", isSuppressed: $skipsConfirmation)
             dialog(allowingSkip: false)
         }
         .onChange(of: removal) { skipsConfirmation = false }

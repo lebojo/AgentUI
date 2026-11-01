@@ -3,10 +3,8 @@ import AppKit
 
 @main enum AgentUIEntry {
     static func main() {
-        let executable = URL(fileURLWithPath: CommandLine.arguments[0]).lastPathComponent
-        if executable == "agentui" || CommandLine.arguments.dropFirst().first == "--cli" {
-            let arguments = Array(CommandLine.arguments.dropFirst(executable == "agentui" ? 1 : 2))
-            exit(AgentCLI.run(arguments: arguments))
+        if CommandLine.arguments.dropFirst().first == "--cli" {
+            exit(AgentCLI.run(arguments: Array(CommandLine.arguments.dropFirst(2))))
         }
         AgentUIApplication.main()
     }
@@ -25,10 +23,10 @@ import AppKit
         guard let store else { return .terminateNow }
         if store.sessions.runningCount > 0 {
             let alert = NSAlert()
-            alert.messageText = "Quitter AgentUI ?"
-            alert.informativeText = "Les terminaux et leurs processus seront arrêtés. L’organisation de tes projets sera conservée et les sessions d’agents reprendront au prochain lancement."
-            alert.addButton(withTitle: "Quitter")
-            alert.addButton(withTitle: "Annuler")
+            alert.messageText = String(localized: "Quit AgentUI?")
+            alert.informativeText = String(localized: "Terminals and their processes will be stopped. Your project organization will be kept and agent sessions will resume the next time you open AgentUI.")
+            alert.addButton(withTitle: String(localized: "Quit"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             guard alert.runModal() == .alertFirstButtonReturn else { return .terminateCancel }
         }
         guard store.sessions.runningCount > 0 || store.hasUnsavedChanges else { return .terminateNow }
@@ -43,7 +41,7 @@ import AppKit
                 sender.reply(toApplicationShouldTerminate: true)
             } catch {
                 finishingTermination = false
-                store.errorMessage = "La fermeture a été annulée pour conserver les modifications non sauvegardées. \(error.localizedDescription)"
+                store.errorMessage = String(localized: "Quitting was cancelled to keep unsaved changes. \(error.localizedDescription)")
                 sender.reply(toApplicationShouldTerminate: false)
             }
         }
@@ -91,13 +89,13 @@ struct AgentUIApplication: App {
         .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("Ajouter un projet…") { store.chooseProjects() }.keyboardShortcut("o").disabled(store.isReadOnly || store.isImporting)
-                Button("Importer un dossier…") { store.chooseFolder() }.keyboardShortcut("o", modifiers: [.command, .shift]).disabled(store.isReadOnly || store.isImporting)
+                Button("Add Project…") { store.chooseProjects() }.keyboardShortcut("o").disabled(store.isReadOnly || store.isImporting)
+                Button("Import Folder…") { store.chooseFolder() }.keyboardShortcut("o", modifiers: [.command, .shift]).disabled(store.isReadOnly || store.isImporting)
             }
             CommandGroup(replacing: .help) {
-                Button("Commandes pour les agents") {
+                Button("Agent Commands") {
                     let alert = NSAlert()
-                    alert.messageText = "Commander AgentUI depuis un terminal"
+                    alert.messageText = String(localized: "Control AgentUI from a Terminal")
                     alert.informativeText = AgentCLI.help
                     alert.runModal()
                 }

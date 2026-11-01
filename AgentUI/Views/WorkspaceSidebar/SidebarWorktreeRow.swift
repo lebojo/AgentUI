@@ -16,7 +16,7 @@ struct SidebarWorktreeRow: View {
     let query: String
     let showAll: Bool
 
-    private var worktreeRemoval: Removal { .worktree(projectID: project.id, worktreeID: worktree.id, name: worktree.name) }
+    private var worktreeRemoval: Removal { .worktree(projectID: project.id, worktreeID: worktree.id, name: worktree.displayName) }
     private var isExpanded: Binding<Bool> {
         guard isInserted else { return .constant(false) }
         return query.isEmpty ? $store[expanded: worktree.id] : .constant(true)
@@ -24,36 +24,36 @@ struct SidebarWorktreeRow: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: isExpanded) {
-            ForEach(worktree.terminals.filter { showAll || matches(worktree.name) || matches($0.name) }) { terminal in
+            ForEach(worktree.terminals.filter { showAll || matches(worktree.displayName) || matches($0.name) }) { terminal in
                 SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, worktree: worktree)
             }
             if worktree.terminals.isEmpty {
-                Button("Ouvrir un terminal") { openTerminal() }
+                Button("Open Terminal") { openTerminal() }
                     .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
             }
         } label: {
             HStack(spacing: Spacing.s) {
                 Image(systemName: "arrow.triangle.branch").foregroundStyle(Palette.textSecondary)
-                Text(worktree.name).lineLimit(1)
+                Text(worktree.displayName).lineLimit(1)
                 Spacer(minLength: Spacing.xxs)
                 Button { openTerminal() } label: { Image(systemName: "plus").font(Typography.xs.weight(.semibold)) }
-                    .buttonStyle(.borderless).help("Nouveau terminal dans \(worktree.name)")
-                    .accessibilityLabel("Nouveau terminal dans \(worktree.name)")
+                    .buttonStyle(.borderless).help("New terminal in \(worktree.displayName)")
+                    .accessibilityLabel("New terminal in \(worktree.displayName)")
             }
             .help(worktree.path)
             .draggable(worktree.id.uuidString)
             .contextMenu {
-                Button("Nouveau terminal", systemImage: "terminal") { openTerminal() }
-                Button("Afficher dans le Finder", systemImage: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: worktree.path) }
-                Menu("Groupe", systemImage: "rectangle.stack") {
-                    Button("Aucun groupe") { store.moveWorktree(worktree.id, to: nil) }
+                Button("New Terminal", systemImage: "terminal") { openTerminal() }
+                Button("Show in Finder", systemImage: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: worktree.path) }
+                Menu("Group", systemImage: "rectangle.stack") {
+                    Button("No Group") { store.moveWorktree(worktree.id, to: nil) }
                         .disabled(worktree.groupID == nil)
                     ForEach(project.worktreeGroups) { group in
                         Button(group.name) { store.moveWorktree(worktree.id, to: group.id) }
                             .disabled(worktree.groupID == group.id)
                     }
                     Divider()
-                    Button("Nouveau groupe…") { sheet = .worktreeGroup(projectID: project.id, worktreeID: worktree.id) }
+                    Button("New Group…") { sheet = .worktreeGroup(projectID: project.id, worktreeID: worktree.id) }
                 }
                 Divider()
                 RemovalButton(pending: $removal, removal: worktreeRemoval, placement: .menu)

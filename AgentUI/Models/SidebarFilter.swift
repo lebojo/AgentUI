@@ -23,7 +23,7 @@ struct SidebarFilterInput: Equatable {
         func matches(_ value: String) -> Bool { query.isEmpty || value.localizedStandardContains(query) }
         func projectMatches(_ project: Project) -> Bool {
             matches(project.name) || project.worktreeGroups.contains { matches($0.name) }
-                || project.worktrees.contains { matches($0.name) || $0.terminals.contains { matches($0.name) } }
+                || project.worktrees.contains { matches($0.displayName) || $0.terminals.contains { matches($0.name) } }
         }
         let byFolder = Dictionary(grouping: projects, by: \.folderID)
         func total(_ folder: ProjectFolder) -> Int {

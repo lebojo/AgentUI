@@ -7,34 +7,34 @@ struct AgentSettingsPane: View {
         @Bindable var settings = settings
         Form {
             Section {
-                Picker("Agent par défaut", selection: $settings.agentLaunch.agent) {
+                Picker("Default Agent", selection: $settings.agentLaunch.agent) {
                     ForEach(ConversationAgent.allCases) { agent in
                         Text(agent.title).tag(agent)
                     }
                 }
                 .pickerStyle(.segmented)
             }
-            Section("Lancer l’agent automatiquement") {
+            Section("Launch the Agent Automatically") {
                 Toggle(isOn: $settings.agentLaunch.onNewWorktree) {
-                    Text("Dans un nouveau worktree")
-                    Text("Le premier terminal du worktree démarre directement sur l’agent.")
+                    Text("In a new worktree")
+                    Text("The worktree’s first terminal starts directly in the agent.")
                 }
                 Toggle(isOn: $settings.agentLaunch.onNewTerminal) {
-                    Text("Dans un nouveau terminal")
-                    Text("⌘T et les boutons « Nouveau terminal » ouvrent l’agent au lieu d’un shell.")
+                    Text("In a new terminal")
+                    Text("⌘T and the “New Terminal” buttons open the agent instead of a shell.")
                 }
             }
             Section {
                 Toggle(isOn: $settings.agentLaunch.skipsPermissions) {
-                    Text("Sans demander d’autorisation")
+                    Text("Without asking for permission")
                     Text(settings.agentLaunch.agent.permissionBypassFlag).font(Typography.captionMono)
                 }
             } footer: {
-                Text("L’agent exécute des commandes et modifie des fichiers sans confirmation. À réserver aux worktrees isolés.")
+                Text("The agent runs commands and edits files without confirmation. Keep this for isolated worktrees.")
                     .font(Typography.caption).foregroundStyle(Palette.textSecondary)
             }
             Section {
-                LabeledContent("Commande lancée") {
+                LabeledContent("Launch Command") {
                     Text(settings.agentLaunch.previewCommand).font(Typography.code).textSelection(.enabled)
                 }
             }

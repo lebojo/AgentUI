@@ -16,8 +16,8 @@ struct UsageBarRow: View {
     }
 
     private var accessibilityText: String {
-        let parts = windows.map { "\($0.kind.title) : \($0.percentText) utilisés" }
-        let reset = countdown.map { ", réinitialisation dans \($0)" } ?? ""
+        let parts = windows.map { String(localized: "\($0.kind.title): \($0.percentText) used") }
+        let reset = countdown.map { ", " + String(localized: "resets in \($0)") } ?? ""
         return "\(provider.title), " + parts.joined(separator: ", ") + reset
     }
 

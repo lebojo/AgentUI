@@ -24,8 +24,8 @@ struct ExplorerRow: View {
         .font(Typography.body).help(entry.url.path)
         .contextMenu {
             if source.canOpenLocalFiles {
-                Button("Ouvrir dans l’application par défaut") { source.openLocalFile(entry.url) }
-                Button("Afficher dans le Finder") { source.revealLocalFile(entry.url) }
+                Button("Open with Default App") { source.openLocalFile(entry.url) }
+                Button("Show in Finder") { source.revealLocalFile(entry.url) }
             }
         }
     }

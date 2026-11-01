@@ -41,20 +41,20 @@ struct MobileSessionDetail: View {
                 .navigationTitle(context.terminal.name)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Réglages", systemImage: "gearshape", action: showSettings)
+                        Button("Settings", systemImage: "gearshape", action: showSettings)
                     }
                     ToolbarItem(placement: .primaryAction) {
-                        Button("Nouveau terminal", systemImage: "plus") { Task { await store.newTerminal(in: context) } }
+                        Button("New Terminal", systemImage: "plus") { Task { await store.newTerminal(in: context) } }
                             .disabled(!store.isConnected)
                     }
                 }
             } else {
                 ContentUnavailableView {
-                    Label(store.isConnected ? "Choisis un terminal" : "Continue sur ton Mac", systemImage: "laptopcomputer.and.iphone")
+                    Label(store.isConnected ? "Choose a Terminal" : "Pick Up on Your Mac", systemImage: "laptopcomputer.and.iphone")
                 } description: {
-                    Text(store.isConnected ? "Retrouve tes projets et tes sessions dans la barre latérale." : "Connecte-toi au Mac depuis les réglages pour retrouver tes projets et tes sessions.")
+                    Text(store.isConnected ? "Find your projects and sessions in the sidebar." : "Connect to the Mac in Settings to find your projects and sessions.")
                 } actions: {
-                    Button("Réglages de connexion", action: showSettings).buttonStyle(.borderedProminent)
+                    Button("Connection Settings", action: showSettings).buttonStyle(.borderedProminent)
                 }
                 .navigationTitle("AgentUI")
             }

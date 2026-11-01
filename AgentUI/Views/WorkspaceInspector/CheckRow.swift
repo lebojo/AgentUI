@@ -7,11 +7,11 @@ struct CheckRow: View {
 
     private var status: (symbol: String, color: Color, title: String) {
         switch result.uppercased() {
-        case "SUCCESS": ("checkmark.circle.fill", Palette.success, "Réussi")
-        case "FAILURE", "ERROR", "TIMED_OUT", "ACTION_REQUIRED": ("xmark.circle.fill", Palette.danger, "Échec")
-        case "CANCELLED": ("slash.circle", Palette.textSecondary, "Annulé")
-        case "SKIPPED", "NEUTRAL": ("minus.circle", Palette.textSecondary, "Ignoré")
-        default: ("clock", Palette.warning, "En attente / en cours")
+        case "SUCCESS": ("checkmark.circle.fill", Palette.success, String(localized: "Succeeded"))
+        case "FAILURE", "ERROR", "TIMED_OUT", "ACTION_REQUIRED": ("xmark.circle.fill", Palette.danger, String(localized: "Failed"))
+        case "CANCELLED": ("slash.circle", Palette.textSecondary, String(localized: "Cancelled"))
+        case "SKIPPED", "NEUTRAL": ("minus.circle", Palette.textSecondary, String(localized: "Skipped"))
+        default: ("clock", Palette.warning, String(localized: "Pending / Running"))
         }
     }
 

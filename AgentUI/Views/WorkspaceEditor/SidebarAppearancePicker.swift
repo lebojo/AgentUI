@@ -8,7 +8,7 @@ struct SidebarAppearancePicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xl) {
             VStack(alignment: .leading, spacing: Spacing.m) {
-                Text("Icône").font(Typography.label)
+                Text("Icon").font(Typography.label)
                 LazyVGrid(columns: columns, alignment: .leading, spacing: Spacing.s) {
                     ForEach(SidebarSymbol.allCases) { symbol in
                         Button { appearance.symbol = symbol } label: {
@@ -20,14 +20,14 @@ struct SidebarAppearancePicker: View {
                 }
             }
             VStack(alignment: .leading, spacing: Spacing.m) {
-                Text("Couleur").font(Typography.label)
+                Text("Color").font(Typography.label)
                 HStack(spacing: Spacing.xs) {
                     Button { appearance.tint = nil } label: {
                         TintSwatch(color: appearance.kind.defaultColor, isAutomatic: true, isSelected: appearance.tint == nil)
                     }
                     .buttonStyle(.plain)
-                    .help("Automatique")
-                    .accessibilityLabel("Automatique")
+                    .help("Automatic")
+                    .accessibilityLabel("Automatic")
                     .accessibilityAddTraits(appearance.tint == nil ? .isSelected : [])
                     ForEach(SidebarTint.allCases) { tint in
                         Button { appearance.tint = tint } label: {

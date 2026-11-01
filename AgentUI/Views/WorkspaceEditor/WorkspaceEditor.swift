@@ -33,27 +33,27 @@ struct WorkspaceEditor: View {
     private var isWorktree: Bool { if case .worktree = sheet { true } else { false } }
     private var title: String {
         switch sheet {
-        case .folder(nil): "Nouveau dossier virtuel"
-        case .folder: "Nouveau sous-dossier"
-        case .rename: appearance == nil ? "Renommer" : "Modifier"
-        case .worktree: "Nouveau worktree"
-        case .worktreeGroup: "Nouveau groupe de worktrees"
+        case .folder(nil): String(localized: "New Virtual Folder")
+        case .folder: String(localized: "New Subfolder")
+        case .rename: appearance == nil ? String(localized: "Rename") : String(localized: "Edit")
+        case .worktree: String(localized: "New Worktree")
+        case .worktreeGroup: String(localized: "New Worktree Group")
         }
     }
     private var explanation: String {
         switch sheet {
-        case .folder: "Réunis des projets situés à différents endroits sur ton Mac. Leurs fichiers restent en place."
-        case .rename: appearance == nil ? "Ce nom sera affiché dans la barre latérale." : "Ce nom, cette icône et cette couleur seront affichés dans la barre latérale."
-        case .worktree(_, let project): "Ouvre la branche dans un dossier de travail séparé. Si elle n’existe pas encore, elle est créée depuis HEAD de \(project). \(worktreeLaunchDescription)"
-        case .worktreeGroup: "Range des worktrees du projet sous un même nom dans la barre latérale. Leurs dossiers et leurs branches ne changent pas."
+        case .folder: String(localized: "Gather projects from different places on your Mac. Their files stay where they are.")
+        case .rename: appearance == nil ? String(localized: "This name will be shown in the sidebar.") : String(localized: "This name, icon and color will be shown in the sidebar.")
+        case .worktree(_, let project): String(localized: "Opens the branch in a separate working folder. If it doesn’t exist yet, it’s created from HEAD of \(project). \(worktreeLaunchDescription)")
+        case .worktreeGroup: String(localized: "Groups the project’s worktrees under one name in the sidebar. Their folders and branches don’t change.")
         }
     }
 
     private var placeholder: String {
         switch sheet {
-        case .worktree: "feature/ma-tache"
-        case .worktreeGroup: "Revues"
-        case .folder, .rename: "Mes projets"
+        case .worktree: String(localized: "feature/my-task")
+        case .worktreeGroup: String(localized: "Reviews")
+        case .folder, .rename: String(localized: "My Projects")
         }
     }
 
@@ -66,7 +66,7 @@ struct WorkspaceEditor: View {
     }
 
     private var worktreeLaunchDescription: String {
-        settings.agentLaunch.launches(on: .newWorktree) ? "\(settings.agentLaunch.agent.title) y sera lancé." : "Un terminal y sera ouvert."
+        settings.agentLaunch.launches(on: .newWorktree) ? String(localized: "\(settings.agentLaunch.agent.title) will be launched there.") : String(localized: "A terminal will be opened there.")
     }
 
     var body: some View {
@@ -80,7 +80,7 @@ struct WorkspaceEditor: View {
             .font(Typography.title)
             Text(explanation).foregroundStyle(Palette.textSecondary).font(Typography.body).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: Spacing.s) {
-                Text(isWorktree ? "Branche" : "Nom").font(Typography.label)
+                Text(isWorktree ? "Branch" : "Name").font(Typography.label)
                 TextField(placeholder, text: $name)
                     .textFieldStyle(.roundedBorder).focused($focused)
                     .onSubmit { submit() }.disabled(submitting)
@@ -93,12 +93,12 @@ struct WorkspaceEditor: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             HStack {
-                if submitting { ProgressView().controlSize(.small); Text("Création du worktree…").font(Typography.caption).foregroundStyle(Palette.textSecondary) }
+                if submitting { ProgressView().controlSize(.small); Text("Creating worktree…").font(Typography.caption).foregroundStyle(Palette.textSecondary) }
                 Spacer()
-                Button(submitting ? "Arrêter" : "Annuler") {
+                Button(submitting ? "Stop" : "Cancel") {
                     if submitting { submission?.cancel() } else { dismiss() }
                 }.keyboardShortcut(.cancelAction)
-                Button(isWorktree ? "Créer le worktree" : "Enregistrer") { submit() }
+                Button(isWorktree ? "Create Worktree" : "Save") { submit() }
                     .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || submitting)
             }
@@ -137,7 +137,7 @@ struct WorkspaceEditor: View {
             error = nil
             submission = Task {
                 do { _ = try await store.createWorktree(projectID: project, branch: trimmed, command: settings.agentLaunch.command(on: .newWorktree)); dismiss() }
-                catch is CancellationError { self.error = "Création annulée." }
+                catch is CancellationError { self.error = String(localized: "Creation cancelled.") }
                 catch { self.error = error.localizedDescription }
                 submitting = false
                 submission = nil

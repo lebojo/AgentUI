@@ -14,18 +14,18 @@ struct RepositoryImportSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xl) {
             Label {
-                Text("Importer « \(plan.destinationName) »")
+                Text("Import “\(plan.destinationName)”")
             } icon: {
                 Image(systemName: "square.and.arrow.down").foregroundStyle(Palette.accent)
             }
             .font(Typography.title)
-            Text("\(total) dépôts Git trouvés. Choisis ceux à ajouter : les dossiers virtuels reprennent l’arborescence sur le disque. Les fichiers restent à leur emplacement.")
+            Text("\(total) Git repositories found. Choose the ones to add: virtual folders mirror the folder structure on disk. Files stay where they are.")
                 .font(Typography.body).foregroundStyle(Palette.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             Toggle(isOn: $flattened) {
                 VStack(alignment: .leading, spacing: Spacing.xxs) {
-                    Text("Tout importer au même niveau").font(Typography.label)
-                    Text("Un seul dossier « \(plan.destinationName) », sans sous-dossiers.")
+                    Text("Import Everything at the Same Level").font(Typography.label)
+                    Text("A single “\(plan.destinationName)” folder, without subfolders.")
                         .font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 }
             }
@@ -42,11 +42,11 @@ struct RepositoryImportSheet: View {
                     .textSelection(.enabled)
             }
             HStack {
-                Text("\(selection.count) sur \(total) sélectionnés")
+                Text("\(selection.count) of \(total) selected")
                     .font(Typography.caption).monospacedDigit().foregroundStyle(Palette.textSecondary)
                 Spacer()
-                Button("Annuler") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Importer") { submit() }
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Import") { submit() }
                     .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
                     .disabled(selection.isEmpty || store.isImporting)
             }

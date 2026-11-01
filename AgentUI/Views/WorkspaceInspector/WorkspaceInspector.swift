@@ -12,13 +12,13 @@ struct WorkspaceInspector: View {
                 InspectorContents(context: context, tab: tab, source: source)
                     .id(context.worktree.id)
             } else {
-                ContentUnavailableView("Aucun terminal sélectionné", systemImage: tab.symbol,
-                                       description: Text("Ouvre un terminal pour explorer son projet."))
+                ContentUnavailableView("No Terminal Selected", systemImage: tab.symbol,
+                                       description: Text("Open a terminal to explore its project."))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaInset(edge: .top) {
-            Picker("Vue du panneau de droite", selection: $tab) {
+            Picker("Right Panel View", selection: $tab) {
                 ForEach(InspectorTab.allCases) { item in
                     Label(item.title, systemImage: item.symbol)
                         .labelStyle(.iconOnly)

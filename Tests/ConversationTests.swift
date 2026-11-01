@@ -116,11 +116,11 @@ enum ConversationTests {
             "copilot:named": "Ship the \"usage\" bar",
             "copilot:summarized": "Add Copilot support",
             "copilot:prompted": "Fix the terminal resize",
-            "copilot:blank": "Conversation Copilot",
+            "copilot:blank": "Copilot Conversation",
             "copilot:windows": "Windows line endings",
             "opencode:ses_root": "Polish the inspector",
             "opencode:--dangerously-skip-permissions": "Injected flag",
-            "opencode:ses_v2": "Conversation OpenCode"
+            "opencode:ses_v2": "OpenCode Conversation"
         ], "Conversations are filtered by cwd and titled, got \(titles)")
         try require(await index.conversations(at: path.uppercased()).count == 12, "Paths match on case-insensitive volumes")
         try require(conversations.map(\.updatedAt) == conversations.map(\.updatedAt).sorted(by: >), "Most recent conversations come first")

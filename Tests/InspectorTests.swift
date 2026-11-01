@@ -87,7 +87,7 @@ enum InspectorTests {
         let big = root.appendingPathComponent("big.txt")
         try Data(repeating: 65, count: 150_000).write(to: big)
         let preview = try await InspectorService.textFile(big)
-        try require(preview.contains("128 Ko") && preview.count < 132_000, "Bound large text previews")
+        try require(preview.contains("128 KB") && preview.count < 132_000, "Bound large text previews")
         print("PASS lazy explorer boundaries and bounded text preview")
 
         let fake = root.appendingPathComponent("fake-gh")
@@ -171,7 +171,7 @@ enum InspectorTests {
         do {
             _ = try await ReadCommand.run(URL(fileURLWithPath: "/bin/sleep"), ["5"], at: root.path, timeout: 0.1)
             throw WorkspaceError(message: "FAIL: timeout missing")
-        } catch let error as ReadCommandError { try require(error.message.contains("temps"), "Timed out query reports error") }
+        } catch let error as ReadCommandError { try require(error.message.contains("in time"), "Timed out query reports error") }
         let task = Task { try await ReadCommand.run(URL(fileURLWithPath: "/bin/sleep"), ["5"], at: root.path) }
         try await Task.sleep(for: .milliseconds(100)); task.cancel()
         do { _ = try await task.value; throw WorkspaceError(message: "FAIL: cancellation missing") }
@@ -184,7 +184,7 @@ enum InspectorTests {
         do {
             _ = try await ReadCommand.run(URL(fileURLWithPath: "/usr/bin/yes"), [], at: root.path, timeout: 5, limit: 1024)
             throw WorkspaceError(message: "FAIL: running output limit missing")
-        } catch let error as ReadCommandError { try require(error.message.contains("limite"), "Stop excessive output while query runs") }
+        } catch let error as ReadCommandError { try require(error.message.contains("limit"), "Stop excessive output while query runs") }
         try require(Date().timeIntervalSince(start) < 2, "Output termination should precede timeout")
         print("PASS query cancellation, timeout and live output limit")
     }

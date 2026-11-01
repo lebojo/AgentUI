@@ -11,7 +11,7 @@ struct TerminalFooter: View {
             Text((session?.currentDirectory ?? path).replacingOccurrences(of: NSHomeDirectory(), with: "~"))
                 .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
             Spacer(minLength: Spacing.l)
-            Text("⌘T  Nouveau terminal   ⌘D  Diviser").foregroundStyle(Palette.textSecondary)
+            Text("⌘T  New Terminal   ⌘D  Split").foregroundStyle(Palette.textSecondary)
         }
         .font(Typography.s).foregroundStyle(Palette.textSecondary)
         .padding(.horizontal, Spacing.xl).frame(height: Dimension.Detail.footerHeight)

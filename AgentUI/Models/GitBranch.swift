@@ -5,7 +5,7 @@ struct GitBranch: Codable, Equatable, Sendable {
     var isDetached = false
 
     var accessibilityLabel: String {
-        isDetached ? "HEAD détachée, commit \(name)" : "Branche Git : \(name)"
+        isDetached ? String(localized: "Detached HEAD, commit \(name)") : String(localized: "Git branch: \(name)")
     }
 }
 

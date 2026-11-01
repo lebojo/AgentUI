@@ -5,15 +5,15 @@ struct SessionDisplaySettingsSection: View {
 
     var body: some View {
         Section {
-            Picker("Mode de session", selection: $mode) {
+            Picker("Session Mode", selection: $mode) {
                 ForEach(SessionDisplayMode.allCases) { mode in
                     Label(mode.title, systemImage: mode.symbol).tag(mode)
                 }
             }.pickerStyle(.segmented)
         } header: {
-            Text("Affichage des sessions")
+            Text("Session Display")
         } footer: {
-            Text("Chat affiche la conversation de Claude Code. Terminal donne accès à l’affichage complet, aux menus et aux autorisations. Changer de mode conserve la session en cours.")
+            Text("Chat shows the Claude Code conversation. Terminal gives access to the full display, menus and permissions. Switching modes keeps the current session.")
         }
     }
 }

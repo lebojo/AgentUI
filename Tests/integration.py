@@ -32,7 +32,7 @@ def start():
     global app, instance
     locator = state / 'instance-path'
     locator.unlink(missing_ok=True)
-    app = subprocess.Popen([str(binary)], env=os.environ | {'AGENTUI_STATE_DIRECTORY': str(state)},
+    app = subprocess.Popen([str(binary), '-AppleLanguages', '(en)'], env=os.environ | {'AGENTUI_STATE_DIRECTORY': str(state)},
                            stdout=open(root / 'app.log', 'a'), stderr=subprocess.STDOUT)
     wait_for(locator.exists, 'app bridge')
     instance = pathlib.Path(locator.read_text())
@@ -218,7 +218,7 @@ try:
         state.chmod(0o500)
         try:
             failed_save = cli('terminal','create','--project',pid,'--worktree',wid,'--name','Pending persistence',ok=False)
-            assert failed_save.get('terminalID') and 'sauvegarde' in failed_save['message']
+            assert failed_save.get('terminalID') and 'saving' in failed_save['message']
             assert failed_save['terminalID'] not in json.dumps(json.loads((state/'workspace.json').read_text()))
         finally:
             state.chmod(0o700)
@@ -238,7 +238,7 @@ try:
     recovered_project = next(p for p in cancelled['workspace']['projects'] if p['id'] == pid)
     partial = [w for w in recovered_project['worktrees'] if w['path'] == cancelled['path']]
     assert len(partial) == 1 and partial[0]['terminals'] == [] and pathlib.Path(partial[0]['path']).is_dir()
-    assert 'partielle' in cancelled['message']
+    assert 'partial' in cancelled['message']
     print('PASS cancelled creation reconciles partial worktree without spawning terminal or deleting files', flush=True)
 
     before = cli('list')['workspace']
@@ -262,7 +262,7 @@ try:
     state_file.write_text('invalid json')
     start()
     failed = cli('project','add',str(repo),ok=False)
-    assert 'illisible' in failed['message']
+    assert 'unreadable' in failed['message']
     assert state_file.read_text() == 'invalid json'
     stop()
     print('PASS corrupt state preserves original and rejects unsavable mutations', flush=True)

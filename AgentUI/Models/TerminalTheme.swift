@@ -41,16 +41,16 @@ enum TerminalTheme: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .system: "Système"
+        case .system: String(localized: "System")
         case .oneDark: "One Dark"
         case .dracula: "Dracula"
         case .tokyoNight: "Tokyo Night"
         case .nord: "Nord"
         case .gruvboxDark: "Gruvbox"
-        case .solarizedDark: "Solarized sombre"
-        case .solarizedLight: "Solarized clair"
-        case .githubLight: "GitHub clair"
-        case .custom: "Personnalisé"
+        case .solarizedDark: String(localized: "Solarized Dark")
+        case .solarizedLight: String(localized: "Solarized Light")
+        case .githubLight: String(localized: "GitHub Light")
+        case .custom: String(localized: "Custom")
         }
     }
 

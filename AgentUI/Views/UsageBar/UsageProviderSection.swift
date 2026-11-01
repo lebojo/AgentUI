@@ -10,12 +10,12 @@ struct UsageProviderSection: View {
         case .loading:
             HStack(spacing: Spacing.m) {
                 ProgressView().controlSize(.small)
-                Text("Chargement…").font(Typography.body).foregroundStyle(Palette.textSecondary)
+                Text("Loading…").font(Typography.body).foregroundStyle(Palette.textSecondary)
             }
         case .signedOut:
             HStack(alignment: .center, spacing: Spacing.l) {
                 VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text("Non connecté").font(Typography.label)
+                    Text("Not Signed In").font(Typography.label)
                     Text(provider.signInHint).font(Typography.caption).foregroundStyle(Palette.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -24,7 +24,7 @@ struct UsageProviderSection: View {
             }
         case .loaded(let usage), .failed(_, .some(let usage)):
             if usage.windows.isEmpty {
-                Text("Aucune limite communiquée pour ce compte.").font(Typography.body).foregroundStyle(Palette.textSecondary)
+                Text("No limits reported for this account.").font(Typography.body).foregroundStyle(Palette.textSecondary)
             }
             ForEach(usage.windows) { window in
                 UsageWindowRow(window: window, now: now)

@@ -41,7 +41,7 @@ import Observation
         do { restore(try WorkspaceDisk.load(from: fileURL)) }
         catch {
             canSave = false
-            errorMessage = "Impossible de lire l’organisation. Le fichier original a été préservé : \(fileURL.path)\n\(error.localizedDescription)"
+            errorMessage = String(localized: "Couldn’t read the organization. The original file was preserved: \(fileURL.path)\n\(error.localizedDescription)")
         }
         sessions.onAgentsRefreshed = { [weak self] in self?.recordAgentSessions() }
     }
@@ -55,7 +55,7 @@ import Observation
             canSave = true
             errorMessage = nil
             restoreSessions()
-        } catch { errorMessage = "L’organisation reste illisible. Le fichier original est conservé : \(fileURL.path)\n\(error.localizedDescription)" }
+        } catch { errorMessage = String(localized: "The organization is still unreadable. The original file is kept: \(fileURL.path)\n\(error.localizedDescription)") }
     }
 
     var terminalCount: Int { projects.flatMap(\.worktrees).flatMap(\.terminals).count }
@@ -135,7 +135,7 @@ import Observation
         let canonical = URL(fileURLWithPath: WorkspacePath.canonical(url))
         var directory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: canonical.path, isDirectory: &directory), directory.boolValue else {
-            throw WorkspaceError(message: "Ce dossier n’est plus accessible : \(canonical.path)")
+            throw WorkspaceError(message: String(localized: "This folder is no longer accessible: \(canonical.path)"))
         }
         if let index = projects.firstIndex(where: { $0.path == canonical.path }) {
             if let folderID { projects[index].folderID = folderID }
@@ -155,8 +155,8 @@ import Observation
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
-        panel.prompt = "Ajouter"
-        panel.message = "Choisis un dépôt Git ou un dossier contenant plusieurs dépôts. Ils seront regroupés automatiquement."
+        panel.prompt = String(localized: "Add")
+        panel.message = String(localized: "Choose a Git repository or a folder containing several repositories. They’ll be grouped automatically.")
         panel.begin { [weak self] response in
             guard response == .OK else { return }
             Task { @MainActor in
@@ -170,8 +170,8 @@ import Observation
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
-        panel.prompt = "Importer"
-        panel.message = "Les dépôts Git de ce dossier seront ajoutés comme projets sous un dossier virtuel. Les fichiers restent à leur emplacement."
+        panel.prompt = String(localized: "Import")
+        panel.message = String(localized: "The Git repositories in this folder will be added as projects under a virtual folder. The files stay where they are.")
         panel.begin { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
             Task { @MainActor in await self?.importFolder(url) }
@@ -191,7 +191,7 @@ import Observation
         do {
             guard let plan = try await planImport(of: url, into: folderID) else { return }
             guard !plan.repositoryPaths.isEmpty else {
-                throw WorkspaceError(message: plan.warning ?? "Aucun dépôt Git trouvé dans ce dossier. Choisis le dossier qui contient tes dépôts, ou utilise Ajouter un projet pour un dossier sans Git.")
+                throw WorkspaceError(message: plan.warning ?? String(localized: "No Git repository found in this folder. Choose the folder that contains your repositories, or use Add Project for a folder without Git."))
             }
             await submit(plan, review: review)
         } catch { errorMessage = error.localizedDescription }
@@ -239,7 +239,7 @@ import Observation
         guard review, plan.needsReview else {
             await importRepositories(plan, keeping: Set(plan.repositoryPaths), flattened: false)
             if let warning = plan.warning {
-                errorMessage = "Les dépôts accessibles ont été ajoutés.\n\n" + warning
+                errorMessage = String(localized: "The accessible repositories were added.") + "\n\n" + warning
             }
             return
         }
@@ -390,7 +390,7 @@ import Observation
 
     func remove(_ removal: Removal) {
         guard !isBusy(removal) else {
-            errorMessage = "Une opération Git est en cours sur ce projet. Réessaie quand elle sera terminée."
+            errorMessage = String(localized: "A Git operation is in progress on this project. Try again when it’s finished.")
             return
         }
         switch removal {
@@ -407,9 +407,9 @@ import Observation
     @discardableResult func addTerminal(projectID: UUID, worktreeID: UUID, name: String = TerminalRecord.defaultName, command: [String] = [], select: Bool = true) throws -> TerminalContext {
         guard let p = projects.firstIndex(where: { $0.id == projectID }),
               let w = projects[p].worktrees.firstIndex(where: { $0.id == worktreeID }) else {
-            throw WorkspaceError(message: "Projet ou worktree introuvable.")
+            throw WorkspaceError(message: String(localized: "Project or worktree not found."))
         }
-        guard !removingWorktrees.contains(worktreeID) else { throw WorkspaceError(message: "Ce worktree est en cours de suppression.") }
+        guard !removingWorktrees.contains(worktreeID) else { throw WorkspaceError(message: String(localized: "This worktree is being deleted.")) }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let terminal = TerminalRecord(name: trimmed.isEmpty ? TerminalRecord.defaultName : trimmed)
         projects[p].worktrees[w].terminals.append(terminal)
@@ -422,10 +422,10 @@ import Observation
     }
 
     @discardableResult func resume(_ conversation: AgentConversation, projectID: UUID, worktreeID: UUID, select: Bool = true) throws -> TerminalContext {
-        guard let command = conversation.resumeCommand else { throw WorkspaceError(message: "Identifiant de session non pris en charge.") }
+        guard let command = conversation.resumeCommand else { throw WorkspaceError(message: String(localized: "Unsupported session ID.")) }
         if let recent = recentResumes[conversation.id], ContinuousClock.now - recent.at < .seconds(30), context(for: recent.terminal) != nil,
            sessions.isRunning(recent.terminal) {
-            throw WorkspaceError(message: "Cette conversation vient d’être reprise dans un autre terminal.")
+            throw WorkspaceError(message: String(localized: "This conversation was just resumed in another terminal."))
         }
         let context = try addTerminal(projectID: projectID, worktreeID: worktreeID, name: conversation.shortTitle, command: command, select: select)
         recentResumes = recentResumes.filter { ContinuousClock.now - $0.value.at < .seconds(30) }
@@ -434,7 +434,7 @@ import Observation
     }
 
     @discardableResult func splitTerminal(_ id: UUID, axis: SplitAxis, command: [String] = []) throws -> TerminalContext {
-        guard let current = context(for: id) else { throw WorkspaceError(message: "Terminal introuvable.") }
+        guard let current = context(for: id) else { throw WorkspaceError(message: String(localized: "Terminal not found.")) }
         let added = try addTerminal(projectID: current.project.id, worktreeID: current.worktree.id, command: command)
         updateWorktree(current.worktree.id) { worktree in
             if let index = worktree.layouts.firstIndex(where: { $0.contains(id) }) {
@@ -461,7 +461,7 @@ import Observation
             (project.worktrees.first(where: \.isPrimary) ?? project.worktrees.first).map { (project.id, $0.id) }
         }.first
         guard let (projectID, worktreeID) = current ?? fallback else {
-            throw WorkspaceError(message: "Ajoute d’abord un projet : la connexion se fait dans un terminal AgentUI.")
+            throw WorkspaceError(message: String(localized: "Add a project first: sign-in happens in an AgentUI terminal."))
         }
         try addTerminal(projectID: projectID, worktreeID: worktreeID, name: name, command: command)
     }
@@ -495,8 +495,8 @@ import Observation
     }
 
     @discardableResult func createWorktree(projectID: UUID, branch: String, command: [String] = [], select: Bool = true) async throws -> TerminalContext {
-        guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: "Une opération Git est déjà en cours sur ce projet.") }
-        guard let project = projects.first(where: { $0.id == projectID }) else { throw WorkspaceError(message: "Projet introuvable.") }
+        guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: String(localized: "A Git operation is already in progress on this project.")) }
+        guard let project = projects.first(where: { $0.id == projectID }) else { throw WorkspaceError(message: String(localized: "Project not found.")) }
         busyProjects.insert(projectID)
         defer { busyProjects.remove(projectID) }
         let worktree: Worktree
@@ -515,7 +515,7 @@ import Observation
             }
             throw error
         }
-        guard let index = projects.firstIndex(where: { $0.id == projectID }) else { throw WorkspaceError(message: "Le projet a été retiré.") }
+        guard let index = projects.firstIndex(where: { $0.id == projectID }) else { throw WorkspaceError(message: String(localized: "The project was removed.")) }
         projects[index].worktrees.append(worktree)
         reveal(projectID: projectID, worktreeID: worktree.id)
         let terminal = worktree.terminals[0]
@@ -527,12 +527,12 @@ import Observation
     }
 
     func deleteWorktree(projectID: UUID, worktreeID: UUID) async throws {
-        guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: "Une opération Git est déjà en cours sur ce projet.") }
+        guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: String(localized: "A Git operation is already in progress on this project.")) }
         guard let project = projects.first(where: { $0.id == projectID }),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }) else {
-            throw WorkspaceError(message: "Worktree introuvable.")
+            throw WorkspaceError(message: String(localized: "Worktree not found."))
         }
-        guard !worktree.isPrimary else { throw WorkspaceError(message: "Le dossier principal du projet ne peut pas être supprimé.") }
+        guard !worktree.isPrimary else { throw WorkspaceError(message: String(localized: "The project’s main folder can’t be deleted.")) }
         busyProjects.insert(projectID)
         removingWorktrees.insert(worktreeID)
         defer {
@@ -676,8 +676,8 @@ import Observation
         } catch {
             guard requestedRevision > persistedRevision else { return }
             failedRevision = max(failedRevision, requestedRevision)
-            persistenceError = "Modifications non sauvegardées : \(error.localizedDescription)"
-            throw WorkspaceError(message: "L’opération a été appliquée en mémoire, mais sa sauvegarde a échoué. Réessaie la sauvegarde dans l’application avant de relancer la commande. \(error.localizedDescription)")
+            persistenceError = String(localized: "Unsaved changes: \(error.localizedDescription)")
+            throw WorkspaceError(message: String(localized: "The operation was applied in memory, but saving it failed. Retry saving in the app before running the command again. \(error.localizedDescription)"))
         }
     }
 }

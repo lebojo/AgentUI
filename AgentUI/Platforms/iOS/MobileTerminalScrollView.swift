@@ -25,8 +25,8 @@ final class MobileTerminalScrollView: UIScrollView, UIScrollViewDelegate {
         reset.numberOfTapsRequired = 2
         reset.numberOfTouchesRequired = 2
         addGestureRecognizer(reset)
-        accessibilityLabel = "Écran du terminal"
-        accessibilityHint = "Pince pour agrandir. Touche deux fois avec deux doigts pour ajuster la largeur."
+        accessibilityLabel = String(localized: "Terminal Screen")
+        accessibilityHint = String(localized: "Pinch to zoom. Double-tap with two fingers to fit the width.")
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }

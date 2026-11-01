@@ -16,9 +16,9 @@ struct InspectorRepositoryContent: View {
                         RemoteChecks(model: model, headSHA: local.headSHA)
                     }
                 } else if let error = model.localError {
-                    InspectorNotice(title: "Git indisponible", message: error, symbol: "folder.badge.questionmark")
+                    InspectorNotice(title: "Git Unavailable", message: error, symbol: "folder.badge.questionmark")
                 } else {
-                    Text("Lecture du dépôt…").foregroundStyle(Palette.textSecondary)
+                    Text("Reading repository…").foregroundStyle(Palette.textSecondary)
                 }
             }.padding(Spacing.l).frame(maxWidth: .infinity, alignment: .leading)
         }

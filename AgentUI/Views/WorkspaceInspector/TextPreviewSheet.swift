@@ -12,9 +12,9 @@ struct TextPreviewSheet: View {
                 Text(preview.title).font(Typography.headline).lineLimit(1).truncationMode(.middle)
                 Spacer()
                 if source.canOpenLocalFiles, let url = preview.url {
-                    Button("Ouvrir") { source.openLocalFile(url) }
+                    Button("Open") { source.openLocalFile(url) }
                 }
-                Button("Fermer") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
             }.padding()
             Divider()
             ScrollView([.horizontal, .vertical]) {

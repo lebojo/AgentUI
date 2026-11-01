@@ -44,11 +44,11 @@ enum UsageTests {
         try require(ClaudeCredentials.accessToken(in: Data("{\"claudeAiOauth\":{\"accessToken\":\"abc\"}}\n".utf8)) == "abc", "Keychain JSON yields the access token")
         try require(ClaudeCredentials.accessToken(in: Data("{}".utf8)) == nil, "Missing OAuth credentials mean signed out")
 
-        try require(UsageCountdown.text(until: now.addingTimeInterval(2 * 3600 + 13 * 60), from: now) == "2 h 13", "Hours and minutes countdown")
-        try require(UsageCountdown.text(until: now.addingTimeInterval(3 * 3600), from: now) == "3 h", "Whole hours countdown")
-        try require(UsageCountdown.text(until: now.addingTimeInterval(3 * 86_400 + 4 * 3600 + 20), from: now) == "3 j 4 h", "Days countdown drops minutes")
+        try require(UsageCountdown.text(until: now.addingTimeInterval(2 * 3600 + 13 * 60), from: now) == "2h 13", "Hours and minutes countdown")
+        try require(UsageCountdown.text(until: now.addingTimeInterval(3 * 3600), from: now) == "3h", "Whole hours countdown")
+        try require(UsageCountdown.text(until: now.addingTimeInterval(3 * 86_400 + 4 * 3600 + 20), from: now) == "3d 4h", "Days countdown drops minutes")
         try require(UsageCountdown.text(until: now.addingTimeInterval(30), from: now) == "1 min", "Under a minute shows one minute")
-        try require(UsageCountdown.text(until: now.addingTimeInterval(-5), from: now) == "maintenant", "Past reset")
+        try require(UsageCountdown.text(until: now.addingTimeInterval(-5), from: now) == "now", "Past reset")
         try require(UsageLevel(usedPercent: 69) == .comfortable && UsageLevel(usedPercent: 70) == .warning && UsageLevel(usedPercent: 95) == .critical, "Usage levels")
         print("PASS usage countdown and levels")
 

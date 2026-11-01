@@ -23,7 +23,7 @@ extension UsageLevel {
 }
 
 extension UsageWindow {
-    var percentText: String { "\(Int(usedPercent.rounded())) %" }
+    var percentText: String { String(localized: "\(Int(usedPercent.rounded()))%") }
 
     func resetText(from now: Date) -> String? {
         resetsAt.map { UsageCountdown.text(until: $0, from: now) }

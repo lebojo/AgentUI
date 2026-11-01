@@ -18,6 +18,6 @@ struct GitChangeRow: View {
                 }
                 Spacer(minLength: 0)
             }.padding(.vertical, Spacing.xxs).contentShape(Rectangle())
-        }.buttonStyle(.plain).help("Afficher le diff de \(change.path)")
+        }.buttonStyle(.plain).help("Show diff for \(change.path)")
     }
 }

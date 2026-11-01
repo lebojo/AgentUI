@@ -9,14 +9,14 @@ struct WorkspaceWelcomeView: View {
     var body: some View {
         VStack(spacing: Spacing.xl) {
             Image(systemName: "terminal").font(Typography.heroSymbol).foregroundStyle(Palette.textSecondary)
-            Text("Un espace pour tes projets").font(Typography.display)
-            Text("Regroupe tes projets, ouvre des terminaux\net travaille sur plusieurs branches à la fois.")
+            Text("A home for your projects").font(Typography.display)
+            Text("Group your projects, open terminals\nand work on several branches at once.")
                 .font(Typography.l).foregroundStyle(Palette.textSecondary).multilineTextAlignment(.center).lineSpacing(Spacing.xs)
             HStack(spacing: Spacing.l) {
-                Button("Ajouter un projet…") { store.chooseProjects() }.buttonStyle(.borderedProminent)
-                Button("Importer un dossier…") { store.chooseFolder() }
+                Button("Add Project…") { store.chooseProjects() }.buttonStyle(.borderedProminent)
+                Button("Import Folder…") { store.chooseFolder() }
             }.padding(.top, Spacing.s)
-            Button("Créer un dossier virtuel") { sheet = .folder(parentID: nil) }.buttonStyle(.link).font(Typography.m)
+            Button("Create a Virtual Folder") { sheet = .folder(parentID: nil) }.buttonStyle(.link).font(Typography.m)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Palette.surface)

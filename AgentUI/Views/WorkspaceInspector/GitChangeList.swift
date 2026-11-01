@@ -9,15 +9,15 @@ struct GitChangeList: View {
     var body: some View {
         if let branch { BranchBadge(branch: branch) }
         LazyVStack(alignment: .leading, spacing: Spacing.m) {
-            Text("Modifications · \(changes.count + omitted)").font(Typography.sectionTitle)
+            Text("Changes · \(changes.count + omitted)").font(Typography.sectionTitle)
             if changes.isEmpty {
-                Label("Aucune modification locale", systemImage: "checkmark.circle").foregroundStyle(Palette.textSecondary).font(Typography.body)
+                Label("No Local Changes", systemImage: "checkmark.circle").foregroundStyle(Palette.textSecondary).font(Typography.body)
             }
             ForEach(changes) { change in
                 GitChangeRow(change: change, root: root)
             }
             if omitted > 0 {
-                InspectorNotice(title: "Liste tronquée", message: "\(omitted) autres modifications non affichées sur cet appareil", symbol: "ellipsis.circle")
+                InspectorNotice(title: "Truncated List", message: String(localized: "\(omitted) more changes not shown on this device"), symbol: "ellipsis.circle")
             }
         }
     }

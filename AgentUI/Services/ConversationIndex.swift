@@ -82,7 +82,7 @@ actor ConversationIndex {
                   Self.samePath(rollout.cwd, path) else { continue }
             if titles == nil { titles = CodexRollout.titles(in: codex.appendingPathComponent("session_index.jsonl")) }
             if let existing = found[rollout.sessionID], existing.updatedAt >= stamp.modified { continue }
-            let title = titles?[rollout.sessionID] ?? rollout.firstPrompt ?? "Conversation Codex"
+            let title = titles?[rollout.sessionID] ?? rollout.firstPrompt ?? String(localized: "Codex Conversation")
             found[rollout.sessionID] = AgentConversation(agent: .codex, sessionID: rollout.sessionID, title: title, updatedAt: stamp.modified)
         }
         return Array(found.values)
@@ -104,7 +104,7 @@ actor ConversationIndex {
             }
             let updatedAt = max(workspaceStamp.modified, eventsStamp?.modified ?? .distantPast)
             found.append(AgentConversation(agent: .copilot, sessionID: directory.lastPathComponent,
-                                           title: title ?? "Conversation Copilot", updatedAt: updatedAt))
+                                           title: title ?? String(localized: "Copilot Conversation"), updatedAt: updatedAt))
         }
         return found
     }
@@ -113,7 +113,7 @@ actor ConversationIndex {
         var found: [String: AgentConversation] = [:]
         for session in openCodeSessions() where Self.samePath(session.directory, path) {
             if let existing = found[session.id], existing.updatedAt >= session.updatedAt { continue }
-            let title = ConversationTitle.clean(session.title) ?? "Conversation OpenCode"
+            let title = ConversationTitle.clean(session.title) ?? String(localized: "OpenCode Conversation")
             found[session.id] = AgentConversation(agent: .openCode, sessionID: session.id, title: title, updatedAt: session.updatedAt)
         }
         return Array(found.values)

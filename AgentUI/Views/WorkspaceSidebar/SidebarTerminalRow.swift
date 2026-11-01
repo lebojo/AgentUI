@@ -21,7 +21,7 @@ struct SidebarTerminalRow: View {
                 HStack(spacing: Spacing.xxs) {
                     Image(systemName: branch?.isDetached == true ? "point.topleft.down.to.point.bottomright.curvepath" : "arrow.triangle.branch")
                         .font(Typography.xxs)
-                    Text(branch?.name ?? worktree.name).lineLimit(1).truncationMode(.middle)
+                    Text(branch?.name ?? worktree.displayName).lineLimit(1).truncationMode(.middle)
                 }
                 .font(Typography.s).foregroundStyle(Palette.textSecondary)
             }
@@ -31,19 +31,19 @@ struct SidebarTerminalRow: View {
             } else if let session {
                 Image(systemName: session.hasExited ? "circle" : "circle.fill")
                     .font(Typography.statusDot).foregroundStyle(session.hasExited ? Palette.textSecondary : Palette.success)
-                    .accessibilityLabel(session.hasExited ? "Session terminée" : "Terminal ouvert")
+                    .accessibilityLabel(session.hasExited ? "Session ended" : "Terminal open")
             } else {
                 Image(systemName: "moon").font(Typography.caption).foregroundStyle(Palette.textSecondary)
-                    .accessibilityLabel("Terminal en veille")
+                    .accessibilityLabel("Idle terminal")
             }
         }
         .padding(.vertical, Spacing.xxs)
         .tag(terminal.id)
-        .help(session == nil ? "\(terminal.name) — en veille, cliquer pour l’ouvrir" : terminal.name)
+        .help(session == nil ? String(localized: "\(terminal.name) — idle, click to open it") : terminal.name)
         .contextMenu {
-            Button("Renommer…", systemImage: "pencil") { sheet = .rename(terminal.id, terminal.name) }
+            Button("Rename…", systemImage: "pencil") { sheet = .rename(terminal.id, terminal.name) }
             if terminal.hasCustomName {
-                Button("Utiliser le nom de la conversation", systemImage: "bubble.left") { store.useAutomaticName(terminal.id) }
+                Button("Use Conversation Name", systemImage: "bubble.left") { store.useAutomaticName(terminal.id) }
             }
             Divider()
             RemovalButton(pending: $removal, removal: .terminal(terminal.id), placement: .menu)

@@ -47,7 +47,7 @@ import Observation
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
             hasExited = true
-            view.feed(text: "Le dossier n’est plus accessible :\r\n\(path)\r\n")
+            view.feed(text: String(localized: "The folder is no longer accessible:") + "\r\n\(path)\r\n")
             return
         }
         var env = ProcessInfo.processInfo.environment
@@ -66,7 +66,7 @@ import Observation
         view.startProcess(executable: shell, args: args, environment: env.map { "\($0.key)=\($0.value)" }, currentDirectory: path)
         if !view.process.running {
             hasExited = true
-            view.feed(text: "Impossible de démarrer le terminal.\r\n")
+            view.feed(text: String(localized: "Couldn’t start the terminal.") + "\r\n")
         }
     }
 
@@ -106,7 +106,7 @@ import Observation
     }
 
     func send(_ data: Data, message: String? = nil) async throws {
-        guard data.count <= 65_536 else { throw WorkspaceError(message: "Message trop long (64 Ko maximum).") }
+        guard data.count <= 65_536 else { throw WorkspaceError(message: String(localized: "Message too long (64 KB maximum).")) }
         let previous = pendingWrite
         let next = Task {
             _ = await previous?.result
@@ -118,7 +118,7 @@ import Observation
 
     func launch(_ agent: ConversationAgent, skippingPermissions: Bool) async throws {
         guard self.agent == nil, !isLaunchingAgent, isShellInForeground else {
-            throw WorkspaceError(message: "Le terminal n’est pas à l’invite du shell. Termine la commande en cours avant de lancer un agent.")
+            throw WorkspaceError(message: String(localized: "The terminal isn’t at the shell prompt. Finish the current command before launching an agent."))
         }
         isLaunchingAgent = true
         defer { isLaunchingAgent = false }
@@ -139,12 +139,12 @@ import Observation
     }
 
     private func write(_ data: Data, message: String?) async throws {
-        guard !hasExited else { throw WorkspaceError(message: "Cette session est terminée.") }
+        guard !hasExited else { throw WorkspaceError(message: String(localized: "This session has ended.")) }
         guard let message else {
             view.send(source: view, data: Array(data)[...])
             return
         }
-        guard !isShellInForeground else { throw WorkspaceError(message: "L’agent s’est arrêté : le message n’a pas été envoyé au shell.") }
+        guard !isShellInForeground else { throw WorkspaceError(message: String(localized: "The agent stopped: the message wasn’t sent to the shell.")) }
         updateTranscript()
         let sentID = transcript.sent(message)
         guard data.last == 13, view.getTerminal().bracketedPasteMode else {
@@ -163,7 +163,7 @@ import Observation
         paste.append(Data("\u{1b}[201~".utf8))
         view.send(source: view, data: Array(paste)[...])
         try await Task.sleep(for: .milliseconds(50))
-        guard !hasExited else { throw WorkspaceError(message: "Cette session est terminée.") }
+        guard !hasExited else { throw WorkspaceError(message: String(localized: "This session has ended.")) }
         view.send(source: view, data: [13][...])
     }
 

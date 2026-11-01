@@ -14,7 +14,7 @@ struct AgentShortcutBar: View {
                         agent.logo.resizable().scaledToFit().frame(width: IconSize.xs, height: IconSize.xs)
                     }
                 }
-                .accessibilityLabel("Lancer \(agent.title)")
+                .accessibilityLabel("Launch \(agent.title)")
             }
             Spacer(minLength: 0)
         }

@@ -26,8 +26,8 @@ struct TerminalPane: View {
                     }
                     Spacer(minLength: Spacing.xs)
                     Button { store.closeTerminal(context.terminal.id) } label: { Image(systemName: "xmark") }
-                        .buttonStyle(.borderless).help("Fermer ce panneau")
-                        .accessibilityLabel("Fermer le terminal \(context.terminal.name)")
+                        .buttonStyle(.borderless).help("Close This Pane")
+                        .accessibilityLabel("Close terminal \(context.terminal.name)")
                 }
                 .font(Typography.s).padding(.horizontal, Spacing.l).frame(height: Dimension.Detail.paneTitleHeight)
                 .background(isFocused ? Palette.accent.opacity(0.12) : Color.clear)
@@ -52,7 +52,7 @@ struct TerminalPane: View {
                     HStack {
                         SessionExitLabel(code: session.exitCode)
                         Spacer()
-                        Button("Rouvrir le terminal") {
+                        Button("Reopen Terminal") {
                             store.sessions.close(context.terminal.id)
                             store.startSession(for: context.terminal.id)
                         }

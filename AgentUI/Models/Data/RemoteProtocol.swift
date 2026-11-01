@@ -35,7 +35,7 @@ enum RemoteProtocol {
                 return .ipv6(address)
             }
         }
-        throw RemoteError(message: "Entre l’adresse IP locale du Mac, par exemple 192.168.1.42.")
+        throw RemoteError(message: String(localized: "Enter the Mac’s local IP address, for example 192.168.1.42."))
     }
 }
 
@@ -53,7 +53,7 @@ enum RemotePairing {
     static func normalized(_ code: String) throws -> String {
         let value = code.uppercased().filter { $0.isLetter || $0.isNumber }
         guard value.count == length, value.allSatisfy(alphabet.contains) else {
-            throw RemoteError(message: "Recopie le code d’appairage affiché sur le Mac dans Réglages → Accès local.")
+            throw RemoteError(message: String(localized: "Copy the pairing code shown on the Mac in Settings → Local Access."))
         }
         return value
     }
@@ -70,7 +70,7 @@ struct PairingKey: Equatable, Sendable {
         var key = [UInt8](repeating: 0, count: 32)
         let status = CCKeyDerivationPBKDF(CCPBKDFAlgorithm(kCCPBKDF2), password, password.utf8.count, salt, salt.count,
                                           CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256), Self.iterations, &key, key.count)
-        guard status == kCCSuccess else { throw RemoteError(message: "Impossible de préparer le chiffrement de la connexion.", isPermanent: true) }
+        guard status == kCCSuccess else { throw RemoteError(message: String(localized: "Couldn’t set up connection encryption."), isPermanent: true) }
         data = Data(key)
     }
 
@@ -121,7 +121,7 @@ struct RemoteReply: Codable, Sendable {
 
     static func success(_ value: some Encodable) throws -> Self {
         let payload = try JSONEncoder().encode(value)
-        guard payload.count <= RemoteProtocol.maximumPayload else { throw RemoteError(message: "Réponse trop volumineuse.") }
+        guard payload.count <= RemoteProtocol.maximumPayload else { throw RemoteError(message: String(localized: "Response too large.")) }
         return Self(payload: payload)
     }
 
@@ -130,14 +130,14 @@ struct RemoteReply: Codable, Sendable {
         while true {
             let payload = try JSONEncoder().encode(value(Array(elements.prefix(count)), elements.count - count))
             if payload.count <= RemoteProtocol.maximumPayload { return Self(payload: payload) }
-            guard count > 0 else { throw RemoteError(message: "Réponse trop volumineuse.") }
+            guard count > 0 else { throw RemoteError(message: String(localized: "Response too large.")) }
             count = min(count - 1, count * RemoteProtocol.maximumPayload / payload.count * 9 / 10)
         }
     }
 
     func decode<Value: Decodable>(_ type: Value.Type) throws -> Value {
         if let error { throw RemoteError(message: error) }
-        guard let payload else { throw RemoteError(message: "Réponse vide du Mac.") }
+        guard let payload else { throw RemoteError(message: String(localized: "Empty response from the Mac.")) }
         return try JSONDecoder().decode(type, from: payload)
     }
 }

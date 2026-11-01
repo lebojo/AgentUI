@@ -5,15 +5,15 @@ struct UsageSpendRow: View {
 
     private var amounts: String {
         let style = FloatingPointFormatStyle<Double>.Currency(code: spend.currency)
-        return "\(spend.spent.formatted(style)) sur \(spend.limit.formatted(style))"
+        return String(localized: "\(spend.spent.formatted(style)) of \(spend.limit.formatted(style))")
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Usage supplémentaire").font(Typography.label)
+                Text("Extra Usage").font(Typography.label)
                 Spacer()
-                Text(spend.isEnabled ? amounts : "Désactivé")
+                Text(spend.isEnabled ? amounts : String(localized: "Disabled"))
                     .font(Typography.body).monospacedDigit()
                     .foregroundStyle(spend.isEnabled ? Palette.textPrimary : Palette.textSecondary)
             }
@@ -21,7 +21,7 @@ struct UsageSpendRow: View {
                 let percent = spend.spent / spend.limit * 100
                 UsageGauge(fraction: min(1, percent / 100), level: UsageLevel(usedPercent: percent))
             }
-            Text("Crédits facturés au-delà des limites du forfait, chaque mois.")
+            Text("Credits billed beyond your plan limits, each month.")
                 .font(Typography.caption).foregroundStyle(Palette.textSecondary)
         }
         .accessibilityElement(children: .combine)

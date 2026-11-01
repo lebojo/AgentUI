@@ -11,6 +11,6 @@ struct DiffStats: View {
         }
         .font(Typography.captionMono)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(additions) ajouts, \(deletions) suppressions")
+        .accessibilityLabel("\(additions) additions, \(deletions) deletions")
     }
 }

@@ -66,12 +66,12 @@ enum CommandRunner {
         let reader = try FileHandle(forReadingFrom: outURL)
         defer { try? reader.close() }
         let data = try reader.read(upToCount: limit + 1) ?? Data()
-        guard data.count <= limit else { throw ReadCommandError(message: "La sortie dépasse la limite d’affichage. Ouvre ce contenu dans ton éditeur.") }
+        guard data.count <= limit else { throw ReadCommandError(message: String(localized: "The output exceeds the display limit. Open this content in your editor.")) }
         guard status == 0 else {
             let reader = try FileHandle(forReadingFrom: errURL)
             defer { try? reader.close() }
             let diagnostic = String(decoding: try reader.read(upToCount: 4096) ?? Data(), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-            throw ReadCommandError(message: diagnostic.isEmpty ? "La commande a échoué (statut \(status))." : diagnostic)
+            throw ReadCommandError(message: diagnostic.isEmpty ? String(localized: "The command failed (status \(status)).") : diagnostic)
         }
         return data
     }
@@ -179,9 +179,9 @@ enum CommandRunner {
             pid = nil
             switch reason {
             case .cancelled: throw CancellationError()
-            case .timeout: throw ReadCommandError(message: "La commande n’a pas répondu à temps. L’opération a été interrompue.")
-            case .outputLimit: throw ReadCommandError(message: "La sortie dépasse la limite d’affichage. L’opération a été interrompue.")
-            case .waitFailure: throw ReadCommandError(message: "Impossible de suivre la commande. L’opération a été interrompue.")
+            case .timeout: throw ReadCommandError(message: String(localized: "The command didn’t respond in time. The operation was interrupted."))
+            case .outputLimit: throw ReadCommandError(message: String(localized: "The output exceeds the display limit. The operation was interrupted."))
+            case .waitFailure: throw ReadCommandError(message: String(localized: "Couldn’t follow the command. The operation was interrupted."))
             case nil: break
             }
         }

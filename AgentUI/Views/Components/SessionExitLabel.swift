@@ -5,9 +5,9 @@ struct SessionExitLabel: View {
 
     private var title: String {
         switch code {
-        case nil: "Session terminée"
-        case 127: "Commande introuvable (127) : vérifie qu’elle est installée et dans le PATH de ton shell"
-        case let code?: "Session terminée (\(code))"
+        case nil: String(localized: "Session ended")
+        case 127: String(localized: "Command not found (127): check that it’s installed and in your shell’s PATH")
+        case let code?: String(localized: "Session ended (\(code))")
         }
     }
 

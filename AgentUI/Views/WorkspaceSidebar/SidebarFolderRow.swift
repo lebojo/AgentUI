@@ -26,7 +26,7 @@ struct SidebarFolderRow: View {
                 SidebarProjectRow(sheet: $sheet, removal: $removal, store: store, project: project, query: query, showAll: group.showsAll)
             }
             if group.isEmpty {
-                Button("Ajouter un projet…") { store.chooseProjects(in: folder.id) }
+                Button("Add Project…") { store.chooseProjects(in: folder.id) }
                     .font(Typography.m).foregroundStyle(Palette.textSecondary)
                     .buttonStyle(.plain).padding(.vertical, Spacing.xs)
             }
@@ -54,11 +54,11 @@ struct SidebarFolderRow: View {
                 return store.drop(id, into: folder.id)
             } isTargeted: { isDropTargeted = $0 }
             .contextMenu {
-                Button("Ajouter des projets…", systemImage: "plus") { store.chooseProjects(in: folder.id) }
-                Button("Nouveau sous-dossier…", systemImage: "folder.badge.plus") { sheet = .folder(parentID: folder.id) }
-                Button("Renommer et personnaliser…", systemImage: "paintpalette") { sheet = .rename(folder.id, folder.name) }
-                Menu("Déplacer vers", systemImage: "folder") {
-                    Button("Racine") { store.moveFolder(folder.id, to: nil) }
+                Button("Add Projects…", systemImage: "plus") { store.chooseProjects(in: folder.id) }
+                Button("New Subfolder…", systemImage: "folder.badge.plus") { sheet = .folder(parentID: folder.id) }
+                Button("Rename and Customize…", systemImage: "paintpalette") { sheet = .rename(folder.id, folder.name) }
+                Menu("Move To", systemImage: "folder") {
+                    Button("Root") { store.moveFolder(folder.id, to: nil) }
                         .disabled(!store.canMoveFolder(folder.id, to: nil))
                     ForEach(store.folders.destinations(excluding: folder.id)) { destination in
                         Button(destination.title) { store.moveFolder(folder.id, to: destination.id) }
@@ -66,7 +66,7 @@ struct SidebarFolderRow: View {
                     }
                 }
                 Divider()
-                Button("Dissoudre le dossier", systemImage: "folder.badge.minus") { store.removeFolder(folder.id) }
+                Button("Dissolve Folder", systemImage: "folder.badge.minus") { store.removeFolder(folder.id) }
             }
         }
     }

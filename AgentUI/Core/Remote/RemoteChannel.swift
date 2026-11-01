@@ -82,7 +82,7 @@ enum RemoteChannel {
     }
 
     private static var unresponsiveHost: RemoteError {
-        RemoteError(message: "Le Mac ne répond pas. Vérifie son IP, le réseau local et ses réglages d’accès local.")
+        RemoteError(message: String(localized: "The Mac isn’t responding. Check its IP address, the local network and its Local Access settings."))
     }
 
     @concurrent static func send(_ value: some Encodable & Sendable, on connection: NWConnection) async throws {
@@ -113,7 +113,7 @@ enum RemoteChannel {
 
     private static func frame(_ value: some Encodable) throws -> Data {
         let data = try JSONEncoder().encode(value)
-        guard data.count <= RemoteProtocol.maximumFrame else { throw RemoteError(message: "Réponse trop volumineuse.") }
+        guard data.count <= RemoteProtocol.maximumFrame else { throw RemoteError(message: String(localized: "Response too large.")) }
         let size = UInt32(data.count)
         return Data([UInt8((size >> 24) & 255), UInt8((size >> 16) & 255), UInt8((size >> 8) & 255), UInt8(size & 255)]) + data
     }
@@ -121,7 +121,7 @@ enum RemoteChannel {
     @concurrent static func receive<Value: Decodable & Sendable>(on connection: NWConnection) async throws -> Value {
         let header = try await read(count: 4, on: connection)
         let count = header.reduce(0) { ($0 << 8) | Int($1) }
-        guard count > 0, count <= RemoteProtocol.maximumFrame else { throw RemoteError(message: "Message réseau invalide.") }
+        guard count > 0, count <= RemoteProtocol.maximumFrame else { throw RemoteError(message: String(localized: "Invalid network message.")) }
         return try JSONDecoder().decode(Value.self, from: await read(count: count, on: connection))
     }
 
@@ -133,7 +133,7 @@ enum RemoteChannel {
                 connection.receive(minimumIncompleteLength: 1, maximumLength: remaining) { data, _, complete, error in
                     if let error { continuation.resume(throwing: translated(error)) }
                     else if let data, !data.isEmpty { continuation.resume(returning: data) }
-                    else { continuation.resume(throwing: RemoteError(message: complete ? "Connexion au Mac fermée." : "Réponse réseau vide.")) }
+                    else { continuation.resume(throwing: RemoteError(message: complete ? String(localized: "Connection to the Mac closed.") : String(localized: "Empty network response."))) }
                 }
             }
             data.append(chunk)
@@ -146,7 +146,7 @@ enum RemoteChannel {
 
     private static func translated(_ error: NWError) -> Error {
         guard case .tls(let status) = error, pairingMismatch.contains(status) else { return error }
-        return RemoteError(message: "Code d’appairage refusé. Recopie le code affiché sur le Mac dans Réglages → Accès local.", isPermanent: true)
+        return RemoteError(message: String(localized: "Pairing code rejected. Copy the code shown on the Mac in Settings → Local Access."), isPermanent: true)
     }
 }
 

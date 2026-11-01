@@ -79,8 +79,8 @@ struct RepositoryDiscoveryResult: Sendable {
     var warning: String? {
         guard !skippedDirectories.isEmpty else { return nil }
         let paths = skippedDirectories.prefix(5).joined(separator: "\n")
-        let remaining = skippedDirectories.count > 5 ? "\n… et \(skippedDirectories.count - 5) autres." : ""
-        return "Certains dossiers n’ont pas pu être lus :\n\(paths)\(remaining)"
+        let remaining = skippedDirectories.count > 5 ? "\n" + String(localized: "… and \(skippedDirectories.count - 5) more.") : ""
+        return String(localized: "Some folders couldn’t be read:") + "\n\(paths)\(remaining)"
     }
 }
 

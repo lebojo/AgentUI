@@ -26,7 +26,7 @@ struct ClaudeChatDecoder: ChatJournalDecoder {
                     if let text = block["text"] as? String { addText(text, id: "\(id):\(index)", kind: kind) }
                 case "tool_use":
                     guard let call = block["id"] as? String else { continue }
-                    log.startTool(call, name: block["name"] as? String ?? "Outil",
+                    log.startTool(call, name: block["name"] as? String ?? String(localized: "Tool"),
                                   detail: ChatMessageLog.summary(of: block["input"] as? [String: Any] ?? [:]))
                 case "tool_result":
                     guard let call = block["tool_use_id"] as? String else { continue }

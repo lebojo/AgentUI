@@ -39,9 +39,9 @@ enum UsageService {
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         switch status {
         case 200..<300: return data
-        case 401, 403: throw UsageError(message: "Connexion \(provider.title) expirée. Relance \(provider.title) dans un terminal pour la renouveler.")
-        case 429: throw UsageError(message: "Trop de requêtes. Nouvel essai automatique dans quelques minutes.")
-        default: throw UsageError(message: "Le service \(provider.title) a répondu \(status).")
+        case 401, 403: throw UsageError(message: String(localized: "\(provider.title) sign-in expired. Relaunch \(provider.title) in a terminal to renew it."))
+        case 429: throw UsageError(message: String(localized: "Too many requests. Retrying automatically in a few minutes."))
+        default: throw UsageError(message: String(localized: "The \(provider.title) service responded with \(status)."))
         }
     }
 

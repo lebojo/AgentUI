@@ -16,7 +16,7 @@ struct InspectorPreviewPresenter: ViewModifier {
                 case .diff(let diff): DiffPreviewSheet(diff: diff)
                 }
             }
-            .alert("Aperçu indisponible", isPresented: $previews.error.isPresent) {
+            .alert("Preview Unavailable", isPresented: $previews.error.isPresent) {
                 Button("OK") { previews.error = nil }
             } message: { Text(previews.error ?? "") }
     }

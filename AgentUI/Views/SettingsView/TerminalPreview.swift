@@ -11,7 +11,7 @@ struct TerminalPreview: View {
             Text("❯ ").foregroundStyle(ansi[2]) + Text("git status --short").foregroundStyle(appearance.foreground)
             Text(" M ").foregroundStyle(ansi[1]) + Text("AgentUI/Views/TerminalDetail.swift").foregroundStyle(appearance.foreground)
             Text("A  ").foregroundStyle(ansi[2]) + Text("AgentUI/Views/Settings/").foregroundStyle(appearance.foreground)
-            Text("✓ ").foregroundStyle(ansi[10]) + Text("Build réussi en 4,2 s").foregroundStyle(ansi[8])
+            Text("✓ ").foregroundStyle(ansi[10]) + Text("Build succeeded in 4.2 s").foregroundStyle(ansi[8])
             Text("❯ ").foregroundStyle(ansi[2]) + Text("claude").foregroundStyle(appearance.foreground) + Text("█").foregroundStyle(appearance.cursor)
         }
         .font(appearance.font)
@@ -21,6 +21,6 @@ struct TerminalPreview: View {
         .background(appearance.background, in: RoundedRectangle(cornerRadius: Radius.m))
         .overlay(RoundedRectangle(cornerRadius: Radius.m).strokeBorder(Palette.fill))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Aperçu du terminal avec le thème \(appearance.theme.title)")
+        .accessibilityLabel("Terminal preview with the \(appearance.theme.title) theme")
     }
 }

@@ -18,7 +18,7 @@ struct CopilotChatDecoder: ChatJournalDecoder {
             log.addText(ChatMessageLog.text(data["content"]), id: data["messageId"] as? String ?? id, kind: .assistant)
         case "tool.execution_start":
             guard let call = data["toolCallId"] as? String else { return }
-            log.startTool(call, name: data["toolName"] as? String ?? "Outil",
+            log.startTool(call, name: data["toolName"] as? String ?? String(localized: "Tool"),
                           detail: ChatMessageLog.summary(of: data["arguments"] as? [String: Any] ?? [:]))
         case "tool.execution_complete":
             guard let call = data["toolCallId"] as? String else { return }

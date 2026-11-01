@@ -8,10 +8,10 @@ struct DiffSectionHeader: View {
             Text(section.kind.title).font(Typography.sectionTitle)
             DiffStats(additions: section.additions, deletions: section.deletions)
             Spacer()
-            Button("Copier le diff", action: copyPatch)
+            Button("Copy Diff", action: copyPatch)
                 .buttonStyle(.borderless).font(Typography.caption)
                 .disabled(!section.isComplete)
-                .help(section.isComplete ? "Copier le diff de cette section" : "Aperçu tronqué : ouvre le fichier dans ton éditeur")
+                .help(section.isComplete ? "Copy this section’s diff" : "Truncated preview: open the file in your editor")
         }
         .padding(.horizontal, Spacing.l).padding(.vertical, Spacing.s)
         .background(Palette.bar)

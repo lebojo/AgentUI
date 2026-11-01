@@ -21,7 +21,7 @@ import Observation
     }
     private(set) var pairingCode = ""
     private(set) var pairingStorageError: String?
-    private(set) var status = "Accès local désactivé"
+    private(set) var status = String(localized: "Local Access off")
     private(set) var addresses: [String] = []
     @ObservationIgnored private let pairingStore: any PairingCodeStore
     @ObservationIgnored private var pairingKey: PairingKey?
@@ -39,7 +39,7 @@ import Observation
     private static let maximumConnections = 32
     private static let maximumUnpairedConnections = 64
     private static let maximumConnectionsPerPeer = 16
-    private static let incompatibleVersions = "Versions incompatibles. Mets à jour AgentUI sur le Mac et sur cet appareil."
+    private static let incompatibleVersions = String(localized: "Incompatible versions. Update AgentUI on the Mac and on this device.")
 
     init(pairingStore: any PairingCodeStore = PairingCodeStores.make(account: "localHost.pairingCode")) {
         self.pairingStore = pairingStore
@@ -86,7 +86,7 @@ import Observation
             catch { throw storageFailure(error.localizedDescription) }
         }
         guard let key = try? await PairingKey.derive(from: code) else {
-            throw storageFailure("Le code d’appairage enregistré est illisible. Génère un nouveau code pour appairer à nouveau tes appareils.")
+            throw storageFailure(String(localized: "The saved pairing code is unreadable. Generate a new code to pair your devices again."))
         }
         if let pairingKey { return pairingKey }
         pairingCode = code
@@ -133,9 +133,9 @@ import Observation
 
     private func restart() {
         stop()
-        guard enabled, store != nil else { status = "Accès local désactivé"; return }
+        guard enabled, store != nil else { status = String(localized: "Local Access off"); return }
         addresses = Self.localAddresses()
-        status = "Démarrage…"
+        status = String(localized: "Starting…")
         listenerStart = Task { [weak self] in
             guard let self else { return }
             do {
@@ -145,7 +145,7 @@ import Observation
             } catch {
                 guard !Task.isCancelled else { return }
                 guard (error as? RemoteError)?.isPermanent != true else { status = error.localizedDescription; return }
-                status = "\(error.localizedDescription) Nouvelle tentative dans 5 secondes…"
+                status = String(localized: "\(error.localizedDescription) Retrying in 5 seconds…")
                 retryListener()
             }
         }
@@ -168,10 +168,10 @@ import Observation
             Task { @MainActor [weak self, weak listener] in
                 guard let self, self.listener === listener else { return }
                 switch state {
-                case .ready: self.status = "Prêt à recevoir une connexion"
+                case .ready: self.status = String(localized: "Ready to accept a connection")
                 case .failed(let error):
                     self.stop()
-                    self.status = "\(error.localizedDescription) Nouvelle tentative dans 5 secondes…"
+                    self.status = String(localized: "\(error.localizedDescription) Retrying in 5 seconds…")
                     self.retryListener()
                 default: break
                 }
@@ -376,15 +376,15 @@ import Observation
     }
 
     private func handle(_ request: RemoteRequest) async throws -> RemoteReply {
-        guard let store else { throw RemoteError(message: "Le Mac n’est pas prêt.") }
+        guard let store else { throw RemoteError(message: String(localized: "The Mac isn’t ready.")) }
         switch request {
-        case .watch, .streamInput: throw RemoteError(message: "Requête invalide.")
+        case .watch, .streamInput: throw RemoteError(message: String(localized: "Invalid request."))
         case .workspace(let version):
             guard version == RemoteProtocol.version else { throw RemoteError(message: Self.incompatibleVersions) }
             return try .success(store.state)
         case .input(let id, let data, let message):
             try requireWritable()
-            guard data.count <= 65_536, (message?.utf8.count ?? 0) <= 65_536 else { throw RemoteError(message: "Message trop long.") }
+            guard data.count <= 65_536, (message?.utf8.count ?? 0) <= 65_536 else { throw RemoteError(message: String(localized: "Message too long.")) }
             try await startedSession(id).send(data, message: message)
             return try .success(true)
         case .newTerminal(let project, let worktree):
@@ -408,7 +408,7 @@ import Observation
         case .diff(let id, let change):
             let local = try await InspectorService.localGit(at: context(id).worktree.path,
                                                             changesIn: [change.path] + (change.originalPath.map { [$0] } ?? []))
-            guard let actual = local.changes.first(where: { $0.path == change.path }) else { throw RemoteError(message: "Le fichier n’a plus de modifications.") }
+            guard let actual = local.changes.first(where: { $0.path == change.path }) else { throw RemoteError(message: String(localized: "The file no longer has changes.")) }
             _ = try validatedURL(URL(fileURLWithPath: local.root).appendingPathComponent(actual.path).path, within: local.root)
             return try await .success(RemoteDiff(InspectorService.diff(actual, at: local.root)))
         case .conversations(let id, let fresh):
@@ -423,7 +423,7 @@ import Observation
             let context = try context(id)
             let available = await ConversationIndex.load(at: context.worktree.path, runningMaximumAge: .zero)
             guard let actual = available.first(where: { $0.id == conversation.id }), !actual.isRunning else {
-                throw RemoteError(message: "Cette conversation n’est plus disponible ou est déjà ouverte.")
+                throw RemoteError(message: String(localized: "This conversation is no longer available or is already open."))
             }
             let resumed = try store.resume(actual, projectID: context.project.id, worktreeID: context.worktree.id, select: false)
             return try .success(resumed.terminal.id)
@@ -431,18 +431,18 @@ import Observation
     }
 
     private func requireWritable() throws {
-        guard store?.isReadOnly != true else { throw RemoteError(message: "L’organisation du Mac est en lecture seule.") }
+        guard store?.isReadOnly != true else { throw RemoteError(message: String(localized: "The Mac’s organization is read-only.")) }
     }
 
     private func context(_ id: UUID) throws -> TerminalContext {
-        guard let context = store?.context(for: id) else { throw RemoteError(message: "Ce terminal n’existe plus sur le Mac.") }
+        guard let context = store?.context(for: id) else { throw RemoteError(message: String(localized: "This terminal no longer exists on the Mac.")) }
         return context
     }
 
     private func startedSession(_ id: UUID) throws -> TerminalSession {
-        guard let store else { throw RemoteError(message: "Le Mac n’est pas prêt.") }
+        guard let store else { throw RemoteError(message: String(localized: "The Mac isn’t ready.")) }
         _ = try context(id)
-        guard let context = store.startableContext(for: id) else { throw RemoteError(message: "Ce worktree est en cours de suppression.") }
+        guard let context = store.startableContext(for: id) else { throw RemoteError(message: String(localized: "This worktree is being deleted.")) }
         return store.sessions.start(context)
     }
 
@@ -454,7 +454,7 @@ import Observation
         let root = Self.resolved(rootPath)
         let url = Self.resolved(path)
         guard url.path == root.path || url.path.hasPrefix(root.path + "/") else {
-            throw RemoteError(message: "Le fichier est en dehors de ce worktree.")
+            throw RemoteError(message: String(localized: "The file is outside this worktree."))
         }
         return url
     }

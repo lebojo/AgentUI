@@ -18,7 +18,7 @@ struct SessionChatView: View {
             SessionComposer(draft: $draft, source: source, sending: sending, isEnabled: isEnabled,
                             submit: submit, control: sendControl)
         }
-        .alert("Envoi impossible", isPresented: $error.isPresent) {
+        .alert("Couldn’t Send", isPresented: $error.isPresent) {
             Button("OK") { error = nil }
         } message: { Text(error ?? "") }
     }

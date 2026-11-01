@@ -25,7 +25,7 @@ struct MobileWorkspaceView: View {
                                    source: MobileInspectorSource(host: store.host, terminal: context.terminal.id, store: store))
                     .id(context.terminal.id)
             } else {
-                ContentUnavailableView("Aucun terminal sélectionné", systemImage: "sidebar.right")
+                ContentUnavailableView("No Terminal Selected", systemImage: "sidebar.right")
             }
         }
         .sheet(isPresented: $settingsVisible) { MobileSettingsView(store: store) }
@@ -33,7 +33,7 @@ struct MobileWorkspaceView: View {
             guard !isInBackground else { store.suspend(); return }
             await store.watch(prefersChat: mode == .chat)
         }
-        .alert("Opération impossible", isPresented: $store.error.isPresent) {
+        .alert("Couldn’t Complete the Operation", isPresented: $store.error.isPresent) {
             Button("OK") { store.error = nil }
         } message: { Text(store.error ?? "") }
     }

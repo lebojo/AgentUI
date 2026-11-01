@@ -1,0 +1,4876 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    " M " : {
+      "shouldTranslate" : false
+    },
+    "%@ Conversation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation %@"
+          }
+        }
+      }
+    },
+    "%@ Creation may be partial. Existing files are kept. Check the branch “%@” and the folder %@ before trying again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ La création peut être partielle. Les fichiers existants sont conservés. Vérifie la branche « %2$@ » et le dossier %3$@ avant de réessayer."
+          }
+        }
+      }
+    },
+    "%@ Retrying in 5 seconds…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Nouvelle tentative dans 5 secondes…"
+          }
+        }
+      }
+    },
+    "%@ Sign-In" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion %@"
+          }
+        }
+      }
+    },
+    "%@ of %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ sur %2$@"
+          }
+        }
+      }
+    },
+    "%@ sign-in expired. Relaunch %@ in a terminal to renew it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion %1$@ expirée. Relance %2$@ dans un terminal pour la renouveler."
+          }
+        }
+      }
+    },
+    "%@ unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ indisponible"
+          }
+        }
+      }
+    },
+    "%@ used" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ utilisés"
+          }
+        }
+      }
+    },
+    "%@ will be launched there." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ y sera lancé."
+          }
+        }
+      }
+    },
+    "%@ · %@ → %@" : {
+      "shouldTranslate" : false
+    },
+    "%@ · Local HEAD" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · HEAD local"
+          }
+        }
+      }
+    },
+    "%@ — idle, click to open it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — en veille, cliquer pour l’ouvrir"
+          }
+        }
+      }
+    },
+    "%@%@" : {
+      "shouldTranslate" : false
+    },
+    "%@%lld · %@" : {
+      "shouldTranslate" : false
+    },
+    "%@-specific limit, over 7 days" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limite propre à %@, sur 7 jours"
+          }
+        }
+      }
+    },
+    "%@: %@ used" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ : %2$@ utilisés"
+          }
+        }
+      }
+    },
+    "%lld" : {
+      "shouldTranslate" : false
+    },
+    "%lld Git repositories found. Choose the ones to add: virtual folders mirror the folder structure on disk. Files stay where they are." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Git repository found. Choose the ones to add: virtual folders mirror the folder structure on disk. Files stay where they are."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Git repositories found. Choose the ones to add: virtual folders mirror the folder structure on disk. Files stay where they are."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld dépôt Git trouvé. Choisis ceux à ajouter : les dossiers virtuels reprennent l’arborescence sur le disque. Les fichiers restent à leur emplacement."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld dépôts Git trouvés. Choisis ceux à ajouter : les dossiers virtuels reprennent l’arborescence sur le disque. Les fichiers restent à leur emplacement."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld additions, %lld deletions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@additions@, %#@deletions@"
+          },
+          "substitutions" : {
+            "additions" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg addition"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg additions"
+                    }
+                  }
+                }
+              }
+            },
+            "deletions" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg deletion"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg deletions"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@additions@, %#@deletions@"
+          },
+          "substitutions" : {
+            "additions" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg ajout"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg ajouts"
+                    }
+                  }
+                }
+              }
+            },
+            "deletions" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg suppression"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg suppressions"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld lines not sent" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld line not sent"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld lines not sent"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ligne non transmise"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld lignes non transmises"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld min" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min"
+          }
+        }
+      }
+    },
+    "%lld more changes not shown on this device" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more change not shown on this device"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more changes not shown on this device"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld autre modification non affichée sur cet appareil"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld autres modifications non affichées sur cet appareil"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld more items not shown on this device" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more item not shown on this device"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more items not shown on this device"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld autre élément non affiché sur cet appareil"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld autres éléments non affichés sur cet appareil"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld of %lld selected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld sur %2$lld sélectionnés"
+          }
+        }
+      }
+    },
+    "%lld open" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld open"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld open"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ouvert"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ouverts"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld terminals" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld terminal"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld terminals"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld terminal"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld terminaux"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld%%" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %%"
+          }
+        }
+      }
+    },
+    "%lldd" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld j"
+          }
+        }
+      }
+    },
+    "%lldd %lldh" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld j %2$lld h"
+          }
+        }
+      }
+    },
+    "%lldh" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld h"
+          }
+        }
+      }
+    },
+    "%lldh %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld h %2$@"
+          }
+        }
+      }
+    },
+    "(content truncated)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(contenu tronqué)"
+          }
+        }
+      }
+    },
+    "+%lld" : {
+      "shouldTranslate" : false
+    },
+    "7d" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7 j"
+          }
+        }
+      }
+    },
+    "7d · %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7 j · %@"
+          }
+        }
+      }
+    },
+    "A  " : {
+      "shouldTranslate" : false
+    },
+    "A Git operation is already in progress on this project." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une opération Git est déjà en cours sur ce projet."
+          }
+        }
+      }
+    },
+    "A Git operation is in progress on this project. Try again when it’s finished." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une opération Git est en cours sur ce projet. Réessaie quand elle sera terminée."
+          }
+        }
+      }
+    },
+    "A branch name is required: --branch feature/my-task." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le nom de branche est requis : --branch feature/ma-tache."
+          }
+        }
+      }
+    },
+    "A home for your projects" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un espace pour tes projets"
+          }
+        }
+      }
+    },
+    "A single “%@” folder, without subfolders." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un seul dossier « %@ », sans sous-dossiers."
+          }
+        }
+      }
+    },
+    "A terminal will be opened there." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un terminal y sera ouvert."
+          }
+        }
+      }
+    },
+    "ANSI Color %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couleur ANSI %lld"
+          }
+        }
+      }
+    },
+    "ANSI Colors" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couleurs ANSI"
+          }
+        }
+      }
+    },
+    "Add" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter"
+          }
+        }
+      }
+    },
+    "Add Projects…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter des projets…"
+          }
+        }
+      }
+    },
+    "Add Project…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter un projet…"
+          }
+        }
+      }
+    },
+    "Add a project first: sign-in happens in an AgentUI terminal." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoute d’abord un projet : la connexion se fait dans un terminal AgentUI."
+          }
+        }
+      }
+    },
+    "Add a project in AgentUI on the Mac." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoute un projet dans AgentUI sur le Mac."
+          }
+        }
+      }
+    },
+    "Add a project to get started." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoute un projet pour commencer."
+          }
+        }
+      }
+    },
+    "Add projects or a virtual folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter des projets ou un dossier virtuel"
+          }
+        }
+      }
+    },
+    "Added" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouté"
+          }
+        }
+      }
+    },
+    "Agent Commands" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commandes pour les agents"
+          }
+        }
+      }
+    },
+    "Agent Usage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage des agents"
+          }
+        }
+      }
+    },
+    "AgentUI" : {
+      "shouldTranslate" : false
+    },
+    "AgentUI didn’t respond within 120 seconds. The operation may still be running; check agentui list before trying again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AgentUI n’a pas répondu sous 120 secondes. L’opération peut continuer ; vérifie agentui list avant de réessayer."
+          }
+        }
+      }
+    },
+    "AgentUI/Views/Settings/" : {
+      "shouldTranslate" : false
+    },
+    "AgentUI/Views/TerminalDetail.swift" : {
+      "shouldTranslate" : false
+    },
+    "Agents" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents"
+          }
+        }
+      }
+    },
+    "All models combined, over 7 days" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tous modèles confondus, sur 7 jours"
+          }
+        }
+      }
+    },
+    "All your projects in one place" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tes projets, au même endroit"
+          }
+        }
+      }
+    },
+    "Allow Access from the Local Network" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autoriser l’accès depuis le réseau local"
+          }
+        }
+      }
+    },
+    "Ask for Confirmation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demander confirmation"
+          }
+        }
+      }
+    },
+    "Automatic" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatique"
+          }
+        }
+      }
+    },
+    "Background" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fond"
+          }
+        }
+      }
+    },
+    "Bar" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barre"
+          }
+        }
+      }
+    },
+    "Before closing a terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avant de fermer un terminal"
+          }
+        }
+      }
+    },
+    "Before removing a project" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avant de retirer un projet"
+          }
+        }
+      }
+    },
+    "Blinking" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clignotant"
+          }
+        }
+      }
+    },
+    "Block" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloc"
+          }
+        }
+      }
+    },
+    "Blue" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bleu"
+          }
+        }
+      }
+    },
+    "Branch" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Branche"
+          }
+        }
+      }
+    },
+    "Bright ANSI Colors" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couleurs ANSI vives"
+          }
+        }
+      }
+    },
+    "Brown" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marron"
+          }
+        }
+      }
+    },
+    "Build succeeded in 4.2 s" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Build réussi en 4,2 s"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler"
+          }
+        }
+      }
+    },
+    "Cancelled" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annulé"
+          }
+        }
+      }
+    },
+    "Changes · %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifications · %lld"
+          }
+        }
+      }
+    },
+    "Chat shows the Claude Code conversation. Terminal gives access to the full display, menus and permissions. Switching modes keeps the current session." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chat affiche la conversation de Claude Code. Terminal donne accès à l’affichage complet, aux menus et aux autorisations. Changer de mode conserve la session en cours."
+          }
+        }
+      }
+    },
+    "Checks for this %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checks de la %@"
+          }
+        }
+      }
+    },
+    "Choose a Git repository or a folder containing several repositories. They’ll be grouped automatically." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisis un dépôt Git ou un dossier contenant plusieurs dépôts. Ils seront regroupés automatiquement."
+          }
+        }
+      }
+    },
+    "Choose a Terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisis un terminal"
+          }
+        }
+      }
+    },
+    "Claude, Codex, Copilot and OpenCode conversations started in this folder will appear here." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les conversations Claude, Codex, Copilot et OpenCode lancées dans ce dossier apparaîtront ici."
+          }
+        }
+      }
+    },
+    "Clear Filter" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effacer le filtre"
+          }
+        }
+      }
+    },
+    "Close" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer"
+          }
+        }
+      }
+    },
+    "Close Terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer le terminal"
+          }
+        }
+      }
+    },
+    "Close This Pane" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer ce panneau"
+          }
+        }
+      }
+    },
+    "Close Window" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer la fenêtre"
+          }
+        }
+      }
+    },
+    "Close terminal %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer le terminal %@"
+          }
+        }
+      }
+    },
+    "Close this terminal?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer ce terminal ?"
+          }
+        }
+      }
+    },
+    "Codex Conversation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation Codex"
+          }
+        }
+      }
+    },
+    "Collapse Usage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réduire l’usage"
+          }
+        }
+      }
+    },
+    "Color" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couleur"
+          }
+        }
+      }
+    },
+    "Colors" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couleurs"
+          }
+        }
+      }
+    },
+    "Command not found (127): check that it’s installed and in your shell’s PATH" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commande introuvable (127) : vérifie qu’elle est installée et dans le PATH de ton shell"
+          }
+        }
+      }
+    },
+    "Conflict" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conflit"
+          }
+        }
+      }
+    },
+    "Connect" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se connecter"
+          }
+        }
+      }
+    },
+    "Connect to the Mac in Settings to find your projects and sessions." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecte-toi au Mac depuis les réglages pour retrouver tes projets et tes sessions."
+          }
+        }
+      }
+    },
+    "Connect to the local network to continue a session." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecte-toi au réseau local pour continuer une session."
+          }
+        }
+      }
+    },
+    "Connected to %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecté à %@"
+          }
+        }
+      }
+    },
+    "Connecting to the Mac…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion au Mac…"
+          }
+        }
+      }
+    },
+    "Connection Settings" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réglages de connexion"
+          }
+        }
+      }
+    },
+    "Connection interrupted. Check the session before sending again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion interrompue. Vérifie la session avant de renvoyer."
+          }
+        }
+      }
+    },
+    "Connection to the Mac closed." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion au Mac fermée."
+          }
+        }
+      }
+    },
+    "Control AgentUI from a Terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commander AgentUI depuis un terminal"
+          }
+        }
+      }
+    },
+    "Conversations Unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversations indisponibles"
+          }
+        }
+      }
+    },
+    "Copilot Conversation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation Copilot"
+          }
+        }
+      }
+    },
+    "Copy Diff" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier le diff"
+          }
+        }
+      }
+    },
+    "Copy the pairing code shown on the Mac in Settings → Local Access." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recopie le code d’appairage affiché sur le Mac dans Réglages → Accès local."
+          }
+        }
+      }
+    },
+    "Copy this section’s diff" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier le diff de cette section"
+          }
+        }
+      }
+    },
+    "Couldn’t Complete the Operation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de terminer l’opération"
+          }
+        }
+      }
+    },
+    "Couldn’t Resume" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprise impossible"
+          }
+        }
+      }
+    },
+    "Couldn’t Send" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoi impossible"
+          }
+        }
+      }
+    },
+    "Couldn’t follow the command. The operation was interrupted." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de suivre la commande. L’opération a été interrompue."
+          }
+        }
+      }
+    },
+    "Couldn’t load %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ indisponibles"
+          }
+        }
+      }
+    },
+    "Couldn’t read the organization. The original file was preserved: %@\n%@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de lire l’organisation. Le fichier original a été préservé : %1$@\n%2$@"
+          }
+        }
+      }
+    },
+    "Couldn’t read the pairing code from the keychain (error %d). Unlock the keychain, then turn Local Access back on." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de lire le code d’appairage dans le trousseau (erreur %d). Déverrouille le trousseau puis réactive l’accès local."
+          }
+        }
+      }
+    },
+    "Couldn’t reply to agentui: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de répondre à agentui : %@"
+          }
+        }
+      }
+    },
+    "Couldn’t save the pairing code to the keychain (error %d)." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’enregistrer le code d’appairage dans le trousseau (erreur %d)."
+          }
+        }
+      }
+    },
+    "Couldn’t set up connection encryption." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de préparer le chiffrement de la connexion."
+          }
+        }
+      }
+    },
+    "Couldn’t set up the agentui command." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’initialiser la commande agentui."
+          }
+        }
+      }
+    },
+    "Couldn’t start the terminal." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de démarrer le terminal."
+          }
+        }
+      }
+    },
+    "Create Worktree" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer le worktree"
+          }
+        }
+      }
+    },
+    "Create a Virtual Folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer un dossier virtuel"
+          }
+        }
+      }
+    },
+    "Create a worktree for %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer un worktree pour %@"
+          }
+        }
+      }
+    },
+    "Creating worktree…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Création du worktree…"
+          }
+        }
+      }
+    },
+    "Creation cancelled." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Création annulée."
+          }
+        }
+      }
+    },
+    "Credits billed beyond your plan limits, each month." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crédits facturés au-delà des limites du forfait, chaque mois."
+          }
+        }
+      }
+    },
+    "Ctrl-C" : {
+      "shouldTranslate" : false
+    },
+    "Cursor" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Curseur"
+          }
+        }
+      }
+    },
+    "Custom" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personnalisé"
+          }
+        }
+      }
+    },
+    "Cyan" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cyan"
+          }
+        }
+      }
+    },
+    "Default Agent" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent par défaut"
+          }
+        }
+      }
+    },
+    "Delete" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer"
+          }
+        }
+      }
+    },
+    "Delete Forever" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer pour toujours"
+          }
+        }
+      }
+    },
+    "Delete Worktree" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le worktree"
+          }
+        }
+      }
+    },
+    "Deleted" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimé"
+          }
+        }
+      }
+    },
+    "Detached HEAD, commit %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEAD détachée, commit %@"
+          }
+        }
+      }
+    },
+    "Diff Layout" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affichage du diff"
+          }
+        }
+      }
+    },
+    "Disabled" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactivé"
+          }
+        }
+      }
+    },
+    "Disconnect" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se déconnecter"
+          }
+        }
+      }
+    },
+    "Disconnected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déconnecté"
+          }
+        }
+      }
+    },
+    "Display" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affichage"
+          }
+        }
+      }
+    },
+    "Dissolve Folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dissoudre le dossier"
+          }
+        }
+      }
+    },
+    "Dissolve Group" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dissoudre le groupe"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminé"
+          }
+        }
+      }
+    },
+    "Don’t ask again" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne plus me demander"
+          }
+        }
+      }
+    },
+    "Draft" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brouillon"
+          }
+        }
+      }
+    },
+    "Drag a worktree here" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glisse un worktree ici"
+          }
+        }
+      }
+    },
+    "Edit" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier"
+          }
+        }
+      }
+    },
+    "Empty Folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dossier vide"
+          }
+        }
+      }
+    },
+    "Empty network response." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réponse réseau vide."
+          }
+        }
+      }
+    },
+    "Empty response from the Mac." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réponse vide du Mac."
+          }
+        }
+      }
+    },
+    "Enter a branch name, for example feature/interface." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indique un nom de branche, par exemple feature/interface."
+          }
+        }
+      }
+    },
+    "Enter the Mac’s local IP address, for example 192.168.1.42." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entre l’adresse IP locale du Mac, par exemple 192.168.1.42."
+          }
+        }
+      }
+    },
+    "Enter the pairing code shown on the Mac in Settings → Local Access." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisis le code d’appairage affiché sur le Mac dans Réglages → Accès local."
+          }
+        }
+      }
+    },
+    "Expand Usage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Développer l’usage"
+          }
+        }
+      }
+    },
+    "Extra Usage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage supplémentaire"
+          }
+        }
+      }
+    },
+    "Extra usage billed beyond your plan" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage supplémentaire facturé au-delà du forfait"
+          }
+        }
+      }
+    },
+    "Failed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec"
+          }
+        }
+      }
+    },
+    "Files" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichiers"
+          }
+        }
+      }
+    },
+    "Filter projects and terminals" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtrer les projets et terminaux"
+          }
+        }
+      }
+    },
+    "Find your projects and sessions in the sidebar." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retrouve tes projets et tes sessions dans la barre latérale."
+          }
+        }
+      }
+    },
+    "Folder Unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dossier inaccessible"
+          }
+        }
+      }
+    },
+    "Font" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Police"
+          }
+        }
+      }
+    },
+    "Gather projects from different places on your Mac. Their files stay where they are." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réunis des projets situés à différents endroits sur ton Mac. Leurs fichiers restent en place."
+          }
+        }
+      }
+    },
+    "General" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Général"
+          }
+        }
+      }
+    },
+    "Generate New Code" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Générer un nouveau code"
+          }
+        }
+      }
+    },
+    "Git Unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git indisponible"
+          }
+        }
+      }
+    },
+    "Git branch: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Branche Git : %@"
+          }
+        }
+      }
+    },
+    "GitHub CLI isn’t installed. Install gh, then run gh auth login in a terminal." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub CLI n’est pas installé. Installe gh, puis lance gh auth login dans un terminal."
+          }
+        }
+      }
+    },
+    "GitHub Light" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub clair"
+          }
+        }
+      }
+    },
+    "GitLab CLI isn’t installed. Install glab, then run glab auth login in a terminal." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitLab CLI n’est pas installé. Installe glab, puis lance glab auth login dans un terminal."
+          }
+        }
+      }
+    },
+    "Gray" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gris"
+          }
+        }
+      }
+    },
+    "Green" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vert"
+          }
+        }
+      }
+    },
+    "Group" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Groupe"
+          }
+        }
+      }
+    },
+    "Group your projects, open terminals\nand work on several branches at once." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regroupe tes projets, ouvre des terminaux\net travaille sur plusieurs branches à la fois."
+          }
+        }
+      }
+    },
+    "Groups the project’s worktrees under one name in the sidebar. Their folders and branches don’t change." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Range des worktrees du projet sous un même nom dans la barre latérale. Leurs dossiers et leurs branches ne changent pas."
+          }
+        }
+      }
+    },
+    "Hide Right Panel" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Masquer le panneau de droite"
+          }
+        }
+      }
+    },
+    "Host Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac hôte"
+          }
+        }
+      }
+    },
+    "Icon" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Icône"
+          }
+        }
+      }
+    },
+    "Idle project — click to open a terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projet en veille — cliquer pour ouvrir un terminal"
+          }
+        }
+      }
+    },
+    "Idle terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal en veille"
+          }
+        }
+      }
+    },
+    "Import" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer"
+          }
+        }
+      }
+    },
+    "Import Everything at the Same Level" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout importer au même niveau"
+          }
+        }
+      }
+    },
+    "Import Folder…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer un dossier…"
+          }
+        }
+      }
+    },
+    "Import “%@”" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer « %@ »"
+          }
+        }
+      }
+    },
+    "Importing repositories…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import des dépôts…"
+          }
+        }
+      }
+    },
+    "In a new terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans un nouveau terminal"
+          }
+        }
+      }
+    },
+    "In a new worktree" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans un nouveau worktree"
+          }
+        }
+      }
+    },
+    "Incompatible versions. Update AgentUI on the Mac and on this device." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versions incompatibles. Mets à jour AgentUI sur le Mac et sur cet appareil."
+          }
+        }
+      }
+    },
+    "Indigo" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indigo"
+          }
+        }
+      }
+    },
+    "Interactive Terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal interactif"
+          }
+        }
+      }
+    },
+    "Interrupt" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interrompre"
+          }
+        }
+      }
+    },
+    "Invalid network message." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message réseau invalide."
+          }
+        }
+      }
+    },
+    "Invalid project UUID." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UUID de projet invalide."
+          }
+        }
+      }
+    },
+    "Invalid request ID." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiant de requête invalide."
+          }
+        }
+      }
+    },
+    "Invalid request." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requête invalide."
+          }
+        }
+      }
+    },
+    "Invalid response from AgentUI." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réponse d’AgentUI invalide."
+          }
+        }
+      }
+    },
+    "Invalid worktree UUID." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UUID de worktree invalide."
+          }
+        }
+      }
+    },
+    "Its terminals will be closed and its folder will be erased from disk, including uncommitted changes. This can’t be undone. The branch and its commits stay in the repository." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ses terminaux seront fermés et son dossier sera effacé du disque, y compris les modifications non commitées. Cette action est irréversible. La branche et ses commits restent dans le dépôt."
+          }
+        }
+      }
+    },
+    "Latest Messages" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Derniers messages"
+          }
+        }
+      }
+    },
+    "Launch %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer %@"
+          }
+        }
+      }
+    },
+    "Launch Command" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commande lancée"
+          }
+        }
+      }
+    },
+    "Launch the Agent Automatically" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer l’agent automatiquement"
+          }
+        }
+      }
+    },
+    "Loading via gh or glab…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chargement via gh ou glab…"
+          }
+        }
+      }
+    },
+    "Loading…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chargement…"
+          }
+        }
+      }
+    },
+    "Local Access" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accès local"
+          }
+        }
+      }
+    },
+    "Local Access off" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accès local désactivé"
+          }
+        }
+      }
+    },
+    "Mac IP" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "IP du Mac"
+          }
+        }
+      }
+    },
+    "Mac IP Address" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adresse IP du Mac"
+          }
+        }
+      }
+    },
+    "Mac IP address, e.g. 192.168.1.42" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "IP du Mac, p. ex. 192.168.1.42"
+          }
+        }
+      }
+    },
+    "Main" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Principal"
+          }
+        }
+      }
+    },
+    "Message %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message à %@"
+          }
+        }
+      }
+    },
+    "Message or command" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message ou commande"
+          }
+        }
+      }
+    },
+    "Message too long (64 KB maximum)." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message trop long (64 Ko maximum)."
+          }
+        }
+      }
+    },
+    "Message too long." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message trop long."
+          }
+        }
+      }
+    },
+    "Messages from this session will appear here. Interactive menus are available in Terminal." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les messages de cette session apparaîtront ici. Les menus interactifs sont accessibles dans Terminal."
+          }
+        }
+      }
+    },
+    "Mint" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menthe"
+          }
+        }
+      }
+    },
+    "Missing value for %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valeur manquante pour %@."
+          }
+        }
+      }
+    },
+    "Modified" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifié"
+          }
+        }
+      }
+    },
+    "Month" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mois"
+          }
+        }
+      }
+    },
+    "Monthly Credits" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crédits du mois"
+          }
+        }
+      }
+    },
+    "Move To" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer vers"
+          }
+        }
+      }
+    },
+    "My Projects" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mes projets"
+          }
+        }
+      }
+    },
+    "Name" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nom"
+          }
+        }
+      }
+    },
+    "New Group…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau groupe…"
+          }
+        }
+      }
+    },
+    "New Subfolder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau sous-dossier"
+          }
+        }
+      }
+    },
+    "New Subfolder…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau sous-dossier…"
+          }
+        }
+      }
+    },
+    "New Terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau terminal"
+          }
+        }
+      }
+    },
+    "New Untracked File" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau fichier non suivi"
+          }
+        }
+      }
+    },
+    "New Virtual Folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau dossier virtuel"
+          }
+        }
+      }
+    },
+    "New Virtual Folder…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau dossier virtuel…"
+          }
+        }
+      }
+    },
+    "New Worktree" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau worktree"
+          }
+        }
+      }
+    },
+    "New Worktree Group" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau groupe de worktrees"
+          }
+        }
+      }
+    },
+    "New Worktree Group…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau groupe de worktrees…"
+          }
+        }
+      }
+    },
+    "New Worktree…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau worktree…"
+          }
+        }
+      }
+    },
+    "New terminal in %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau terminal dans %@"
+          }
+        }
+      }
+    },
+    "New terminal in this worktree" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau terminal dans ce worktree"
+          }
+        }
+      }
+    },
+    "No %@ for this branch." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune %@ pour cette branche."
+          }
+        }
+      }
+    },
+    "No Conversations" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune conversation"
+          }
+        }
+      }
+    },
+    "No Diff" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun diff"
+          }
+        }
+      }
+    },
+    "No Folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sans dossier"
+          }
+        }
+      }
+    },
+    "No Git repository found in this folder. Choose the folder that contains your repositories, or use Add Project for a folder without Git." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun dépôt Git trouvé dans ce dossier. Choisis le dossier qui contient tes dépôts, ou utilise Ajouter un projet pour un dossier sans Git."
+          }
+        }
+      }
+    },
+    "No GitHub Actions runs for this commit." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune exécution GitHub Actions pour ce commit."
+          }
+        }
+      }
+    },
+    "No GitLab pipelines for this commit." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun pipeline GitLab pour ce commit."
+          }
+        }
+      }
+    },
+    "No Group" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun groupe"
+          }
+        }
+      }
+    },
+    "No Local Changes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune modification locale"
+          }
+        }
+      }
+    },
+    "No Projects" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun projet"
+          }
+        }
+      }
+    },
+    "No Results" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun résultat"
+          }
+        }
+      }
+    },
+    "No Terminal Selected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun terminal sélectionné"
+          }
+        }
+      }
+    },
+    "No commits in this repository." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun commit dans ce dépôt."
+          }
+        }
+      }
+    },
+    "No diff available for this file." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun diff disponible pour ce fichier."
+          }
+        }
+      }
+    },
+    "No limits reported for this account." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune limite communiquée pour ce compte."
+          }
+        }
+      }
+    },
+    "No newline at end of file" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de saut de ligne en fin de fichier"
+          }
+        }
+      }
+    },
+    "Not Signed In" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non connecté"
+          }
+        }
+      }
+    },
+    "OK" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        }
+      }
+    },
+    "On the Mac, turn on Settings → Local Access, then copy its IP address and pairing code. Both devices must be on the same network. The session continues on the Mac when you leave the mobile app." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur le Mac, active Réglages → Accès local puis recopie son IP et son code d’appairage. Les deux appareils doivent être sur le même réseau. La session continue sur le Mac lorsque tu quittes l’app mobile."
+          }
+        }
+      }
+    },
+    "On the same network, enter this IP address and code in the mobile app’s settings. The Mac must stay on with AgentUI open." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur le même réseau, saisis cette IP et ce code dans les réglages de l’app mobile. Le Mac doit rester allumé avec AgentUI ouvert."
+          }
+        }
+      }
+    },
+    "Only devices that know this code can read projects and control terminals. Traffic is encrypted with this code. Generate a new code to revoke devices that are already paired." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seuls les appareils qui connaissent ce code peuvent lire les projets et contrôler les terminaux. Les échanges sont chiffrés avec ce code. Génère un nouveau code pour révoquer les appareils déjà appairés."
+          }
+        }
+      }
+    },
+    "Open" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir"
+          }
+        }
+      }
+    },
+    "Open Claude Code in a terminal to sign in with your Claude subscription." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre Claude Code dans un terminal pour te connecter avec ton abonnement Claude."
+          }
+        }
+      }
+    },
+    "Open Terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir un terminal"
+          }
+        }
+      }
+    },
+    "Open a terminal to explore its project." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre un terminal pour explorer son projet."
+          }
+        }
+      }
+    },
+    "Open with Default App" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir dans l’application par défaut"
+          }
+        }
+      }
+    },
+    "OpenCode Conversation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation OpenCode"
+          }
+        }
+      }
+    },
+    "Opens an AgentUI terminal that runs “%@”" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre un terminal AgentUI qui lance « %@ »"
+          }
+        }
+      }
+    },
+    "Opens the branch in a separate working folder. If it doesn’t exist yet, it’s created from HEAD of %@. %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre la branche dans un dossier de travail séparé. Si elle n’existe pas encore, elle est créée depuis HEAD de %1$@. %2$@"
+          }
+        }
+      }
+    },
+    "Orange" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orange"
+          }
+        }
+      }
+    },
+    "Pairing Code" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code d’appairage"
+          }
+        }
+      }
+    },
+    "Pairing code rejected. Copy the code shown on the Mac in Settings → Local Access." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code d’appairage refusé. Recopie le code affiché sur le Mac dans Réglages → Accès local."
+          }
+        }
+      }
+    },
+    "Pairing code, e.g. ABCD-EFGH-JKLM" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code d’appairage, p. ex. ABCD-EFGH-JKLM"
+          }
+        }
+      }
+    },
+    "Pending / Running" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente / en cours"
+          }
+        }
+      }
+    },
+    "Permanently delete the worktree “%@”?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer définitivement le worktree « %@ » ?"
+          }
+        }
+      }
+    },
+    "Pick Up on Your Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue sur ton Mac"
+          }
+        }
+      }
+    },
+    "Pinch to zoom. Double-tap with two fingers to fit the width." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pince pour agrandir. Touche deux fois avec deux doigts pour ajuster la largeur."
+          }
+        }
+      }
+    },
+    "Pink" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rose"
+          }
+        }
+      }
+    },
+    "Preview Unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aperçu indisponible"
+          }
+        }
+      }
+    },
+    "Preview limited to 128 KB" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aperçu limité à 128 Ko"
+          }
+        }
+      }
+    },
+    "Project not found." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projet introuvable."
+          }
+        }
+      }
+    },
+    "Project not found. Use --project UUID or run the command in an AgentUI terminal." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projet introuvable. Utilise --project UUID ou exécute la commande dans un terminal AgentUI."
+          }
+        }
+      }
+    },
+    "Project or worktree not found." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projet ou worktree introuvable."
+          }
+        }
+      }
+    },
+    "Projects" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projets"
+          }
+        }
+      }
+    },
+    "Purple" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Violet"
+          }
+        }
+      }
+    },
+    "Quit" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter"
+          }
+        }
+      }
+    },
+    "Quit AgentUI?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter AgentUI ?"
+          }
+        }
+      }
+    },
+    "Quitting was cancelled to keep unsaved changes. %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La fermeture a été annulée pour conserver les modifications non sauvegardées. %@"
+          }
+        }
+      }
+    },
+    "Reading repository…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lecture du dépôt…"
+          }
+        }
+      }
+    },
+    "Ready" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prêt"
+          }
+        }
+      }
+    },
+    "Ready to accept a connection" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prêt à recevoir une connexion"
+          }
+        }
+      }
+    },
+    "Reconnect" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconnecter"
+          }
+        }
+      }
+    },
+    "Reconnect to the Mac before sending." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconnecte-toi au Mac avant d’envoyer."
+          }
+        }
+      }
+    },
+    "Red" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rouge"
+          }
+        }
+      }
+    },
+    "Refresh" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualiser"
+          }
+        }
+      }
+    },
+    "Refresh %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualiser %@"
+          }
+        }
+      }
+    },
+    "Refresh (⌘R)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualiser (⌘R)"
+          }
+        }
+      }
+    },
+    "Refresh Usage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualiser l’usage"
+          }
+        }
+      }
+    },
+    "Refresh Worktrees" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualiser les worktrees"
+          }
+        }
+      }
+    },
+    "Remote Repository" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dépôt distant"
+          }
+        }
+      }
+    },
+    "Remote Repository Unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dépôt distant indisponible"
+          }
+        }
+      }
+    },
+    "Remove" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer"
+          }
+        }
+      }
+    },
+    "Remove Project" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer le projet"
+          }
+        }
+      }
+    },
+    "Remove this project from the sidebar?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer ce projet de la barre latérale ?"
+          }
+        }
+      }
+    },
+    "Rename" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renommer"
+          }
+        }
+      }
+    },
+    "Rename and Customize…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renommer et personnaliser…"
+          }
+        }
+      }
+    },
+    "Renamed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renommé"
+          }
+        }
+      }
+    },
+    "Rename…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renommer…"
+          }
+        }
+      }
+    },
+    "Reopen Terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rouvrir le terminal"
+          }
+        }
+      }
+    },
+    "Request too large." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requête trop volumineuse."
+          }
+        }
+      }
+    },
+    "Reset" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réinitialiser"
+          }
+        }
+      }
+    },
+    "Resets in %@ (%@)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réinitialisation dans %1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "Response from AgentUI too large." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réponse d’AgentUI trop volumineuse."
+          }
+        }
+      }
+    },
+    "Response too large." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réponse trop volumineuse."
+          }
+        }
+      }
+    },
+    "Result too large to display." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Résultat trop volumineux pour être affiché."
+          }
+        }
+      }
+    },
+    "Resume %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprendre %@"
+          }
+        }
+      }
+    },
+    "Resume in a new terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprendre dans un nouveau terminal"
+          }
+        }
+      }
+    },
+    "Retry" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réessayer"
+          }
+        }
+      }
+    },
+    "Retry Saving" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réessayer la sauvegarde"
+          }
+        }
+      }
+    },
+    "Return" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrée"
+          }
+        }
+      }
+    },
+    "Reviews" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revues"
+          }
+        }
+      }
+    },
+    "Right Panel" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panneau de droite"
+          }
+        }
+      }
+    },
+    "Right Panel View" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vue du panneau de droite"
+          }
+        }
+      }
+    },
+    "Rolling %lld-hour window" : {
+      "localizations" : {
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Fenêtre glissante de %lld heure"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Fenêtre glissante de %lld heures"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Rolling %lld-minute window" : {
+      "localizations" : {
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Fenêtre glissante de %lld minute"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Fenêtre glissante de %lld minutes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Root" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Racine"
+          }
+        }
+      }
+    },
+    "Run agentui from a terminal in the app." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exécute agentui depuis un terminal de l’application."
+          }
+        }
+      }
+    },
+    "Run “codex login” in a terminal to sign in with your ChatGPT account." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lance « codex login » dans un terminal pour te connecter avec ton compte ChatGPT."
+          }
+        }
+      }
+    },
+    "Running" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En cours"
+          }
+        }
+      }
+    },
+    "Save" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer"
+          }
+        }
+      }
+    },
+    "Selection" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélection"
+          }
+        }
+      }
+    },
+    "Send to Session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoyer à la session"
+          }
+        }
+      }
+    },
+    "Sending not confirmed. Check the session before sending again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoi non confirmé. Vérifie la session avant de renvoyer."
+          }
+        }
+      }
+    },
+    "Session Display" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affichage des sessions"
+          }
+        }
+      }
+    },
+    "Session ID not supported" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiant de session non pris en charge"
+          }
+        }
+      }
+    },
+    "Session Mode" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode de session"
+          }
+        }
+      }
+    },
+    "Session Output" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sortie de la session"
+          }
+        }
+      }
+    },
+    "Session ended" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session terminée"
+          }
+        }
+      }
+    },
+    "Session ended (%d)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session terminée (%d)"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réglages"
+          }
+        }
+      }
+    },
+    "Shape" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forme"
+          }
+        }
+      }
+    },
+    "Show Right Panel" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le panneau de droite"
+          }
+        }
+      }
+    },
+    "Show diff for %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le diff de %@"
+          }
+        }
+      }
+    },
+    "Show in Finder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher dans le Finder"
+          }
+        }
+      }
+    },
+    "Show limit details" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le détail des limites"
+          }
+        }
+      }
+    },
+    "Show or hide the right panel" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher ou masquer le panneau de droite"
+          }
+        }
+      }
+    },
+    "Show usage details" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le détail de l’usage"
+          }
+        }
+      }
+    },
+    "Shows usage details" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affiche le détail de l’usage"
+          }
+        }
+      }
+    },
+    "Side by Side" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Côte à côte"
+          }
+        }
+      }
+    },
+    "Sign In…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se connecter…"
+          }
+        }
+      }
+    },
+    "Size" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taille"
+          }
+        }
+      }
+    },
+    "Skipped" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignoré"
+          }
+        }
+      }
+    },
+    "Solarized Dark" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solarized sombre"
+          }
+        }
+      }
+    },
+    "Solarized Light" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solarized clair"
+          }
+        }
+      }
+    },
+    "Some folders couldn’t be read:" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Certains dossiers n’ont pas pu être lus :"
+          }
+        }
+      }
+    },
+    "Specify the worktree to delete: --worktree UUID (see agentui list)." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indique le worktree à supprimer : --worktree UUID (voir agentui list)."
+          }
+        }
+      }
+    },
+    "Split Down (⇧⌘D)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diviser en bas (⇧⌘D)"
+          }
+        }
+      }
+    },
+    "Split Right (⌘D)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diviser à droite (⌘D)"
+          }
+        }
+      }
+    },
+    "Split terminal down" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diviser le terminal en bas"
+          }
+        }
+      }
+    },
+    "Split terminal right" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diviser le terminal à droite"
+          }
+        }
+      }
+    },
+    "Staged Changes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifications indexées"
+          }
+        }
+      }
+    },
+    "Starting…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrage…"
+          }
+        }
+      }
+    },
+    "Stop" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter"
+          }
+        }
+      }
+    },
+    "Succeeded" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réussi"
+          }
+        }
+      }
+    },
+    "System" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Système"
+          }
+        }
+      }
+    },
+    "Teal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bleu canard"
+          }
+        }
+      }
+    },
+    "Terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal"
+          }
+        }
+      }
+    },
+    "Terminal Screen" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écran du terminal"
+          }
+        }
+      }
+    },
+    "Terminal not found." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal introuvable."
+          }
+        }
+      }
+    },
+    "Terminal open" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal ouvert"
+          }
+        }
+      }
+    },
+    "Terminal preview with the %@ theme" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aperçu du terminal avec le thème %@"
+          }
+        }
+      }
+    },
+    "Terminals and their processes will be stopped. Your project organization will be kept and agent sessions will resume the next time you open AgentUI." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les terminaux et leurs processus seront arrêtés. L’organisation de tes projets sera conservée et les sessions d’agents reprendront au prochain lancement."
+          }
+        }
+      }
+    },
+    "Text" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texte"
+          }
+        }
+      }
+    },
+    "The %@ service responded with %lld." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le service %1$@ a répondu %2$lld."
+          }
+        }
+      }
+    },
+    "The Git repositories in this folder will be added as projects under a virtual folder. The files stay where they are." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les dépôts Git de ce dossier seront ajoutés comme projets sous un dossier virtuel. Les fichiers restent à leur emplacement."
+          }
+        }
+      }
+    },
+    "The Mac is disconnected." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le Mac est déconnecté."
+          }
+        }
+      }
+    },
+    "The Mac isn’t ready." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le Mac n’est pas prêt."
+          }
+        }
+      }
+    },
+    "The Mac isn’t responding. Check its IP address, the local network and its Local Access settings." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le Mac ne répond pas. Vérifie son IP, le réseau local et ses réglages d’accès local."
+          }
+        }
+      }
+    },
+    "The Mac’s organization is read-only." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’organisation du Mac est en lecture seule."
+          }
+        }
+      }
+    },
+    "The Session Is Ready" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La session est prête"
+          }
+        }
+      }
+    },
+    "The System theme follows macOS light or dark mode. Choose another theme to edit its colors." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le thème Système suit le mode clair ou sombre de macOS. Choisis un autre thème pour modifier ses couleurs."
+          }
+        }
+      }
+    },
+    "The accessible repositories were added." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les dépôts accessibles ont été ajoutés."
+          }
+        }
+      }
+    },
+    "The agent runs commands and edits files without confirmation. Keep this for isolated worktrees." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’agent exécute des commandes et modifie des fichiers sans confirmation. À réserver aux worktrees isolés."
+          }
+        }
+      }
+    },
+    "The agent stopped: the message wasn’t sent to the shell." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’agent s’est arrêté : le message n’a pas été envoyé au shell."
+          }
+        }
+      }
+    },
+    "The app was closed before responding." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’application a été fermée avant la réponse."
+          }
+        }
+      }
+    },
+    "The branch “%@” is already used by another worktree or by the project folder." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La branche « %@ » est déjà utilisée par un autre worktree ou par le dossier du projet."
+          }
+        }
+      }
+    },
+    "The command didn’t respond in time. The operation was interrupted." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La commande n’a pas répondu à temps. L’opération a été interrompue."
+          }
+        }
+      }
+    },
+    "The command failed (status %d)." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La commande a échoué (statut %d)."
+          }
+        }
+      }
+    },
+    "The file is outside this worktree." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier est en dehors de ce worktree."
+          }
+        }
+      }
+    },
+    "The file no longer has changes." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier n’a plus de modifications."
+          }
+        }
+      }
+    },
+    "The folder is no longer accessible:" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le dossier n’est plus accessible :"
+          }
+        }
+      }
+    },
+    "The operation was applied in memory, but saving it failed. Retry saving in the app before running the command again. %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’opération a été appliquée en mémoire, mais sa sauvegarde a échoué. Réessaie la sauvegarde dans l’application avant de relancer la commande. %@"
+          }
+        }
+      }
+    },
+    "The organization is still unreadable. The original file is kept: %@\n%@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’organisation reste illisible. Le fichier original est conservé : %1$@\n%2$@"
+          }
+        }
+      }
+    },
+    "The output exceeds the display limit. Open this content in your editor." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La sortie dépasse la limite d’affichage. Ouvre ce contenu dans ton éditeur."
+          }
+        }
+      }
+    },
+    "The output exceeds the display limit. The operation was interrupted." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La sortie dépasse la limite d’affichage. L’opération a été interrompue."
+          }
+        }
+      }
+    },
+    "The processes of the affected terminals will be stopped. Files and worktrees on disk will be kept." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les processus des terminaux concernés seront arrêtés. Les fichiers et les worktrees sur disque seront conservés."
+          }
+        }
+      }
+    },
+    "The project was removed." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le projet a été retiré."
+          }
+        }
+      }
+    },
+    "The project’s main folder can’t be deleted." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le dossier principal du projet ne peut pas être supprimé."
+          }
+        }
+      }
+    },
+    "The saved organization is unreadable. Fix it, then use Retry in the app before creating terminals." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’organisation enregistrée est illisible. Répare-la puis utilise Réessayer dans l’application avant de créer des terminaux."
+          }
+        }
+      }
+    },
+    "The saved pairing code is unreadable. Generate a new code to pair your devices again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le code d’appairage enregistré est illisible. Génère un nouveau code pour appairer à nouveau tes appareils."
+          }
+        }
+      }
+    },
+    "The terminal isn’t at the shell prompt. Finish the current command before launching an agent." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le terminal n’est pas à l’invite du shell. Termine la commande en cours avant de lancer un agent."
+          }
+        }
+      }
+    },
+    "The worktree “%@” has uncommitted changes or untracked files. Run again with --force to erase them." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le worktree « %@ » contient des modifications non commitées ou des fichiers non suivis. Relance avec --force pour les effacer."
+          }
+        }
+      }
+    },
+    "The worktree’s first terminal starts directly in the agent." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le premier terminal du worktree démarre directement sur l’agent."
+          }
+        }
+      }
+    },
+    "Theme" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thème"
+          }
+        }
+      }
+    },
+    "These checks are for the remote commit of the %@, which differs from the local HEAD." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces checks concernent le commit distant de la %@, différent du HEAD local."
+          }
+        }
+      }
+    },
+    "This AgentUI instance is closed." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette instance d’AgentUI est fermée."
+          }
+        }
+      }
+    },
+    "This conversation is already open" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette conversation est déjà ouverte"
+          }
+        }
+      }
+    },
+    "This conversation is no longer available or is already open." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette conversation n’est plus disponible ou est déjà ouverte."
+          }
+        }
+      }
+    },
+    "This conversation was just resumed in another terminal." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette conversation vient d’être reprise dans un autre terminal."
+          }
+        }
+      }
+    },
+    "This file can’t be previewed. Use the Finder to open it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier ne peut pas être prévisualisé. Utilise le Finder pour l’ouvrir."
+          }
+        }
+      }
+    },
+    "This file isn’t UTF-8 text. Open it in its app." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier n’est pas un texte UTF-8. Ouvre-le dans son application."
+          }
+        }
+      }
+    },
+    "This folder is no longer accessible: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce dossier n’est plus accessible : %@"
+          }
+        }
+      }
+    },
+    "This name will be shown in the sidebar." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce nom sera affiché dans la barre latérale."
+          }
+        }
+      }
+    },
+    "This name, icon and color will be shown in the sidebar." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce nom, cette icône et cette couleur seront affichés dans la barre latérale."
+          }
+        }
+      }
+    },
+    "This organization uses a newer version of AgentUI." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette organisation utilise une version plus récente d’AgentUI."
+          }
+        }
+      }
+    },
+    "This session has ended." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette session est terminée."
+          }
+        }
+      }
+    },
+    "This terminal belongs to the worktree being deleted. Run the command from another worktree." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce terminal appartient au worktree à supprimer. Lance la commande depuis un autre worktree."
+          }
+        }
+      }
+    },
+    "This terminal no longer exists on the Mac." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce terminal n’existe plus sur le Mac."
+          }
+        }
+      }
+    },
+    "This worktree doesn’t belong to the specified project." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce worktree n’appartient pas au projet indiqué."
+          }
+        }
+      }
+    },
+    "This worktree is being deleted." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce worktree est en cours de suppression."
+          }
+        }
+      }
+    },
+    "Too many requests. Retrying automatically in a few minutes." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trop de requêtes. Nouvel essai automatique dans quelques minutes."
+          }
+        }
+      }
+    },
+    "Tool" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outil"
+          }
+        }
+      }
+    },
+    "Tool Result" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Résultat de l’outil"
+          }
+        }
+      }
+    },
+    "Truncated List" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liste tronquée"
+          }
+        }
+      }
+    },
+    "Truncated preview: open the file in your editor" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aperçu tronqué : ouvre le fichier dans ton éditeur"
+          }
+        }
+      }
+    },
+    "Underline" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Souligné"
+          }
+        }
+      }
+    },
+    "Unified" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unifié"
+          }
+        }
+      }
+    },
+    "Unknown command. See agentui --help." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commande inconnue. Consulte agentui --help."
+          }
+        }
+      }
+    },
+    "Unknown command: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commande inconnue : %@"
+          }
+        }
+      }
+    },
+    "Unknown option: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Option inconnue : %@"
+          }
+        }
+      }
+    },
+    "Unreadable organization. Changes are disabled to protect your data." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Organisation illisible. Les modifications sont désactivées pour préserver tes données."
+          }
+        }
+      }
+    },
+    "Unsaved changes: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifications non sauvegardées : %@"
+          }
+        }
+      }
+    },
+    "Unstaged Changes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifications non indexées"
+          }
+        }
+      }
+    },
+    "Unsupported session ID." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiant de session non pris en charge."
+          }
+        }
+      }
+    },
+    "Untracked" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non suivi"
+          }
+        }
+      }
+    },
+    "Updated %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mis à jour %@"
+          }
+        }
+      }
+    },
+    "Use Conversation Name" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser le nom de la conversation"
+          }
+        }
+      }
+    },
+    "Waiting for a response…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente d’une réponse…"
+          }
+        }
+      }
+    },
+    "Waiting for sign-in…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente de la connexion…"
+          }
+        }
+      }
+    },
+    "Waiting input" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente"
+          }
+        }
+      }
+    },
+    "Week" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Semaine"
+          }
+        }
+      }
+    },
+    "Week · %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Semaine · %@"
+          }
+        }
+      }
+    },
+    "Without asking for permission" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sans demander d’autorisation"
+          }
+        }
+      }
+    },
+    "Working" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travail"
+          }
+        }
+      }
+    },
+    "Worktree not found." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Worktree introuvable."
+          }
+        }
+      }
+    },
+    "Worktree not found. Get its UUID with agentui list." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Worktree introuvable. Récupère son UUID avec agentui list."
+          }
+        }
+      }
+    },
+    "Write to continue working on the Mac." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écris pour continuer le travail sur le Mac."
+          }
+        }
+      }
+    },
+    "Yellow" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jaune"
+          }
+        }
+      }
+    },
+    "You" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous"
+          }
+        }
+      }
+    },
+    "Your Mac, Within Reach" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ton Mac, à portée de main"
+          }
+        }
+      }
+    },
+    "agentui — organize the terminals and worktrees of the running app\n\nagentui list\nagentui project add /path/to/project\nagentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree delete --worktree UUID [--force]\n\nFrom an AgentUI terminal, the project and worktree are implicit.\nChild commands are passed as arguments, without shell interpretation.\nExamples:\n  agentui terminal create --name Review -- claude \"Review the changes\"\n  agentui worktree create --branch feature/tests -- codex \"Add the tests\"\nEach creation returns the identifiers and path as JSON.\nAn existing branch is opened as is; otherwise it is created from the project’s HEAD.\nworktree delete closes its terminals and erases its folder; the branch and its commits stay in the repository.\nWithout --force, a worktree with uncommitted changes or untracked files is kept.\nA project’s main folder and the current terminal’s worktree can’t be deleted." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "agentui — organiser les terminaux et worktrees de l’application ouverte\n\nagentui list\nagentui project add /chemin/du/projet\nagentui terminal create [--name NOM] [--project UUID] [--worktree UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree create --branch BRANCHE [--name NOM] [--project UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree delete --worktree UUID [--force]\n\nDepuis un terminal AgentUI, le projet et le worktree sont implicites.\nLes commandes enfant sont passées comme arguments, sans interprétation shell.\nExemples :\n  agentui terminal create --name Review -- claude \"Relis les modifications\"\n  agentui worktree create --branch feature/tests -- codex \"Ajoute les tests\"\nChaque création renvoie les identifiants et le chemin au format JSON.\nUne branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.\nworktree delete ferme ses terminaux et efface son dossier ; la branche et ses commits restent dans le dépôt.\nSans --force, un worktree avec des modifications non commitées ou des fichiers non suivis est conservé.\nLe dossier principal d’un projet et le worktree du terminal courant ne peuvent pas être supprimés."
+          }
+        }
+      }
+    },
+    "claude" : {
+      "shouldTranslate" : false
+    },
+    "feature/my-task" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "feature/ma-tache"
+          }
+        }
+      }
+    },
+    "git status --short" : {
+      "shouldTranslate" : false
+    },
+    "iPhone and iPad" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone et iPad"
+          }
+        }
+      }
+    },
+    "ls" : {
+      "shouldTranslate" : false
+    },
+    "main" : {
+      "shouldTranslate" : false
+    },
+    "now" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "maintenant"
+          }
+        }
+      }
+    },
+    "resets in %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "réinitialisation dans %@"
+          }
+        }
+      }
+    },
+    "usage unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "usage indisponible"
+          }
+        }
+      }
+    },
+    "~/agentui " : {
+      "shouldTranslate" : false
+    },
+    "·" : {
+      "shouldTranslate" : false
+    },
+    "—" : {
+      "shouldTranslate" : false
+    },
+    "… and %lld more." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "… and %lld more."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "… and %lld more."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "… et %lld autre."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "… et %lld autres."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "−%lld" : {
+      "shouldTranslate" : false
+    },
+    "⌘T  New Terminal   ⌘D  Split" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘T  Nouveau terminal   ⌘D  Diviser"
+          }
+        }
+      }
+    },
+    "⌘T and the “New Terminal” buttons open the agent instead of a shell." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘T et les boutons « Nouveau terminal » ouvrent l’agent au lieu d’un shell."
+          }
+        }
+      }
+    },
+    "█" : {
+      "shouldTranslate" : false
+    },
+    "✓ " : {
+      "shouldTranslate" : false
+    },
+    "❯ " : {
+      "shouldTranslate" : false
+    }
+  },
+  "version" : "1.0"
+}

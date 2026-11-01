@@ -9,7 +9,7 @@ struct UsageWindowRow: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(window.kind.title).font(Typography.label)
                 Spacer()
-                Text("\(window.percentText) utilisés")
+                Text("\(window.percentText) used")
                     .font(Typography.body).monospacedDigit()
                     .foregroundStyle(window.level == .comfortable ? Palette.textPrimary : window.level.tint)
             }
@@ -18,7 +18,7 @@ struct UsageWindowRow: View {
                 Text(window.kind.detail)
                 Spacer()
                 if let countdown = window.resetText(from: now), let date = window.resetDateText(from: now) {
-                    Text("Réinitialisation dans \(countdown) (\(date))").monospacedDigit()
+                    Text("Resets in \(countdown) (\(date))").monospacedDigit()
                 }
             }
             .font(Typography.caption).foregroundStyle(Palette.textSecondary)

@@ -9,45 +9,45 @@ struct TerminalSettingsPane: View {
         @Bindable var settings = settings
         Form {
             SessionDisplaySettingsSection(mode: $displayMode)
-            Section("Thème") {
+            Section("Theme") {
                 TerminalPreview(appearance: settings.terminal)
                 TerminalThemeGrid(appearance: $settings.terminal)
             }
-            Section("Police") {
-                Picker("Police", selection: $settings.terminal.fontFamily) {
-                    Text("Système").tag("")
+            Section("Font") {
+                Picker("Font", selection: $settings.terminal.fontFamily) {
+                    Text("System").tag("")
                     Divider()
                     ForEach(MonospacedFonts.families, id: \.self) { family in
                         Text(family).tag(family)
                     }
                 }
                 Stepper(value: $settings.terminal.fontSize, in: TerminalAppearance.fontSizes) {
-                    LabeledContent("Taille", value: "\(Int(settings.terminal.fontSize)) pt")
+                    LabeledContent("Size", value: "\(Int(settings.terminal.fontSize)) pt")
                 }
             }
-            Section("Curseur") {
-                Picker("Forme", selection: $settings.terminal.cursorShape) {
+            Section("Cursor") {
+                Picker("Shape", selection: $settings.terminal.cursorShape) {
                     ForEach(TerminalCursorShape.allCases) { shape in
                         Text(shape.title).tag(shape)
                     }
                 }
                 .pickerStyle(.segmented)
-                Toggle("Clignotant", isOn: $settings.terminal.cursorBlinks)
+                Toggle("Blinking", isOn: $settings.terminal.cursorBlinks)
             }
             Section {
                 TerminalPaletteEditor(appearance: $settings.terminal)
             } header: {
-                Text("Couleurs")
+                Text("Colors")
             } footer: {
                 if !settings.terminal.isEditable {
-                    Text("Le thème Système suit le mode clair ou sombre de macOS. Choisis un autre thème pour modifier ses couleurs.")
+                    Text("The System theme follows macOS light or dark mode. Choose another theme to edit its colors.")
                         .font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 }
             }
             Section {
                 HStack {
                     Spacer()
-                    Button("Réinitialiser") { settings.terminal = TerminalAppearance() }
+                    Button("Reset") { settings.terminal = TerminalAppearance() }
                         .disabled(settings.terminal == TerminalAppearance())
                 }
             }

@@ -15,16 +15,16 @@ struct SessionComposer: View {
                 if source == .terminal {
                     Button("Ctrl-C") { control(Data([3])) }
                 }
-                Button("Interrompre") { control(Data([27])) }
+                Button("Interrupt") { control(Data([27])) }
                 if source == .terminal {
-                    Button("Entrée") { control(Data([13])) }
+                    Button("Return") { control(Data([13])) }
                 }
                 Spacer()
             }
             .font(Typography.caption)
             .buttonStyle(.bordered).buttonBorderShape(.capsule).controlSize(.small)
             HStack(alignment: .bottom) {
-                TextField(source.agent.map { "Message à \($0.title)" } ?? "Message ou commande", text: $draft, axis: .vertical)
+                TextField(source.agent.map { "Message \($0.title)" } ?? "Message or command", text: $draft, axis: .vertical)
                     .autocorrectionDisabled()
                     .commandInputTraits()
                     .lineLimit(1...6).textFieldStyle(.plain)
@@ -38,7 +38,7 @@ struct SessionComposer: View {
                     }.frame(minWidth: 44, minHeight: 44)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Envoyer à la session")
+                .accessibilityLabel("Send to Session")
                 .disabled(sending || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }

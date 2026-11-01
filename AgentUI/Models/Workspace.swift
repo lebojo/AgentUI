@@ -45,6 +45,8 @@ struct Worktree: Identifiable, Codable, Equatable, Sendable {
     var groupID: UUID? = nil
     var layouts: [TerminalLayout] = []
 
+    var displayName: String { isPrimary ? String(localized: "Main") : name }
+
     func layout(containing terminalID: UUID) -> TerminalLayout? {
         layouts.first { $0.contains(terminalID) }
     }
@@ -84,7 +86,7 @@ struct Project: Identifiable, Codable, Equatable, Sendable {
         self.name = url.lastPathComponent
         self.path = path
         self.folderID = folderID
-        self.worktrees = [Worktree(name: "Principal", path: path, isPrimary: true,
+        self.worktrees = [Worktree(name: "Main", path: path, isPrimary: true,
                                    terminals: [TerminalRecord(name: "Terminal")])]
     }
 
@@ -177,7 +179,7 @@ struct TerminalContext: Equatable, Sendable {
 
     init(project: Project, worktree: Worktree, terminal: TerminalRecord) {
         self.project = ProjectInfo(id: project.id, name: project.name)
-        self.worktree = WorktreeInfo(id: worktree.id, name: worktree.name, path: worktree.path, isPrimary: worktree.isPrimary)
+        self.worktree = WorktreeInfo(id: worktree.id, name: worktree.displayName, path: worktree.path, isPrimary: worktree.isPrimary)
         self.terminal = terminal
     }
 

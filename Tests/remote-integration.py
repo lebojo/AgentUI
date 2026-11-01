@@ -127,7 +127,7 @@ def watch(terminal=None, chat=True):
 try:
     print("Fixture:", root, flush=True)
     log = open(root / "app.log", "w")
-    app = subprocess.Popen([str(binary), "-localHost.enabled", "YES", "-localHost.pairingCode", PAIRING_CODE, "-sessionDisplayMode", "chat"],
+    app = subprocess.Popen([str(binary), "-AppleLanguages", "(en)", "-localHost.enabled", "YES", "-localHost.pairingCode", PAIRING_CODE, "-sessionDisplayMode", "chat"],
                            env=os.environ | {"AGENTUI_STATE_DIRECTORY": str(state), "AGENTUI_TEST_HOST_PORT": str(port), "CLAUDE_CONFIG_DIR": str(root / "claude")}, stdout=log, stderr=subprocess.STDOUT)
     wait_for(lambda: (state / "instance-path").exists())
     instance = Path((state / "instance-path").read_text())
@@ -153,12 +153,12 @@ try:
     with connect() as sock:
         send(sock, {"watch": dict(version=PROTOCOL + 1)})
         reply = read(sock)
-        assert "Versions incompatibles" in reply["failure"]["_0"] and "Versions incompatibles" in reply["error"], reply
+        assert "Incompatible versions" in reply["failure"]["_0"] and "Incompatible versions" in reply["error"], reply
     try:
         rpc("futureRequest", terminal=terminal)
         raise AssertionError("An unknown request was accepted")
     except ValueError as error:
-        assert "Versions incompatibles" in str(error), error
+        assert "Incompatible versions" in str(error), error
     print("PASS real host connection and protocol version", flush=True)
 
     with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
@@ -223,7 +223,7 @@ try:
         rpc("input", id=terminal, data=base64.b64encode(b"echo CHAT_TEXT_IN_SHELL\r").decode(), message="echo CHAT_TEXT_IN_SHELL")
         raise AssertionError("A chat message was typed into the shell")
     except ValueError as error:
-        assert "L’agent s’est arrêté" in str(error), error
+        assert "The agent stopped" in str(error), error
     print("PASS a shell stays a terminal in chat mode, duplex input acknowledgement, real PTY output and no chat text run by the shell", flush=True)
 
     with watch(terminal, chat=False) as sock:
@@ -255,7 +255,7 @@ try:
             rpc("launchAgent", terminal=echo, agent="codex")
             raise AssertionError("An agent must not be typed into a running program")
         except ValueError as error:
-            assert "invite du shell" in str(error), error
+            assert "shell prompt" in str(error), error
     stub = "codex() { printf '\\101\\107\\105\\116\\124_STUB_STARTED\\n'; }\r"
     rpc("input", id=terminal, data=base64.b64encode(stub.encode()).decode())
     with watch(terminal, chat=False) as sock:

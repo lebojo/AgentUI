@@ -19,7 +19,7 @@ struct NativeTerminalView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSView {
         let host = NSView()
-        host.setAccessibilityLabel("Terminal interactif")
+        host.setAccessibilityLabel(String(localized: "Interactive Terminal"))
         let terminal = session.view
         terminal.removeFromSuperview()
         terminal.translatesAutoresizingMaskIntoConstraints = false

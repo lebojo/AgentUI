@@ -70,19 +70,19 @@ enum SidebarTint: String, CaseIterable, Codable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .blue: "Bleu"
-        case .indigo: "Indigo"
-        case .purple: "Violet"
-        case .pink: "Rose"
-        case .red: "Rouge"
-        case .orange: "Orange"
-        case .yellow: "Jaune"
-        case .green: "Vert"
-        case .mint: "Menthe"
-        case .teal: "Bleu canard"
-        case .cyan: "Cyan"
-        case .brown: "Marron"
-        case .gray: "Gris"
+        case .blue: String(localized: "Blue")
+        case .indigo: String(localized: "Indigo")
+        case .purple: String(localized: "Purple")
+        case .pink: String(localized: "Pink")
+        case .red: String(localized: "Red")
+        case .orange: String(localized: "Orange")
+        case .yellow: String(localized: "Yellow")
+        case .green: String(localized: "Green")
+        case .mint: String(localized: "Mint")
+        case .teal: String(localized: "Teal")
+        case .cyan: String(localized: "Cyan")
+        case .brown: String(localized: "Brown")
+        case .gray: String(localized: "Gray")
         }
     }
 }

@@ -15,6 +15,6 @@ struct DiffCode: View {
         .font(Typography.code)
         .padding(.leading, Spacing.xs)
         .padding(.vertical, Spacing.xxs / 2)
-        .help(line.missingFinalNewline ? "Pas de saut de ligne en fin de fichier" : "")
+        .help(line.missingFinalNewline ? String(localized: "No newline at end of file") : "")
     }
 }

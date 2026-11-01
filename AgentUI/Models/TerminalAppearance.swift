@@ -7,9 +7,9 @@ enum TerminalCursorShape: String, Codable, CaseIterable, Identifiable, Sendable 
 
     var title: String {
         switch self {
-        case .block: "Bloc"
-        case .underline: "Souligné"
-        case .bar: "Barre"
+        case .block: String(localized: "Block")
+        case .underline: String(localized: "Underline")
+        case .bar: String(localized: "Bar")
         }
     }
 }

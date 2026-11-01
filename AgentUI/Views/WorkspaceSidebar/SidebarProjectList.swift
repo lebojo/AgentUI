@@ -27,14 +27,14 @@ struct SidebarProjectList: View {
             if store.projects.isEmpty && store.folders.isEmpty {
                 VStack(spacing: Spacing.m) {
                     Image(systemName: "folder.badge.plus").font(Typography.emptyStateSymbol)
-                    Text("Tes projets, au même endroit").font(Typography.m.weight(.medium))
-                    Text("Ajoute un projet pour commencer.").font(Typography.s).foregroundStyle(Palette.textSecondary)
-                    Button("Ajouter un projet…") { store.chooseProjects() }.controlSize(.small).padding(.top, Spacing.xs)
+                    Text("All your projects in one place").font(Typography.m.weight(.medium))
+                    Text("Add a project to get started.").font(Typography.s).foregroundStyle(Palette.textSecondary)
+                    Button("Add Project…") { store.chooseProjects() }.controlSize(.small).padding(.top, Spacing.xs)
                 }
                 .foregroundStyle(Palette.textSecondary)
                 .padding()
             } else if !query.isEmpty && result.groups.isEmpty && result.ungrouped.isEmpty {
-                Text("Aucun résultat").font(Typography.body).foregroundStyle(Palette.textSecondary)
+                Text("No Results").font(Typography.body).foregroundStyle(Palette.textSecondary)
             }
         }
     }

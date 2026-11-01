@@ -28,7 +28,7 @@ enum WorkspaceDisk {
         guard FileManager.default.fileExists(atPath: url.path) else { return Workspace() }
         let state = try JSONDecoder().decode(Workspace.self, from: Data(contentsOf: url))
         guard state.version == 1 else {
-            throw WorkspaceError(message: "Cette organisation utilise une version plus récente d’AgentUI.")
+            throw WorkspaceError(message: String(localized: "This organization uses a newer version of AgentUI."))
         }
         return state
     }

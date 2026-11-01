@@ -19,15 +19,15 @@ struct TerminalHeader: View {
             }
             Spacer()
             Button { split(.horizontal) } label: { Image(systemName: "rectangle.split.2x1") }
-                .buttonStyle(.borderless).help("Diviser à droite (⌘D)")
-                .accessibilityLabel("Diviser le terminal à droite")
+                .buttonStyle(.borderless).help("Split Right (⌘D)")
+                .accessibilityLabel("Split terminal right")
                 .keyboardShortcut("d")
             Button { split(.vertical) } label: { Image(systemName: "rectangle.split.1x2") }
-                .buttonStyle(.borderless).help("Diviser en bas (⇧⌘D)")
-                .accessibilityLabel("Diviser le terminal en bas")
+                .buttonStyle(.borderless).help("Split Down (⇧⌘D)")
+                .accessibilityLabel("Split terminal down")
                 .keyboardShortcut("d", modifiers: [.command, .shift])
             Button(action: addTerminal) { Label("Terminal", systemImage: "plus") }
-                .buttonStyle(.borderless).help("Nouveau terminal dans ce worktree")
+                .buttonStyle(.borderless).help("New terminal in this worktree")
                 .keyboardShortcut("t")
         }
         .font(Typography.m).lineLimit(1).padding(.horizontal, Spacing.xl).frame(height: Dimension.Detail.headerHeight)

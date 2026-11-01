@@ -11,8 +11,8 @@ enum UsageProvider: String, CaseIterable, Identifiable, Sendable {
     }
     var signInHint: String {
         switch self {
-        case .claude: "Ouvre Claude Code dans un terminal pour te connecter avec ton abonnement Claude."
-        case .codex: "Lance « codex login » dans un terminal pour te connecter avec ton compte ChatGPT."
+        case .claude: String(localized: "Open Claude Code in a terminal to sign in with your Claude subscription.")
+        case .codex: String(localized: "Run “codex login” in a terminal to sign in with your ChatGPT account.")
         }
     }
     var signInCommand: [String] {
@@ -31,26 +31,26 @@ enum UsageWindowKind: Hashable, Sendable {
 
     var title: String {
         switch self {
-        case .session(let minutes): minutes % 60 == 0 ? "\(minutes / 60) h" : "\(minutes) min"
-        case .weekly: "Semaine"
-        case .weeklyModel(let model): "Semaine · \(model)"
-        case .monthlySpend: "Crédits du mois"
+        case .session(let minutes): minutes % 60 == 0 ? String(localized: "\(minutes / 60)h") : String(localized: "\(minutes) min")
+        case .weekly: String(localized: "Week")
+        case .weeklyModel(let model): String(localized: "Week · \(model)")
+        case .monthlySpend: String(localized: "Monthly Credits")
         }
     }
     var shortTitle: String {
         switch self {
         case .session: title
-        case .weekly: "7 j"
-        case .weeklyModel(let model): "7 j · \(model)"
-        case .monthlySpend: "Mois"
+        case .weekly: String(localized: "7d")
+        case .weeklyModel(let model): String(localized: "7d · \(model)")
+        case .monthlySpend: String(localized: "Month")
         }
     }
     var detail: String {
         switch self {
-        case .session(let minutes): "Fenêtre glissante de \(minutes % 60 == 0 ? "\(minutes / 60) heures" : "\(minutes) minutes")"
-        case .weekly: "Tous modèles confondus, sur 7 jours"
-        case .weeklyModel(let model): "Limite propre à \(model), sur 7 jours"
-        case .monthlySpend: "Usage supplémentaire facturé au-delà du forfait"
+        case .session(let minutes): minutes % 60 == 0 ? String(localized: "Rolling \(minutes / 60)-hour window") : String(localized: "Rolling \(minutes)-minute window")
+        case .weekly: String(localized: "All models combined, over 7 days")
+        case .weeklyModel(let model): String(localized: "\(model)-specific limit, over 7 days")
+        case .monthlySpend: String(localized: "Extra usage billed beyond your plan")
         }
     }
     var isSession: Bool {
@@ -118,12 +118,12 @@ enum UsageState: Equatable, Sendable {
 enum UsageCountdown {
     static func text(until date: Date, from now: Date = .now) -> String {
         let seconds = Int(date.timeIntervalSince(now).rounded(.up))
-        guard seconds > 0 else { return "maintenant" }
+        guard seconds > 0 else { return String(localized: "now") }
         let minutes = (seconds + 59) / 60
         let days = minutes / 1440, hours = (minutes % 1440) / 60, rest = minutes % 60
-        if days > 0 { return hours > 0 ? "\(days) j \(hours) h" : "\(days) j" }
-        if hours > 0 { return rest > 0 ? "\(hours) h \(String(format: "%02d", rest))" : "\(hours) h" }
-        return "\(minutes) min"
+        if days > 0 { return hours > 0 ? String(localized: "\(days)d \(hours)h") : String(localized: "\(days)d") }
+        if hours > 0 { return rest > 0 ? String(localized: "\(hours)h \(String(format: "%02d", rest))") : String(localized: "\(hours)h") }
+        return String(localized: "\(minutes) min")
     }
 }
 

@@ -18,12 +18,12 @@ enum InspectorService {
 
     static func textFile(_ url: URL) async throws -> String {
         let content = try await textContent(url)
-        return content.text + (content.isTruncated ? "\n\n[Aperçu limité à 128 Ko]" : "")
+        return content.text + (content.isTruncated ? "\n\n[" + String(localized: "Preview limited to 128 KB") + "]" : "")
     }
 
     @concurrent static func textContent(_ url: URL) async throws -> TextContent {
         let values = try url.resourceValues(forKeys: [.isRegularFileKey])
-        guard values.isRegularFile == true else { throw ReadCommandError(message: "Ce fichier ne peut pas être prévisualisé. Utilise le Finder pour l’ouvrir.") }
+        guard values.isRegularFile == true else { throw ReadCommandError(message: String(localized: "This file can’t be previewed. Use the Finder to open it.")) }
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         let data = try handle.read(upToCount: 131_073) ?? Data()
@@ -36,7 +36,7 @@ enum InspectorService {
             if prefix.count - start < width { prefix.removeSubrange(start...) }
         }
         guard !data.contains(0), let text = String(data: prefix, encoding: .utf8) else {
-            throw ReadCommandError(message: "Ce fichier n’est pas un texte UTF-8. Ouvre-le dans son application.")
+            throw ReadCommandError(message: String(localized: "This file isn’t UTF-8 text. Open it in its app."))
         }
         return TextContent(text: text, isTruncated: data.count > 131_072)
     }
@@ -98,7 +98,7 @@ enum InspectorService {
 
     @concurrent static func gitlab(at path: String, branch: GitBranch?, headSHA: String?, executable override: URL? = nil) async throws -> RemoteSnapshot {
         guard let glab = override ?? ReadCommand.executable("glab") else {
-            throw ReadCommandError(message: "GitLab CLI n’est pas installé. Installe glab, puis lance glab auth login dans un terminal.")
+            throw ReadCommandError(message: String(localized: "GitLab CLI isn’t installed. Install glab, then run glab auth login in a terminal."))
         }
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -142,7 +142,7 @@ enum InspectorService {
 
     @concurrent static func github(at path: String, branch: GitBranch?, headSHA: String?, executable override: URL? = nil) async throws -> RemoteSnapshot {
         guard let gh = override ?? ReadCommand.executable("gh") else {
-            throw ReadCommandError(message: "GitHub CLI n’est pas installé. Installe gh, puis lance gh auth login dans un terminal.")
+            throw ReadCommandError(message: String(localized: "GitHub CLI isn’t installed. Install gh, then run gh auth login in a terminal."))
         }
         let decoder = JSONDecoder()
         let repoData = try await ReadCommand.run(gh, ["repo", "view", "--json", "nameWithOwner,url,description"], at: path)

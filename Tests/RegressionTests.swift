@@ -19,7 +19,7 @@ import Foundation
             for offset in 1..<character.utf8.count {
                 try (String(repeating: "a", count: 131_072 - offset) + character + "tail").write(to: text, atomically: true, encoding: .utf8)
                 let preview = try await InspectorService.textFile(text)
-                try CoreTests.require(preview.contains("128 Ko") && !preview.contains("�"), "Truncate UTF-8 at a scalar boundary")
+                try CoreTests.require(preview.contains("128 KB") && !preview.contains("�"), "Truncate UTF-8 at a scalar boundary")
             }
         }
         try Data([0xFF, 0x61]).write(to: text)
@@ -132,7 +132,7 @@ import Foundation
         var partialPath: String?
         do { _ = try await task.value; throw WorkspaceError(message: "FAIL: cancelled mutation reported success") }
         catch let error as WorktreeCreationError {
-            try CoreTests.require(error.reason.contains("annulée"), "Cancellation is reported honestly")
+            try CoreTests.require(error.reason.contains("cancelled"), "Cancellation is reported honestly")
             partialPath = error.path
         }
         try CoreTests.require(Date().timeIntervalSince(cancellationStart) < 3, "Cancellation releases blocked Git promptly")
@@ -146,7 +146,7 @@ import Foundation
         do {
             _ = try await GitService.createWorktree(project: project, branch: "timed-out", root: root, timeout: 0.2)
             throw WorkspaceError(message: "FAIL: stalled worktree did not time out")
-        } catch let error as WorktreeCreationError { try CoreTests.require(error.reason.contains("temps"), "Timeout explains partial creation") }
+        } catch let error as WorktreeCreationError { try CoreTests.require(error.reason.contains("in time"), "Timeout explains partial creation") }
         try fm.removeItem(at: hook)
         print("PASS worktree cancellation, hook termination, deadline and partial creation recovery")
 

@@ -14,15 +14,15 @@ enum BridgeMailbox {
 
         var invalidMessage: String {
             switch self {
-            case .request: "Requête invalide."
-            case .response: "Réponse d’AgentUI invalide."
+            case .request: String(localized: "Invalid request.")
+            case .response: String(localized: "Invalid response from AgentUI.")
             }
         }
 
         var oversizedMessage: String {
             switch self {
-            case .request: "Requête trop volumineuse."
-            case .response: "Réponse d’AgentUI trop volumineuse."
+            case .request: String(localized: "Request too large.")
+            case .response: String(localized: "Response from AgentUI too large.")
             }
         }
     }

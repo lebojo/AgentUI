@@ -20,7 +20,7 @@ struct SidebarProjectRow: View {
                     SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, worktree: worktree)
                 }
                 if worktree.terminals.isEmpty {
-                    Button("Ouvrir un terminal") { store.openTerminal(project, worktree, launch: settings.agentLaunch) }
+                    Button("Open Terminal") { store.openTerminal(project, worktree, launch: settings.agentLaunch) }
                         .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 }
             }
@@ -46,36 +46,36 @@ struct SidebarProjectRow: View {
                 .onTapGesture { activate(project) }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction { activate(project) }
-                .help(project.worktrees.allSatisfy({ $0.terminals.isEmpty }) ? "Projet en veille — cliquer pour ouvrir un terminal" : project.name)
+                .help(project.worktrees.allSatisfy({ $0.terminals.isEmpty }) ? String(localized: "Idle project — click to open a terminal") : project.name)
                 Spacer(minLength: Spacing.xxs)
                 if store.busyProjects.contains(project.id) { ProgressView().controlSize(.mini) }
                 else {
                     Button { sheet = .worktree(project.id, project.name) } label: { Image(systemName: "plus").font(Typography.s.weight(.semibold)) }
-                        .buttonStyle(.borderless).help("Créer un worktree pour \(project.name)")
-                        .accessibilityLabel("Créer un worktree pour \(project.name)")
+                        .buttonStyle(.borderless).help("Create a worktree for \(project.name)")
+                        .accessibilityLabel("Create a worktree for \(project.name)")
                 }
             }
             .contentShape(Rectangle())
             .help(project.path)
             .draggable(project.id.uuidString)
             .contextMenu {
-                Button("Nouveau terminal", systemImage: "terminal") {
+                Button("New Terminal", systemImage: "terminal") {
                     if let main = project.worktrees.first(where: \.isPrimary) { store.openTerminal(project, main, launch: settings.agentLaunch) }
                 }
-                Button("Nouveau worktree…", systemImage: "arrow.triangle.branch") { sheet = .worktree(project.id, project.name) }
+                Button("New Worktree…", systemImage: "arrow.triangle.branch") { sheet = .worktree(project.id, project.name) }
                     .disabled(store.busyProjects.contains(project.id))
-                Button("Nouveau groupe de worktrees…", systemImage: "rectangle.stack.badge.plus") { sheet = .worktreeGroup(projectID: project.id, worktreeID: nil) }
-                Menu("Déplacer vers", systemImage: "folder") {
-                    Button("Sans dossier") { store.moveProject(project.id, to: nil) }
+                Button("New Worktree Group…", systemImage: "rectangle.stack.badge.plus") { sheet = .worktreeGroup(projectID: project.id, worktreeID: nil) }
+                Menu("Move To", systemImage: "folder") {
+                    Button("No Folder") { store.moveProject(project.id, to: nil) }
                         .disabled(project.folderID == nil)
                     ForEach(store.folders.destinations()) { destination in
                         Button(destination.title) { store.moveProject(project.id, to: destination.id) }
                             .disabled(project.folderID == destination.id)
                     }
                 }
-                Button("Renommer et personnaliser…", systemImage: "paintpalette") { sheet = .rename(project.id, project.name) }
-                Button("Afficher dans le Finder", systemImage: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) }
-                Button("Actualiser les worktrees", systemImage: "arrow.clockwise") { Task { await store.refreshWorktrees(project.id) } }
+                Button("Rename and Customize…", systemImage: "paintpalette") { sheet = .rename(project.id, project.name) }
+                Button("Show in Finder", systemImage: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) }
+                Button("Refresh Worktrees", systemImage: "arrow.clockwise") { Task { await store.refreshWorktrees(project.id) } }
                     .disabled(store.busyProjects.contains(project.id))
                 Divider()
                 RemovalButton(pending: $removal, removal: .project(project.id), placement: .menu)
@@ -92,7 +92,7 @@ struct SidebarProjectRow: View {
     }
     private func visibleWorktrees(in groupID: UUID?) -> [Worktree] {
         project.worktrees(in: groupID).filter { worktree in
-            showAll || matches(project.name) || matches(worktree.name) || worktree.terminals.contains { matches($0.name) }
+            showAll || matches(project.name) || matches(worktree.displayName) || worktree.terminals.contains { matches($0.name) }
         }
     }
     private func activate(_ project: Project) {

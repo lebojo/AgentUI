@@ -32,8 +32,8 @@ struct UsageBar: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .help("Afficher le détail de l’usage")
-                    .accessibilityHint("Affiche le détail de l’usage")
+                    .help("Show usage details")
+                    .accessibilityHint("Shows usage details")
 
                     Button { withAnimation(Motion.standard) { isCollapsed.toggle() } } label: {
                         Image(systemName: "chevron.down")
@@ -44,8 +44,8 @@ struct UsageBar: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(Palette.textSecondary)
-                    .help(isCollapsed ? "Afficher le détail des limites" : "Réduire l’usage")
-                    .accessibilityLabel(isCollapsed ? "Développer l’usage" : "Réduire l’usage")
+                    .help(isCollapsed ? "Show limit details" : "Collapse Usage")
+                    .accessibilityLabel(isCollapsed ? "Expand Usage" : "Collapse Usage")
                 }
                 .padding(.leading, Spacing.l).padding(.trailing, Spacing.m).padding(.vertical, isCollapsed ? Spacing.m : Spacing.l)
             } else if usage.isSignedOutEverywhere {

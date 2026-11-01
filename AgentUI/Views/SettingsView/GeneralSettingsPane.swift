@@ -6,9 +6,9 @@ struct GeneralSettingsPane: View {
     var body: some View {
         @Bindable var settings = settings
         Form {
-            Section("Demander confirmation") {
-                Toggle("Avant de retirer un projet", isOn: $settings.confirmations.onProjectRemoval)
-                Toggle("Avant de fermer un terminal", isOn: $settings.confirmations.onTerminalClosing)
+            Section("Ask for Confirmation") {
+                Toggle("Before removing a project", isOn: $settings.confirmations.onProjectRemoval)
+                Toggle("Before closing a terminal", isOn: $settings.confirmations.onTerminalClosing)
             }
         }
         .formStyle(.grouped)

@@ -48,13 +48,13 @@ import Foundation
         let other = try AgentCLI.parse(["terminal", "create", "--project", projectID.uuidString], environment: env)
         try require(other.worktreeID == nil, "Explicit project doesn't inherit unrelated worktree")
         do { _ = try AgentCLI.parse(["terminal", "create", "--project", "bad"], environment: env); throw WorkspaceError(message: "FAIL: invalid UUID accepted") }
-        catch let error as WorkspaceError { try require(error.message.contains("invalide"), "Reject bad IDs") }
+        catch let error as WorkspaceError { try require(error.message.contains("Invalid"), "Reject bad IDs") }
         let deletion = try AgentCLI.parse(["worktree", "delete", "--force", "--worktree", explicitID.uuidString], environment: env)
         try require(deletion.action == "worktree.delete" && deletion.worktreeID == explicitID && deletion.force == true, "Parse worktree deletion")
         do { _ = try AgentCLI.parse(["worktree", "delete"], environment: env); throw WorkspaceError(message: "FAIL: implicit deletion accepted") }
         catch let error as WorkspaceError { try require(error.message.contains("--worktree UUID"), "Deletion never targets the current worktree implicitly") }
         do { _ = try AgentCLI.parse(["worktree", "delete", "--worktree", worktreeID.uuidString], environment: env); throw WorkspaceError(message: "FAIL: self deletion accepted") }
-        catch let error as WorkspaceError { try require(error.message.contains("autre worktree"), "A terminal cannot delete its own worktree") }
+        catch let error as WorkspaceError { try require(error.message.contains("another worktree"), "A terminal cannot delete its own worktree") }
         print("PASS CLI context, argument boundaries, validation")
 
         let mailbox = root.appendingPathComponent("mailbox")
@@ -93,7 +93,7 @@ import Foundation
             _ = try await GitService.createWorktree(project: gitProject, branch: "feature/agent-tests", root: root)
             throw WorkspaceError(message: "FAIL: branch used by another worktree accepted")
         } catch let error as WorkspaceError {
-            try require(error.message.contains("déjà utilisée"), "Branch used by another worktree rejected")
+            try require(error.message.contains("already used"), "Branch used by another worktree rejected")
         }
         let finalWorktrees = try await GitService.existingWorktrees(project: gitProject)
         try require(finalWorktrees.count == discovered.count, "Failed operation doesn't create an extra worktree")
@@ -114,7 +114,7 @@ import Foundation
             try await GitService.removeWorktree(project: gitProject, path: repository.path)
             throw WorkspaceError(message: "FAIL: primary checkout deleted")
         } catch let error as WorkspaceError {
-            try require(error.message.contains("principal"), "The primary checkout cannot be deleted")
+            try require(error.message.contains("main folder"), "The primary checkout cannot be deleted")
         }
         do {
             _ = try await GitService.createWorktree(project: gitProject, branch: "--force", root: root)
