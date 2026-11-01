@@ -38,6 +38,7 @@ struct AgentSettingsPane: View {
                     Text(settings.agentLaunch.previewCommand).font(Typography.code).textSelection(.enabled)
                 }
             }
+            AgentSkillSection()
         }
         .formStyle(.grouped)
     }

@@ -39,5 +39,55 @@ enum SettingsTests {
         let decodedConfirmations = try JSONDecoder().decode(RemovalConfirmations.self, from: JSONEncoder().encode(confirmations))
         try CoreTests.require(decodedConfirmations == confirmations, "Removal confirmations round-trip")
         print("PASS removal confirmations")
+
+        try runAgentSkill()
+    }
+
+    private static func runAgentSkill() throws {
+        let home = FileManager.default.temporaryDirectory.appending(path: "agentui-skill-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: home) }
+        let skill = { (version: Int) in "---\nname: agentui\nmetadata:\n  version: \"\(version)\"\n---\nv\(version)\n" }
+        let installer = AgentSkillInstaller(content: skill(2), home: home)
+        try CoreTests.require(installer.version == 2 && AgentSkillInstaller.version(of: "no frontmatter") == 0, "The skill version comes from its frontmatter")
+        try CoreTests.require(installer.status == .notInstalled, "The skill starts uninstalled")
+        try installer.install()
+        try CoreTests.require(installer.status == .installed, "Installing writes the skill")
+        let link = try FileManager.default.destinationOfSymbolicLink(atPath: installer.claudeDirectory.path)
+        try CoreTests.require(link == installer.sharedDirectory.path, "Claude skills link to the shared copy")
+
+        try AgentSkillInstaller(content: skill(1), home: home).uninstall()
+        try AgentSkillInstaller(content: skill(1), home: home).install()
+        try CoreTests.require(installer.status == .outdated, "An older installed version is outdated")
+        try installer.install()
+        try CoreTests.require(installer.status == .installed, "Updating replaces an older version")
+
+        let newer = AgentSkillInstaller(content: skill(3), home: home)
+        try newer.install()
+        try CoreTests.require(installer.status == .installed, "A newer version installed elsewhere is up to date")
+        try installer.install()
+        let kept = try String(contentsOf: installer.sharedDirectory.appending(path: "SKILL.md"), encoding: .utf8)
+        try CoreTests.require(kept == skill(3), "Installing never downgrades a newer skill")
+
+        try FileManager.default.removeItem(at: installer.claudeDirectory)
+        try FileManager.default.createDirectory(at: installer.claudeDirectory, withIntermediateDirectories: true)
+        try Data(skill(1).utf8).write(to: installer.claudeDirectory.appending(path: "SKILL.md"))
+        try CoreTests.require(installer.status == .outdated, "A stale Claude copy is outdated")
+        try installer.install()
+        try CoreTests.require(installer.status == .installed, "Installing replaces a stale Claude copy")
+
+        let sharedHome = home.appending(path: "shared")
+        try FileManager.default.createDirectory(at: sharedHome.appending(path: ".agents/skills"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: sharedHome.appending(path: ".claude"), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(atPath: sharedHome.appending(path: ".claude/skills").path,
+                                                   withDestinationPath: sharedHome.appending(path: ".agents/skills").path)
+        let linkedHome = AgentSkillInstaller(content: installer.content, home: sharedHome)
+        try linkedHome.install()
+        try linkedHome.install()
+        try CoreTests.require(linkedHome.status == .installed, "A Claude skills folder linked to the shared one keeps the skill")
+
+        try installer.uninstall()
+        try CoreTests.require(installer.status == .notInstalled, "Uninstalling removes both copies")
+        try installer.uninstall()
+        print("PASS agent skill installer")
     }
 }
