@@ -141,6 +141,7 @@ import Observation
 
     private func listen(with key: PairingKey) throws {
         let parameters = RemoteChannel.parameters(key: key)
+        parameters.allowLocalEndpointReuse = true
         #if DEBUG
         let isolatedFixtureListensOnLoopbackOnly = ProcessInfo.processInfo.environment["AGENTUI_STATE_DIRECTORY"] != nil
         if isolatedFixtureListensOnLoopbackOnly {

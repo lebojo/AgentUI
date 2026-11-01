@@ -39,8 +39,13 @@ import Observation
 
     init(pairingStore: any PairingCodeStore = PairingCodeStores.make(account: "remotePairingCode")) {
         self.pairingStore = pairingStore
-        pairingCode = (try? pairingStore.load()) ?? ""
+        var loadFailure: String?
+        do { pairingCode = try pairingStore.load() ?? "" } catch {
+            pairingCode = ""
+            loadFailure = error.localizedDescription
+        }
         wantsConnection = !host.isEmpty && !pairingCode.isEmpty
+        error = loadFailure
     }
 
     var isConnected: Bool { status == .connected }
@@ -96,8 +101,7 @@ import Observation
         do {
             let key = try await requiredPairingKey()
             guard generation == token else { return }
-            let connection = NWConnection(host: try RemoteProtocol.host(host), port: NWEndpoint.Port(rawValue: RemoteProtocol.port)!,
-                                          using: RemoteChannel.parameters(key: key))
+            let connection = try RemoteChannel.connection(to: host, key: key)
             streamConnection = connection
             streamTerminal = selectedID
             defer {

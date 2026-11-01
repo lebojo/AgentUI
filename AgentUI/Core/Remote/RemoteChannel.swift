@@ -23,6 +23,10 @@ enum RemoteChannel {
 
     private static let callGate = RemoteCallGate(limit: 4)
 
+    static func connection(to host: String, key: PairingKey) throws -> NWConnection {
+        NWConnection(host: try RemoteProtocol.host(host), port: NWEndpoint.Port(rawValue: RemoteProtocol.port)!, using: parameters(key: key))
+    }
+
     static func call<Value: Decodable & Sendable>(_ request: RemoteRequest, host: String, key: PairingKey,
                                                   as type: Value.Type = Value.self) async throws -> Value {
         guard request.waitsForInspectorSlot else { return try await perform(request, host: host, key: key, as: type) }
@@ -39,8 +43,7 @@ enum RemoteChannel {
 
     private static func perform<Value: Decodable & Sendable>(_ request: RemoteRequest, host: String, key: PairingKey,
                                                              as type: Value.Type) async throws -> Value {
-        let connection = NWConnection(host: try RemoteProtocol.host(host), port: NWEndpoint.Port(rawValue: RemoteProtocol.port)!,
-                                      using: parameters(key: key))
+        let connection = try Self.connection(to: host, key: key)
         return try await withTaskCancellationHandler {
             defer { connection.cancel() }
             return try await withTimeout(request.timeout, on: connection, failure: unresponsiveHost) {
