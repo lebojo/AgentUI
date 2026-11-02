@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import Observation
+import SystemConfiguration
 
 @MainActor @Observable final class LocalHost {
     private struct StreamedSession {
@@ -23,7 +24,10 @@ import Observation
     private(set) var pairingStorageError: String?
     private(set) var status = String(localized: "Local Access off")
     private(set) var addresses: [String] = []
+    private var identifier: UUID?
     @ObservationIgnored private let pairingStore: any PairingCodeStore
+    @ObservationIgnored private let identifierStore: any PairingCodeStore
+    @ObservationIgnored private let name = SCDynamicStoreCopyComputerName(nil, nil) as String? ?? "Mac"
     @ObservationIgnored private var pairingKey: PairingKey?
     @ObservationIgnored private var pairingUpdate: Task<PairingKey, Error>?
     @ObservationIgnored private weak var store: WorkspaceStore?
@@ -41,8 +45,15 @@ import Observation
     private static let maximumConnectionsPerPeer = 16
     private static let incompatibleVersions = String(localized: "Incompatible versions. Update AgentUI on the Mac and on this device.")
 
-    init(pairingStore: any PairingCodeStore = PairingCodeStores.make(account: "localHost.pairingCode")) {
+    init(pairingStore: any PairingCodeStore = PairingCodeStores.make(account: "localHost.pairingCode"),
+         identifierStore: any PairingCodeStore = PairingCodeStores.make(account: "localHost.identifier")) {
         self.pairingStore = pairingStore
+        self.identifierStore = identifierStore
+    }
+
+    var invitation: PairingInvitation? {
+        guard enabled, let identifier, !pairingCode.isEmpty, !addresses.isEmpty else { return nil }
+        return PairingInvitation(hostID: identifier, name: name, addresses: addresses, code: pairingCode)
     }
 
     func configure(store: WorkspaceStore, settings: SettingsStore, installedAgents: InstalledAgents) {
@@ -50,6 +61,11 @@ import Observation
         self.store = store
         self.settings = settings
         self.installedAgents = installedAgents
+        let identifiers = identifierStore
+        Task { [weak self] in
+            let identifier = await Task.detached { Self.deviceIdentifier(in: identifiers) }.value
+            self?.identifier = identifier
+        }
         pathMonitor.pathUpdateHandler = { [weak self] _ in
             Task { @MainActor [weak self] in self?.refreshAddresses() }
         }
@@ -469,11 +485,20 @@ import Observation
         return missing.reduce(existing.resolvingSymlinksInPath()) { $0.appendingPathComponent($1) }
     }
 
+    nonisolated private static func deviceIdentifier(in store: any PairingCodeStore) -> UUID? {
+        do {
+            if let stored = try store.load().flatMap(UUID.init(uuidString:)) { return stored }
+            let identifier = UUID()
+            try store.save(identifier.uuidString)
+            return identifier
+        } catch { return nil }
+    }
+
     private static func localAddresses() -> [String] {
         var interfaces: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&interfaces) == 0, let first = interfaces else { return [] }
         defer { freeifaddrs(interfaces) }
-        var addresses: [String] = []
+        var found: [LocalAddress] = []
         var current: UnsafeMutablePointer<ifaddrs>? = first
         while let item = current {
             defer { current = item.pointee.ifa_next }
@@ -482,9 +507,11 @@ import Observation
             var buffer = [CChar](repeating: 0, count: Int(NI_MAXHOST))
             if getnameinfo(address, socklen_t(address.pointee.sa_len), &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST) == 0 {
                 let value = String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self)
-                if (try? RemoteProtocol.host(value)) != nil { addresses.append(value) }
+                if (try? RemoteProtocol.host(value)) != nil {
+                    found.append(LocalAddress(interface: String(cString: item.pointee.ifa_name), value: value))
+                }
             }
         }
-        return Array(Set(addresses)).sorted()
+        return LocalAddress.reachable(found)
     }
 }

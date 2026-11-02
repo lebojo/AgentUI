@@ -1,3 +1,4 @@
+import CoreImage
 import Foundation
 
 @main struct RemoteTests {
@@ -18,6 +19,44 @@ import Foundation
             }
         }
         print("PASS literal LAN address validation")
+
+        let invitation = PairingInvitation(hostID: UUID(), name: "Jordan’s MacBook Pro & Co", addresses: ["192.168.1.42", "10.0.0.5"],
+                                           code: RemotePairing.newCode())
+        let scanned = try PairingInvitation(scanned: invitation.link)
+        try require(scanned == invitation, "QR link round-trips every field")
+        let padded = try PairingInvitation(scanned: " \(invitation.link)\n")
+        try require(padded.addresses == invitation.addresses, "QR link tolerates surrounding whitespace")
+        let mixed = try PairingInvitation(scanned: invitation.link.replacingOccurrences(of: "10.0.0.5", with: "8.8.8.8"))
+        try require(mixed.addresses == ["192.168.1.42"], "QR link drops public addresses")
+        let rejected = ["https://example.com", "agentui://other?id=\(invitation.hostID)",
+                        invitation.link.replacingOccurrences(of: invitation.code, with: "NOPE"),
+                        invitation.link.replacingOccurrences(of: "192.168.1.42,10.0.0.5", with: "8.8.8.8"),
+                        invitation.link.replacingOccurrences(of: invitation.hostID.uuidString, with: "mac")]
+        for text in rejected {
+            do {
+                _ = try PairingInvitation(scanned: text)
+                throw RemoteError(message: "FAIL: accepted QR " + text)
+            } catch let error as RemoteError {
+                try require(!error.message.hasPrefix("FAIL:"), error.message)
+            }
+        }
+        let image = try QRCode.image(encoding: invitation.link).map(CIImage.init(cgImage:)) ?? { throw RemoteError(message: "FAIL: QR image") }()
+        let detector = CIDetector(ofType: CIDetectorTypeQRCode, context: nil, options: [CIDetectorAccuracy: CIDetectorAccuracyHigh])
+        let decoded = detector?.features(in: image.transformed(by: CGAffineTransform(scaleX: 8, y: 8))).compactMap { ($0 as? CIQRCodeFeature)?.messageString }
+        try require(decoded == [invitation.link], "Generated QR code decodes back to the pairing link")
+        let saved = SavedHost(name: "Mac", addresses: ["192.168.1.42", "10.0.0.5"])
+        try require(saved.preferring("10.0.0.5").addresses == ["10.0.0.5", "192.168.1.42"], "Saved host moves the working address first")
+        try require(saved.pairingAccount.hasSuffix(saved.id.uuidString), "Each saved host keeps its own keychain account")
+        let persisted = try JSONDecoder().decode(SavedHost.self, from: JSONEncoder().encode(saved))
+        try require(persisted == saved, "Saved host persists")
+        let interfaces = [LocalAddress(interface: "bridge100", value: "192.168.64.1"), LocalAddress(interface: "utun4", value: "10.8.0.2"),
+                          LocalAddress(interface: "en10", value: "10.0.0.9"), LocalAddress(interface: "en1", value: "192.168.1.60"),
+                          LocalAddress(interface: "en0", value: "192.168.1.42"), LocalAddress(interface: "en0", value: "169.254.3.4")]
+        try require(LocalAddress.reachable(interfaces) == ["192.168.1.42", "192.168.1.60", "10.0.0.9"], "Mac lists Wi-Fi and Ethernet first, without VM, VPN or link-local addresses")
+        let fallback = [LocalAddress(interface: "bridge0", value: "192.168.2.1"), LocalAddress(interface: "en0", value: "169.254.3.4")]
+        try require(LocalAddress.reachable(fallback) == ["192.168.2.1"], "Mac falls back to other interfaces when Ethernet and Wi-Fi have no address")
+        try require(LocalAddress.reachable([LocalAddress(interface: "en0", value: "169.254.3.4")]) == ["169.254.3.4"], "Mac keeps link-local as a last resort")
+        print("PASS QR pairing link and saved hosts")
 
         let transcript = SessionTranscript()
         transcript.update(screen: "Welcome\0\n$ ")

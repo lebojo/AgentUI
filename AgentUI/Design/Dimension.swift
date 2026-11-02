@@ -57,6 +57,7 @@ enum Dimension {
         static let themeCardMinWidth: CGFloat = 112
         static let themeSampleHeight: CGFloat = 52
         static let swatchSize: CGFloat = 8
+        static let pairingCodeSize: CGFloat = 180
     }
 
     enum DiffSheet {

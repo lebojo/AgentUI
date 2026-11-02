@@ -682,6 +682,16 @@
         }
       }
     },
+    "Add Manually" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter manuellement"
+          }
+        }
+      }
+    },
     "Add Projects…" : {
       "localizations" : {
         "fr" : {
@@ -831,6 +841,16 @@
         }
       }
     },
+    "Allow AgentUI to use the camera in the Settings app, or enter the IP address and pairing code by hand." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autorise AgentUI à utiliser l’appareil photo dans l’app Réglages, ou saisis l’adresse IP et le code d’appairage à la main."
+          }
+        }
+      }
+    },
     "Ask for Confirmation" : {
       "localizations" : {
         "fr" : {
@@ -957,6 +977,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Build réussi en 4,2 s"
+          }
+        }
+      }
+    },
+    "Camera Access Needed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accès à l’appareil photo requis"
           }
         }
       }
@@ -1381,6 +1411,16 @@
         }
       }
     },
+    "Couldn’t remove the pairing code from the keychain (error %d)." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de supprimer le code d’appairage du trousseau (erreur %d)."
+          }
+        }
+      }
+    },
     "Couldn’t reply to agentui: %@" : {
       "localizations" : {
         "fr" : {
@@ -1744,6 +1784,16 @@
         }
       }
     },
+    "Enter the IP address and pairing code shown on the Mac in Settings → Local Access." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisis l’adresse IP et le code d’appairage affichés sur le Mac dans Réglages → Accès local."
+          }
+        }
+      }
+    },
     "Enter the Mac’s local IP address, for example 192.168.1.42." : {
       "localizations" : {
         "fr" : {
@@ -1994,16 +2044,6 @@
         }
       }
     },
-    "Host Mac" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mac hôte"
-          }
-        }
-      }
-    },
     "Icon" : {
       "localizations" : {
         "fr" : {
@@ -2100,6 +2140,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dans un nouveau worktree"
+          }
+        }
+      }
+    },
+    "In the mobile app, open Settings, tap Scan QR Code, then point the camera at this code. The phone saves this Mac so you can switch back to it later." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans l’app mobile, ouvre Réglages, touche Scanner un QR code puis vise ce code. Le téléphone enregistre ce Mac pour que tu puisses y revenir plus tard."
           }
         }
       }
@@ -2320,6 +2370,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "IP du Mac, p. ex. 192.168.1.42"
+          }
+        }
+      }
+    },
+    "Macs" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac"
           }
         }
       }
@@ -2774,12 +2834,12 @@
         }
       }
     },
-    "On the Mac, turn on Settings → Local Access, then copy its IP address and pairing code. Both devices must be on the same network. The session continues on the Mac when you leave the mobile app." : {
+    "On the Mac, turn on Settings → Local Access, then scan the QR code it shows. Tap a saved Mac to switch to it. Both devices must be on the same network. The session continues on the Mac when you leave the mobile app." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sur le Mac, active Réglages → Accès local puis recopie son IP et son code d’appairage. Les deux appareils doivent être sur le même réseau. La session continue sur le Mac lorsque tu quittes l’app mobile."
+            "value" : "Sur le Mac, active Réglages → Accès local puis scanne le QR code affiché. Touche un Mac enregistré pour passer dessus. Les deux appareils doivent être sur le même réseau. La session continue sur le Mac lorsque tu quittes l’app mobile."
           }
         }
       }
@@ -2820,6 +2880,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ouvre Claude Code dans un terminal pour te connecter avec ton abonnement Claude."
+          }
+        }
+      }
+    },
+    "Open Settings" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir Réglages"
           }
         }
       }
@@ -2904,6 +2974,16 @@
         }
       }
     },
+    "Pairing QR Code" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "QR code d’appairage"
+          }
+        }
+      }
+    },
     "Pairing code rejected. Copy the code shown on the Mac in Settings → Local Access." : {
       "localizations" : {
         "fr" : {
@@ -2970,6 +3050,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rose"
+          }
+        }
+      }
+    },
+    "Point the camera at the QR code shown on the Mac in Settings → Local Access." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vise le QR code affiché sur le Mac dans Réglages → Accès local."
           }
         }
       }
@@ -3100,16 +3190,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prêt à recevoir une connexion"
-          }
-        }
-      }
-    },
-    "Reconnect" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reconnecter"
           }
         }
       }
@@ -3514,6 +3594,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enregistrer"
+          }
+        }
+      }
+    },
+    "Scan QR Code" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanner un QR code"
+          }
+        }
+      }
+    },
+    "Scan to Pair" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanner pour appairer"
+          }
+        }
+      }
+    },
+    "Selected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélectionné"
           }
         }
       }
@@ -4278,6 +4388,26 @@
         }
       }
     },
+    "This Mac’s pairing code is missing. Scan its QR code again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le code d’appairage de ce Mac est introuvable. Scanne à nouveau son QR code."
+          }
+        }
+      }
+    },
+    "This QR code doesn’t come from AgentUI. Scan the code shown on the Mac in Settings → Local Access." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce QR code ne vient pas d’AgentUI. Scanne le code affiché sur le Mac dans Réglages → Accès local."
+          }
+        }
+      }
+    },
     "This conversation is already open" : {
       "localizations" : {
         "fr" : {
@@ -4304,6 +4434,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cette conversation vient d’être reprise dans un autre terminal."
+          }
+        }
+      }
+    },
+    "This device can’t scan QR codes. Add the Mac manually below." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cet appareil ne peut pas scanner de QR code. Ajoute le Mac manuellement ci-dessous."
           }
         }
       }
