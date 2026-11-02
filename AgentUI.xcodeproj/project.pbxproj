@@ -394,6 +394,7 @@
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "Mobile*.swift";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSCameraUsageDescription = "AgentUI utilise l’appareil photo pour scanner le QR code affiché sur votre Mac.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "AgentUI se connecte à votre Mac sur le réseau local pour reprendre vos sessions.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -548,6 +549,7 @@
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "Mobile*.swift";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSCameraUsageDescription = "AgentUI utilise l’appareil photo pour scanner le QR code affiché sur votre Mac.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "AgentUI se connecte à votre Mac sur le réseau local pour reprendre vos sessions.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;

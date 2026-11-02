@@ -16,7 +16,13 @@ import Observation
         let completion: (Error?) -> Void
     }
 
-    private(set) var host = UserDefaults.standard.string(forKey: "remoteHost") ?? ""
+    private(set) var savedHosts: [SavedHost] {
+        didSet { MobileSavedHosts.save(savedHosts, selection: selectedHostID) }
+    }
+    private(set) var selectedHostID: UUID? {
+        didSet { MobileSavedHosts.save(savedHosts, selection: selectedHostID) }
+    }
+    private(set) var host: String
     private(set) var pairingCode: String
     private(set) var status: Status = .disconnected
     private(set) var workspace = Workspace()
@@ -31,7 +37,7 @@ import Observation
     }
     var wantsConnection = false
     var error: String?
-    @ObservationIgnored private let pairingStore: any PairingCodeStore
+    @ObservationIgnored private let pairingStores: @Sendable (String) -> any PairingCodeStore
     @ObservationIgnored private var pairingKey: PairingKey?
     @ObservationIgnored private var pairingDerivation: (code: String, task: Task<PairingKey?, Never>)?
     @ObservationIgnored private var generation = UUID()
@@ -42,10 +48,15 @@ import Observation
     @ObservationIgnored private var queuedInputs: [QueuedInput] = []
     @ObservationIgnored private var streamReady = false
 
-    init(pairingStore: any PairingCodeStore = PairingCodeStores.make(account: "remotePairingCode")) {
-        self.pairingStore = pairingStore
+    init(pairingStores: @escaping @Sendable (String) -> any PairingCodeStore = PairingCodeStores.make(account:)) {
+        self.pairingStores = pairingStores
+        let saved = MobileSavedHosts.load()
+        let selected = saved.hosts.first { $0.id == saved.selection }
+        savedHosts = saved.hosts
+        selectedHostID = selected?.id
+        host = selected?.addresses.first ?? ""
         var loadFailure: String?
-        do { pairingCode = try pairingStore.load() ?? "" } catch {
+        do { pairingCode = try selected.flatMap { try pairingStores($0.pairingAccount).load() } ?? "" } catch {
             pairingCode = ""
             loadFailure = error.localizedDescription
         }
@@ -54,46 +65,113 @@ import Observation
     }
 
     var isConnected: Bool { status == .connected }
+    var selectedHost: SavedHost? { savedHosts.first { $0.id == selectedHostID } }
     var context: TerminalContext? { TerminalContext(terminalID: selection, in: workspace.projects) }
     var statusText: String {
         switch status {
         case .disconnected: String(localized: "Disconnected")
         case .connecting: String(localized: "Connecting to the Mac…")
-        case .connected: String(localized: "Connected to \(host)")
+        case .connected: String(localized: "Connected to \(selectedHost?.name ?? host)")
         case .failed(let message): message
         }
     }
 
     func connect(to address: String, pairingCode code: String) throws {
-        _ = try RemoteProtocol.host(address)
-        _ = try RemotePairing.normalized(code)
-        try pairingStore.save(code)
         let value = address.trimmingCharacters(in: .whitespacesAndNewlines)
-        if host != value {
-            workspace = Workspace()
-            installedAgents = []
-            terminalAgents = [:]
-            selection = nil
+        _ = try RemoteProtocol.host(value)
+        _ = try RemotePairing.normalized(code)
+        let known = savedHosts.first { $0.addresses.contains(value) }
+        let saved = (known ?? SavedHost(name: value, addresses: [value])).preferring(value)
+        try pairingStores(saved.pairingAccount).save(code)
+        remember(saved, replacing: known)
+        open(saved, pairingCode: code)
+    }
+
+    func pair(with invitation: PairingInvitation) throws {
+        let known = savedHosts.first { $0.id == invitation.hostID }
+        var saved = SavedHost(id: invitation.hostID, name: invitation.name, addresses: invitation.addresses,
+                              pairingAccount: known?.pairingAccount)
+        if let working = known?.addresses.first, saved.addresses.contains(working) { saved = saved.preferring(working) }
+        try pairingStores(saved.pairingAccount).save(invitation.code)
+        remember(saved, replacing: known)
+        open(saved, pairingCode: invitation.code)
+    }
+
+    func select(_ saved: SavedHost) throws {
+        guard saved.id != selectedHostID || !wantsConnection else { return }
+        guard let code = try pairingStores(saved.pairingAccount).load(), !code.isEmpty else {
+            throw RemoteError(message: String(localized: "This Mac’s pairing code is missing. Scan its QR code again."))
         }
-        host = value
+        open(saved, pairingCode: code)
+    }
+
+    func forget(_ saved: SavedHost) throws {
+        try pairingStores(saved.pairingAccount).delete()
+        if saved.id == selectedHostID {
+            disconnect()
+            selectedHostID = nil
+            host = ""
+            pairingCode = ""
+            pairingKey = nil
+            pairingDerivation = nil
+            resetWorkspace()
+        }
+        savedHosts.removeAll { $0.id == saved.id }
+    }
+
+    private func remember(_ saved: SavedHost, replacing known: SavedHost?) {
+        var hosts = savedHosts
+        let replaced: Set<UUID> = Set([saved.id, known?.id].compactMap(\.self))
+        let index = hosts.firstIndex { replaced.contains($0.id) } ?? hosts.endIndex
+        hosts.removeAll { replaced.contains($0.id) }
+        hosts.insert(saved, at: min(index, hosts.endIndex))
+        savedHosts = hosts
+    }
+
+    private func open(_ saved: SavedHost, pairingCode code: String) {
+        stopStream()
+        if saved.id != selectedHostID { resetWorkspace() }
+        selectedHostID = saved.id
+        host = saved.addresses.first ?? ""
         pairingCode = code
         pairingKey = nil
         pairingDerivation = nil
-        UserDefaults.standard.set(host, forKey: "remoteHost")
         status = .connecting
         connectionID = UUID()
         wantsConnection = true
     }
 
+    private func resetWorkspace() {
+        workspace = Workspace()
+        installedAgents = []
+        terminalAgents = [:]
+        selection = nil
+    }
+
+    private func tryNextAddress() {
+        guard let addresses = selectedHost?.addresses, addresses.count > 1,
+              let index = addresses.firstIndex(of: host) else { return }
+        host = addresses[(index + 1) % addresses.count]
+    }
+
+    private func rememberWorkingAddress() {
+        guard let saved = selectedHost, saved.addresses.first != host, saved.addresses.contains(host) else { return }
+        remember(saved.preferring(host), replacing: nil)
+    }
+
     func disconnect() {
         wantsConnection = false
+        stopStream()
+        status = .disconnected
+    }
+
+    private func stopStream() {
         generation = UUID()
         streamConnection?.cancel()
         streamConnection = nil
         streamTerminal = nil
         cancelInputs(keepingQueuedFor: nil)
         terminalAgents = [:]
-        status = .disconnected
     }
 
     func watch(prefersChat: Bool) async {
@@ -128,7 +206,10 @@ import Observation
                     first = false
                     guard generation == token, !Task.isCancelled else { return }
                     if case .failure(let message) = event { throw RemoteError(message: message, isPermanent: true) }
-                    if status != .connected { status = .connected }
+                    if status != .connected {
+                        status = .connected
+                        rememberWorkingAddress()
+                    }
                     if !streamReady {
                         streamReady = true
                         if resumesStream {
@@ -175,6 +256,7 @@ import Observation
             status = .failed(error.localizedDescription)
             terminalAgents = [:]
             guard (error as? RemoteError)?.isPermanent != true else { wantsConnection = false; return }
+            if !streamReady { tryNextAddress() }
             do { try await Task.sleep(for: .seconds(3)) } catch { return }
             if generation == token, wantsConnection { connectionID = UUID() }
         }

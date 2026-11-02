@@ -4,6 +4,7 @@ import Security
 protocol PairingCodeStore: Sendable {
     func load() throws -> String?
     func save(_ code: String) throws
+    func delete() throws
 }
 
 enum PairingCodeStores {
@@ -23,6 +24,7 @@ struct FixedPairingCodeStore: PairingCodeStore {
 
     func load() -> String? { code }
     func save(_ code: String) {}
+    func delete() {}
 }
 
 struct KeychainPairingCodeStore: PairingCodeStore {
@@ -55,16 +57,23 @@ struct KeychainPairingCodeStore: PairingCodeStore {
         }
         guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }
     }
+
+    func delete() throws {
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw KeychainError.undeletable(status) }
+    }
 }
 
 enum KeychainError: Error, Equatable, LocalizedError, Sendable {
     case unexpectedStatus(OSStatus)
     case unreadable(OSStatus)
+    case undeletable(OSStatus)
 
     var errorDescription: String? {
         switch self {
         case .unexpectedStatus(let status): String(localized: "Couldn’t save the pairing code to the keychain (error \(status)).")
         case .unreadable(let status): String(localized: "Couldn’t read the pairing code from the keychain (error \(status)). Unlock the keychain, then turn Local Access back on.")
+        case .undeletable(let status): String(localized: "Couldn’t remove the pairing code from the keychain (error \(status)).")
         }
     }
 }

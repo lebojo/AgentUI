@@ -66,7 +66,7 @@ xcodebuild -project AgentUI.xcodeproj -scheme AgentUI -configuration Debug \
 ### iPhone and iPad companion
 
 Select an iPhone or iPad destination with the same **AgentUI** scheme to build the companion (iOS/iPadOS 17+).
-On the Mac, enable **Settings → Accès local**. On the mobile device, open **Réglages**, enter the Mac's local IP address and the pairing code shown on the Mac, then connect. Keep the Mac awake with AgentUI running. Both apps must be built from compatible sources.
+On the Mac, enable **Settings → Accès local**. On the mobile device, open **Réglages**, tap **Scanner un QR code** and point the camera at the code shown on the Mac. You can also enter the Mac's local IP address and pairing code by hand. The mobile app saves every paired Mac: tap one in **Réglages** to switch to it, swipe to forget it. If a Mac has several local addresses, the app tries each one and remembers the address that works. Keep the Mac awake with AgentUI running. Both apps must be built from compatible sources.
 
 The companion shares the Mac's projects and running sessions. **Settings → Affichage des sessions** chooses Chat or Terminal for every session on that device; the same preference is available on macOS under **Settings → Affichage**. Changing it preserves the process and mounts only the chosen renderer. The inspector button stays in the detail toolbar: SwiftUI presents a sheet on iPhone and a trailing inspector when the iPad has room. Files, conversations, Git diffs and checks use the shared inspector views.
 
