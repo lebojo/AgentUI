@@ -98,6 +98,25 @@ import Foundation
         let finalWorktrees = try await GitService.existingWorktrees(project: gitProject)
         try require(finalWorktrees.count == discovered.count, "Failed operation doesn't create an extra worktree")
         _ = try await GitService.run(["branch", "existing/feature"], at: repository.path)
+        let available = try await GitService.availableBranches(project: gitProject)
+        try require(available == [BranchSuggestion(name: "existing/feature", origin: .local)], "Suggest free local branches, not checked-out ones")
+        let parsed = GitService.branchSuggestions(from: """
+        refs/heads/main\t/projects/API
+        refs/heads/fix/login\t
+        refs/remotes/origin/HEAD\t
+        refs/remotes/origin/main\t
+        refs/remotes/origin/fix/login\t
+        refs/remotes/upstream/feature/review\t
+        refs/remotes/origin/feature/review\t
+        refs/remotes/gh/team/release\t
+        """, remotes: ["origin", "gh", "gh/team", "upstream"])
+        try require(parsed == [BranchSuggestion(name: "fix/login", origin: .local),
+                               BranchSuggestion(name: "feature/review", origin: .remote("upstream")),
+                               BranchSuggestion(name: "release", origin: .remote("gh/team"))],
+                    "Remote branches are suggested once, without their remote prefix, even when the remote name has a slash")
+        try require(BranchSuggestion(name: "feature/review", origin: .local).matches("REVIEW")
+                    && !BranchSuggestion(name: "feature/review", origin: .local).matches("feature/review"),
+                    "Suggestions match case-insensitively and hide once typed in full")
         let reused = try await GitService.createWorktree(project: gitProject, branch: "existing/feature", root: root)
         let reusedBranch = try await GitService.run(["branch", "--show-current"], at: reused.path)
         try require(reusedBranch == "existing/feature" && reused.name == "existing/feature", "Existing branch is checked out in the new worktree")
@@ -122,6 +141,25 @@ import Foundation
         } catch let error as WorkspaceError {
             try require(!error.message.hasPrefix("FAIL"), "Invalid branch rejected")
         }
+        let upstream = root.appendingPathComponent("Upstream")
+        try fm.createDirectory(at: upstream, withIntermediateDirectories: true)
+        _ = try await GitService.run(["init", "-b", "main"], at: upstream.path)
+        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "--allow-empty", "-m", "Upstream"], at: upstream.path)
+        _ = try await GitService.run(["branch", "shared/topic"], at: upstream.path)
+        for remote in ["mirror", "gh/team"] {
+            _ = try await GitService.run(["remote", "add", remote, upstream.path], at: repository.path)
+        }
+        try await GitService.fetchRemotes(project: gitProject)
+        let remoteBranches = try await GitService.availableBranches(project: gitProject)
+        try require(remoteBranches.filter { $0.name == "shared/topic" }.count == 1, "A branch present on two remotes is suggested once")
+        let tracked = try await GitService.createWorktree(project: gitProject, branch: "shared/topic", remote: "gh/team", root: root)
+        let upstreamBranch = try await GitService.run(["rev-parse", "--abbrev-ref", "@{upstream}"], at: tracked.path)
+        try require(upstreamBranch == "gh/team/shared/topic", "A remote branch shared by several remotes tracks the chosen remote")
+        try await GitService.removeWorktree(project: gitProject, path: tracked.path)
+        for remote in ["mirror", "gh/team"] {
+            _ = try await GitService.run(["remote", "remove", remote], at: repository.path)
+        }
+        _ = try await GitService.run(["branch", "-D", "shared/topic"], at: repository.path)
         print("PASS Git worktree creation, discovery, isolation and failures")
 
         try require(GitRepository.containing(repository.path)?.branch.name == "main", "Read main branch")

@@ -494,13 +494,13 @@ import Observation
         catch { errorMessage = error.localizedDescription }
     }
 
-    @discardableResult func createWorktree(projectID: UUID, branch: String, command: [String] = [], select: Bool = true) async throws -> TerminalContext {
+    @discardableResult func createWorktree(projectID: UUID, branch: String, remote: String? = nil, command: [String] = [], select: Bool = true) async throws -> TerminalContext {
         guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: String(localized: "A Git operation is already in progress on this project.")) }
         guard let project = projects.first(where: { $0.id == projectID }) else { throw WorkspaceError(message: String(localized: "Project not found.")) }
         busyProjects.insert(projectID)
         defer { busyProjects.remove(projectID) }
         let worktree: Worktree
-        do { worktree = try await GitService.createWorktree(project: project, branch: branch) }
+        do { worktree = try await GitService.createWorktree(project: project, branch: branch, remote: remote) }
         catch let error as WorktreeCreationError {
             let recovered = await Task.detached {
                 try? await GitService.existingWorktrees(project: project)
@@ -524,6 +524,19 @@ import Observation
         let context = context(for: terminal.id)!
         sessions.start(context, command: command)
         return context
+    }
+
+    func availableBranches(projectID: UUID) async -> [BranchSuggestion] {
+        guard let project = projects.first(where: { $0.id == projectID }) else { return [] }
+        return (try? await GitService.availableBranches(project: project)) ?? []
+    }
+
+    func fetchRemotes(projectID: UUID) async throws {
+        guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: String(localized: "A Git operation is already in progress on this project.")) }
+        guard let project = projects.first(where: { $0.id == projectID }) else { throw WorkspaceError(message: String(localized: "Project not found.")) }
+        busyProjects.insert(projectID)
+        defer { busyProjects.remove(projectID) }
+        try await GitService.fetchRemotes(project: project)
     }
 
     func deleteWorktree(projectID: UUID, worktreeID: UUID) async throws {

@@ -9,3 +9,22 @@ struct GitBranch: Codable, Equatable, Sendable {
     }
 }
 
+
+struct BranchSuggestion: Identifiable, Hashable, Sendable {
+    enum Origin: Hashable, Sendable {
+        case local
+        case remote(String)
+    }
+
+    let name: String
+    let origin: Origin
+
+    var id: String { name }
+    var remote: String? {
+        if case .remote(let name) = origin { name } else { nil }
+    }
+
+    func matches(_ query: String) -> Bool {
+        query.isEmpty || (name != query && name.localizedCaseInsensitiveContains(query))
+    }
+}
