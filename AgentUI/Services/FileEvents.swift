@@ -23,6 +23,24 @@ enum FileEvents {
         return stream
     }
 
+    static func entries(of directories: [URL], every interval: Duration) -> AsyncStream<Void> {
+        let (stream, continuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
+        continuation.yield()
+        let queue = DispatchQueue(label: "AgentUI.directory-entries", qos: .utility)
+        let watchers = directories.compactMap { try? FileSystemWatcher($0, queue: queue) { _ in continuation.yield() } }
+        let ticker = Task {
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: interval) } catch { return }
+                continuation.yield()
+            }
+        }
+        continuation.onTermination = { _ in
+            ticker.cancel()
+            watchers.forEach { $0.cancel() }
+        }
+        return stream
+    }
+
     @concurrent static func repositoryChanges(at path: String) async -> AsyncStream<Void> {
         let repository = GitRepository.containing(path)
         let paths = [path] + [repository?.gitDirectory.path, repository?.commonDirectory.path].compactMap { $0 }

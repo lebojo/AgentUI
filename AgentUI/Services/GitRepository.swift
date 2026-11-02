@@ -157,3 +157,43 @@ enum TerminalProcessDirectory {
         }
     }
 }
+
+enum WorktreeFolder {
+    @concurrent static func scan(_ roots: [URL]) async -> [DiscoveredWorktree] {
+        roots.flatMap { root in
+            ((try? WorkspaceDisk.childDirectories(of: root)) ?? []).compactMap(worktree)
+        }
+    }
+
+    private static func worktree(at url: URL) -> DiscoveredWorktree? {
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.appendingPathComponent(".git").path, isDirectory: &isDirectory),
+              !isDirectory.boolValue else { return nil }
+        let path = WorkspacePath.canonical(url)
+        guard let repository = GitRepository.atRoot(url) else {
+            return DiscoveredWorktree(path: path, branch: nil, repositoryPath: nil)
+        }
+        return DiscoveredWorktree(path: path, branch: repository.branch.name,
+                                  repositoryPath: mainWorktree(of: repository.commonDirectory).map(WorkspacePath.canonical))
+    }
+
+    private static func mainWorktree(of commonDirectory: URL) -> URL? {
+        if commonDirectory.lastPathComponent == ".git" { return commonDirectory.deletingLastPathComponent() }
+        guard let configured = coreWorktree(in: commonDirectory.appendingPathComponent("config")) else { return nil }
+        return (configured as NSString).isAbsolutePath
+            ? URL(fileURLWithPath: configured)
+            : commonDirectory.appendingPathComponent(configured).standardizedFileURL
+    }
+
+    private static func coreWorktree(in config: URL) -> String? {
+        guard let text = try? String(contentsOf: config, encoding: .utf8) else { return nil }
+        var inCore = false
+        for line in text.components(separatedBy: .newlines).map({ $0.trimmingCharacters(in: .whitespaces) }) {
+            if line.hasPrefix("[") { inCore = line.lowercased() == "[core]" }
+            guard inCore else { continue }
+            let parts = line.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            if parts.count == 2, parts[0].lowercased() == "worktree" { return parts[1] }
+        }
+        return nil
+    }
+}

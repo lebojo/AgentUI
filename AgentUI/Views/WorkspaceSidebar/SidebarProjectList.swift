@@ -10,6 +10,10 @@ struct SidebarProjectList: View {
     let result: SidebarFilterResult
     let query: String
 
+    private var orphans: [DiscoveredWorktree] {
+        store.orphanWorktrees.filter { query.isEmpty || $0.folderName.localizedStandardContains(query) || ($0.branch?.localizedStandardContains(query) ?? false) }
+    }
+
     var body: some View {
         List(selection: $store.selection) {
             Section {
@@ -20,11 +24,18 @@ struct SidebarProjectList: View {
                     SidebarProjectRow(sheet: $sheet, removal: $removal, store: store, project: project, query: query, showAll: false)
                 }
             }
+            if !orphans.isEmpty {
+                Section("Orphans") {
+                    ForEach(orphans) { worktree in
+                        SidebarOrphanRow(removal: $removal, worktree: worktree)
+                    }
+                }
+            }
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom, spacing: 0) { UsageBar() }
         .overlay {
-            if store.projects.isEmpty && store.folders.isEmpty {
+            if store.projects.isEmpty && store.folders.isEmpty && store.orphanWorktrees.isEmpty {
                 VStack(spacing: Spacing.m) {
                     Image(systemName: "folder.badge.plus").font(Typography.emptyStateSymbol)
                     Text("All your projects in one place").font(Typography.m.weight(.medium))
@@ -33,7 +44,7 @@ struct SidebarProjectList: View {
                 }
                 .foregroundStyle(Palette.textSecondary)
                 .padding()
-            } else if !query.isEmpty && result.groups.isEmpty && result.ungrouped.isEmpty {
+            } else if !query.isEmpty && result.groups.isEmpty && result.ungrouped.isEmpty && orphans.isEmpty {
                 Text("No Results").font(Typography.body).foregroundStyle(Palette.textSecondary)
             }
         }

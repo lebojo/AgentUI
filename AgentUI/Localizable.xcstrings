@@ -682,6 +682,16 @@
         }
       }
     },
+    "Add Folder…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter un dossier…"
+          }
+        }
+      }
+    },
     "Add Projects…" : {
       "localizations" : {
         "fr" : {
@@ -738,6 +748,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajouter des projets ou un dossier virtuel"
+          }
+        }
+      }
+    },
+    "Add “%@” as Project" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter « %@ » comme projet"
           }
         }
       }
@@ -1037,6 +1057,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choisis un terminal"
+          }
+        }
+      }
+    },
+    "Choose a folder whose worktrees AgentUI shows in the sidebar." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisis un dossier dont AgentUI affiche les worktrees dans la barre latérale."
           }
         }
       }
@@ -2244,6 +2274,16 @@
         }
       }
     },
+    "Its folder, including uncommitted changes, goes to the Trash, where you can restore it. Its branch and commits stay in the repository." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son dossier, y compris les modifications non commitées, part dans la corbeille, d’où tu peux le restaurer. Sa branche et ses commits restent dans le dépôt."
+          }
+        }
+      }
+    },
     "Its terminals will be closed and its folder will be erased from disk, including uncommitted changes. This can’t be undone. The branch and its commits stay in the repository." : {
       "localizations" : {
         "fr" : {
@@ -2480,6 +2520,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Déplacer vers"
+          }
+        }
+      }
+    },
+    "Move the worktree “%@” to the Trash?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Placer le worktree « %@ » dans la corbeille ?"
+          }
+        }
+      }
+    },
+    "Move to Trash" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Placer dans la corbeille"
           }
         }
       }
@@ -2940,6 +3000,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Orange"
+          }
+        }
+      }
+    },
+    "Orphans" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orphelins"
+          }
+        }
+      }
+    },
+    "Other Worktree Folders" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autres dossiers de worktrees"
           }
         }
       }
@@ -3898,6 +3978,16 @@
         }
       }
     },
+    "Stop scanning this folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne plus lire ce dossier"
+          }
+        }
+      }
+    },
     "Succeeded" : {
       "localizations" : {
         "fr" : {
@@ -4288,6 +4378,16 @@
         }
       }
     },
+    "The worktrees in these folders also appear in the sidebar. AgentUI never creates worktrees there." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les worktrees de ces dossiers apparaissent aussi dans la barre latérale. AgentUI n’y crée jamais de worktrees."
+          }
+        }
+      }
+    },
     "The worktree’s first terminal starts directly in the agent." : {
       "localizations" : {
         "fr" : {
@@ -4494,6 +4594,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Résultat de l’outil"
+          }
+        }
+      }
+    },
+    "Trash" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Corbeille"
           }
         }
       }

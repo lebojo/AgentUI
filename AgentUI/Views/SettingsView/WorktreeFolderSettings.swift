@@ -23,6 +23,28 @@ struct WorktreeFolderSettings: View {
             Text("New worktrees are created in this folder. Existing worktrees stay where they are.")
                 .font(Typography.caption).foregroundStyle(Palette.textSecondary)
         }
+        Section {
+            ForEach(settings.scannedWorktreesDirectories, id: \.path) { directory in
+                HStack {
+                    Text(abbreviated(directory)).font(Typography.code).textSelection(.enabled)
+                    Spacer()
+                    Button("Remove", systemImage: "minus.circle") { settings.scannedWorktreesDirectories.removeAll { $0.path == directory.path } }
+                        .labelStyle(.iconOnly).buttonStyle(.borderless)
+                        .help("Stop scanning this folder")
+                }
+            }
+            HStack {
+                Spacer()
+                Button("Add Folder…") {
+                    chooseFolder(message: String(localized: "Choose a folder whose worktrees AgentUI shows in the sidebar.")) { settings.addScannedWorktreesDirectory($0) }
+                }
+            }
+        } header: {
+            Text("Other Worktree Folders")
+        } footer: {
+            Text("The worktrees in these folders also appear in the sidebar. AgentUI never creates worktrees there.")
+                .font(Typography.caption).foregroundStyle(Palette.textSecondary)
+        }
     }
 
     private func abbreviated(_ url: URL) -> String {

@@ -27,6 +27,9 @@ enum SettingsTests {
         defaults.set("~/Worktrees/", forKey: WorkspaceDisk.worktreesDirectoryKey)
         try CoreTests.require(WorkspaceDisk.storedWorktreesDirectory(in: defaults).path == home.appendingPathComponent("Worktrees").path,
                               "A stored folder expands the tilde")
+        defaults.set(["~/agentui", "", "relative", "/tmp/worktrees"], forKey: WorkspaceDisk.scannedWorktreesDirectoriesKey)
+        try CoreTests.require(WorkspaceDisk.storedScannedWorktreesDirectories(in: defaults).map(\.path) == [home.appendingPathComponent("agentui").path, "/tmp/worktrees"],
+                              "Scanned folders keep only absolute paths")
         print("PASS worktree folder settings")
 
         var appearance = TerminalAppearance()

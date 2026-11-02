@@ -166,6 +166,39 @@ private final class ChangeFlag: @unchecked Sendable {
         try require(groupedProject().worktreeGroups.isEmpty && groupedProject().worktrees(in: nil).count == 2, "Dissolving a group keeps its worktrees")
         print("PASS worktree groups")
 
+        let adoptable = try await GitService.createWorktree(project: grouped, branch: "adopt/me", root: worktreesRoot)
+        let lonelyRoot = root.appendingPathComponent("lonely")
+        try fm.createDirectory(at: lonelyRoot, withIntermediateDirectories: true)
+        _ = try await GitService.run(["init", "-q", "-b", "main"], at: lonelyRoot.path)
+        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Initial"], at: lonelyRoot.path)
+        let lonely = try await GitService.createWorktree(project: Project(url: lonelyRoot), branch: "solo", root: worktreesRoot)
+        let broken = worktreesRoot.appendingPathComponent("broken")
+        try fm.createDirectory(at: broken, withIntermediateDirectories: true)
+        try "gitdir: \(root.path)/missing/.git/worktrees/broken\n".write(to: broken.appendingPathComponent(".git"), atomically: true, encoding: .utf8)
+        try fm.createDirectory(at: worktreesRoot.appendingPathComponent("notes"), withIntermediateDirectories: true)
+        let clone = worktreesRoot.appendingPathComponent("clone")
+        try fm.createDirectory(at: clone, withIntermediateDirectories: true)
+        _ = try await GitService.run(["init", "-q", "-b", "main"], at: clone.path)
+        let extraRoot = root.appendingPathComponent("extra-worktrees")
+        let extra = try await GitService.createWorktree(project: Project(url: lonelyRoot), branch: "extra", root: extraRoot)
+        let scanned = [worktreesRoot, extraRoot]
+        await groups.adoptWorktrees(in: scanned)
+        try require(groupedProject().worktrees.contains { $0.path == adoptable.path && $0.name == "adopt/me" },
+                    "A worktree of a known project is attached to it")
+        try require(groupedProject().worktrees.filter { $0.path == review.path }.count == 1, "Known worktrees are not duplicated")
+        let orphans = groups.orphanWorktrees
+        try require(orphans.map(\.path).sorted() == [WorkspacePath.canonical(broken), lonely.path, extra.path].sorted(),
+                    "Worktrees without a known project are orphans in every scanned folder, plain folders and clones are ignored")
+        try require(orphans.first { $0.path == lonely.path }?.repositoryPath == WorkspacePath.canonical(lonelyRoot)
+                        && orphans.first { $0.path == lonely.path }?.branch == "solo", "An orphan knows its main repository")
+        try require(orphans.first { $0.folderName == "broken" }?.hasRepository == false, "An orphan whose repository is gone has none")
+        groups.addRepository(of: orphans.first { $0.path == lonely.path }!)
+        await groups.adoptWorktrees(in: scanned)
+        try require(groups.orphanWorktrees.map(\.folderName) == ["broken"]
+                        && groups.projects.contains { $0.worktrees.contains { $0.path == lonely.path } && $0.worktrees.contains { $0.path == extra.path } },
+                    "Adding the main repository adopts its orphan")
+        print("PASS worktree folder adoption")
+
         let legacy = Data(#"{"version":1,"folders":[],"collapsed":[],"projects":[{"id":"\#(UUID())","name":"Old","path":"/tmp/old","worktrees":[{"id":"\#(UUID())","name":"Principal","path":"/tmp/old","isPrimary":true,"terminals":[]}]}]}"#.utf8)
         let decoded = try JSONDecoder().decode(Workspace.self, from: legacy)
         try require(decoded.projects[0].worktreeGroups.isEmpty && decoded.projects[0].worktrees[0].layouts.isEmpty && decoded.projects[0].worktrees[0].groupID == nil,

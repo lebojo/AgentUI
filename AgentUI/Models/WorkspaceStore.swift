@@ -28,6 +28,8 @@ import Observation
     private let writer: WorkspaceWriter
     var errorMessage: String?
     var busyProjects: Set<UUID> = []
+    private(set) var orphanWorktrees: [DiscoveredWorktree] = []
+    @ObservationIgnored private var orphanScan: UInt64 = 0
     private(set) var isImporting = false
     var pendingImport: RepositoryImport?
     @ObservationIgnored private var queuedImports: [RepositoryImport] = []
@@ -401,6 +403,7 @@ import Observation
                 do { try await deleteWorktree(projectID: projectID, worktreeID: worktreeID) }
                 catch { errorMessage = error.localizedDescription }
             }
+        case .orphanWorktree(let path, _): trashOrphanWorktree(at: path)
         }
     }
 
@@ -597,6 +600,45 @@ import Observation
             projects[index].worktrees.append(worktree)
         }
         save()
+    }
+
+    func adoptWorktrees(in directories: [URL]) async {
+        orphanScan += 1
+        let scan = orphanScan
+        let discovered = await WorktreeFolder.scan(directories)
+        guard scan == orphanScan else { return }
+        let unknown = discovered.filter { !isKnownWorktree($0.path) }
+        let owners = Set(unknown.compactMap { worktree in projects.first { $0.path == worktree.repositoryPath }?.id })
+        for id in owners { await refreshWorktrees(id) }
+        guard scan == orphanScan else { return }
+        let orphans = unknown.filter { !isKnownWorktree($0.path) && !belongsToBusyProject($0) }
+        if orphanWorktrees != orphans { orphanWorktrees = orphans }
+    }
+
+    func addRepository(of orphan: DiscoveredWorktree) {
+        guard let repositoryPath = orphan.repositoryPath else { return }
+        do { try addProject(URL(fileURLWithPath: repositoryPath)) }
+        catch { errorMessage = error.localizedDescription }
+    }
+
+    private func trashOrphanWorktree(at path: String) {
+        guard let orphan = orphanWorktrees.first(where: { $0.path == path }) else { return }
+        do {
+            try FileManager.default.trashItem(at: URL(fileURLWithPath: orphan.path), resultingItemURL: nil)
+            orphanScan += 1
+            orphanWorktrees.removeAll { $0.path == orphan.path }
+            if orphan.hasRepository, let repositoryPath = orphan.repositoryPath {
+                Task { _ = try? await GitService.run(["worktree", "prune"], at: repositoryPath, timeout: 10) }
+            }
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    private func isKnownWorktree(_ path: String) -> Bool {
+        projects.contains { $0.worktrees.contains { $0.path == path } }
+    }
+
+    private func belongsToBusyProject(_ worktree: DiscoveredWorktree) -> Bool {
+        busyProjects.contains { id in projects.first { $0.id == id }?.path == worktree.repositoryPath }
     }
 
     @discardableResult private func updateTerminals(_ update: (inout TerminalRecord) -> Bool) -> Bool {

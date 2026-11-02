@@ -24,6 +24,7 @@ enum WorkspaceDisk {
     }
 
     static let worktreesDirectoryKey = "settings.worktreesDirectory"
+    static let scannedWorktreesDirectoriesKey = "settings.scannedWorktreesDirectories"
 
     static var defaultWorktreesDirectory: URL {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".agentui", isDirectory: true)
@@ -31,6 +32,10 @@ enum WorkspaceDisk {
 
     static func storedWorktreesDirectory(in defaults: UserDefaults) -> URL {
         defaults.string(forKey: worktreesDirectoryKey).flatMap(directory) ?? defaultWorktreesDirectory
+    }
+
+    static func storedScannedWorktreesDirectories(in defaults: UserDefaults) -> [URL] {
+        (defaults.stringArray(forKey: scannedWorktreesDirectoriesKey) ?? []).compactMap(directory)
     }
 
     private static func directory(_ path: String) -> URL? {

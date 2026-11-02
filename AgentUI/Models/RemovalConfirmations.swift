@@ -8,7 +8,7 @@ struct RemovalConfirmations: Codable, Hashable, Sendable {
         switch removal {
         case .project: onProjectRemoval
         case .terminal: onTerminalClosing
-        case .worktree: true
+        case .worktree, .orphanWorktree: true
         }
     }
 
@@ -16,7 +16,7 @@ struct RemovalConfirmations: Codable, Hashable, Sendable {
         switch removal {
         case .project: onProjectRemoval = false
         case .terminal: onTerminalClosing = false
-        case .worktree: break
+        case .worktree, .orphanWorktree: break
         }
     }
 }
