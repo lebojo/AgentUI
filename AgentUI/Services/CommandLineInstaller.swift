@@ -5,12 +5,13 @@ struct CommandLineInstaller: Installer {
         guard let executable = Bundle.main.executableURL else { throw WorkspaceError(message: String(localized: "AgentUI’s executable is missing.")) }
         return CommandLineInstaller(executable: executable, directory: FileManager.default.homeDirectoryForCurrentUser.appending(path: ".local/bin"))
     }
+    static let commandName = "agentui"
     private static let appExecutableSuffix = ".app/Contents/MacOS/AgentUI"
 
     let executable: URL
     let directory: URL
 
-    var link: URL { directory.appending(path: "agentui") }
+    var link: URL { directory.appending(path: Self.commandName) }
 
     var status: InstallationStatus {
         guard (try? FileManager.default.attributesOfItem(atPath: link.path)) != nil else { return .notInstalled }

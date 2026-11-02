@@ -12,7 +12,7 @@ import Observation
     private(set) var localLoading = false
     private(set) var remoteLoading = false
     var loading: Bool { localLoading || remoteLoading }
-    var lacksChangeRequest: Bool { remote.map { $0.changeRequest == nil } ?? (remoteError != nil) }
+    private(set) var lacksChangeRequest = false
     private(set) var localError: String?
     private(set) var remoteError: String?
     @ObservationIgnored private var path: String?
@@ -25,7 +25,11 @@ import Observation
     typealias RemoteQuery = @Sendable (LocalGitSnapshot) async throws -> RemoteSnapshot
 
     private var currentKey: String? {
-        local.map { $0.root + "|" + ($0.branch?.name ?? "") + "|" + ($0.headSHA ?? "") }
+        branchKey.map { $0 + "|" + (local?.headSHA ?? "") }
+    }
+
+    private var branchKey: String? {
+        local.map { $0.root + "|" + ($0.branch?.name ?? "") }
     }
 
     private var remoteIsStale: Bool {
@@ -41,6 +45,7 @@ import Observation
             self.path = path
             local = nil; remote = nil; localError = nil; remoteError = nil
             remoteKey = nil; remoteDate = nil
+            lacksChangeRequest = false; comparisonBase = nil
         }
         localLoading = false; remoteLoading = false
         if forceRemote { remoteKey = nil }
@@ -67,16 +72,18 @@ import Observation
             do {
                 let snapshot = try await readLocal(path)
                 guard !Task.isCancelled, generation == token else { break }
-                let oldKey = currentKey
+                let oldKey = currentKey, oldBranchKey = branchKey
                 local = snapshot
                 localError = nil
                 if currentKey != oldKey { remote = nil; remoteError = nil; remoteDate = nil }
+                if branchKey != oldBranchKey { lacksChangeRequest = false }
                 if currentKey != remoteKey || remoteIsStale { trigger.yield(.changed) }
             } catch is CancellationError { break }
             catch {
                 guard generation == token, !Task.isCancelled else { break }
                 local = nil; remote = nil; remoteError = nil
                 remoteKey = nil; remoteDate = nil
+                lacksChangeRequest = false
                 localError = error.localizedDescription
             }
             localLoading = false
@@ -96,6 +103,7 @@ import Observation
                 if currentKey == key {
                     remote = result; remoteError = nil
                     remoteKey = key; remoteDate = .now
+                    lacksChangeRequest = result.changeRequest == nil
                 }
             } catch is CancellationError { break }
             catch {
@@ -103,6 +111,7 @@ import Observation
                 if currentKey == key {
                     remote = nil; remoteError = error.localizedDescription
                     remoteKey = key; remoteDate = .now
+                    lacksChangeRequest = true
                 }
             }
             remoteLoading = false

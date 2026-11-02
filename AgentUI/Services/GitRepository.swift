@@ -177,6 +177,13 @@ enum WorktreeFolder {
                                   repositoryPath: mainWorktree(of: repository.commonDirectory).map(WorkspacePath.canonical))
     }
 
+    static func registration(of worktree: URL) -> URL? {
+        guard let repository = GitRepository.atRoot(worktree),
+              repository.gitDirectory.deletingLastPathComponent().standardizedFileURL
+                == repository.commonDirectory.appendingPathComponent("worktrees").standardizedFileURL else { return nil }
+        return repository.gitDirectory
+    }
+
     private static func mainWorktree(of commonDirectory: URL) -> URL? {
         if commonDirectory.lastPathComponent == ".git" { return commonDirectory.deletingLastPathComponent() }
         guard let configured = coreWorktree(in: commonDirectory.appendingPathComponent("config")) else { return nil }

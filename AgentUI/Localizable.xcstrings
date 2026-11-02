@@ -4918,16 +4918,6 @@
         }
       }
     },
-    "This AgentUI instance is closed." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cette instance d’AgentUI est fermée."
-          }
-        }
-      }
-    },
     "This Mac’s pairing code is missing. Scan its QR code again." : {
       "localizations" : {
         "fr" : {

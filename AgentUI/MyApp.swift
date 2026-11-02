@@ -6,6 +6,9 @@ import AppKit
         if CommandLine.arguments.dropFirst().first == "--cli" {
             exit(AgentCLI.run(arguments: Array(CommandLine.arguments.dropFirst(2))))
         }
+        if CommandLine.arguments.first.map({ URL(fileURLWithPath: $0).lastPathComponent }) == CommandLineInstaller.commandName {
+            exit(AgentCLI.run(arguments: Array(CommandLine.arguments.dropFirst())))
+        }
         AgentUIApplication.main()
     }
 }

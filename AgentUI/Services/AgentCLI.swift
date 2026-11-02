@@ -62,8 +62,7 @@ enum AgentCLI {
     }
 
     static func instanceDirectory(environment: [String: String]) throws -> URL {
-        if let instance = environment["AGENTUI_INSTANCE"] {
-            guard FileManager.default.fileExists(atPath: instance) else { throw WorkspaceError(message: String(localized: "This AgentUI instance is closed.")) }
+        if let instance = environment["AGENTUI_INSTANCE"], FileManager.default.fileExists(atPath: instance) {
             return URL(fileURLWithPath: instance)
         }
         guard let published = runningInstance(in: WorkspaceDisk.instancesDirectory) else {

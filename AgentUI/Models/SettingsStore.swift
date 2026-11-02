@@ -37,6 +37,7 @@ import Observation
         terminal = Self.load(TerminalAppearance.self, forKey: Key.terminal, from: defaults) ?? TerminalAppearance()
         agentLaunch = Self.load(AgentLaunch.self, forKey: Key.agentLaunch, from: defaults) ?? AgentLaunch()
         confirmations = Self.load(RemovalConfirmations.self, forKey: Key.confirmations, from: defaults) ?? RemovalConfirmations()
+        WorkspaceDisk.scanLegacyWorktreesDirectory(in: defaults)
         worktreesDirectory = WorkspaceDisk.storedWorktreesDirectory(in: defaults)
         scannedWorktreesDirectories = WorkspaceDisk.storedScannedWorktreesDirectories(in: defaults)
     }

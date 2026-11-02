@@ -54,6 +54,11 @@ private final class ChangeFlag: @unchecked Sendable {
         try await store.flushPersistence()
         let afterFlush = try WorkspaceDisk.load(from: file)
         try require(afterFlush == store.state && !store.hasUnsavedChanges, "Flush persists the final coalesced state")
+        store.selection = p1.worktrees[0].terminals[0].id
+        try require(store.hasUnsavedChanges, "Selecting another terminal is saved")
+        try await store.flushPersistence()
+        let reselected = try WorkspaceDisk.load(from: file)
+        try require(reselected.selection == p1.worktrees[0].terminals[0].id, "The new selection reaches disk")
         print("PASS granular observation, coalescing and explicit durable flush")
 
         store.busyProjects.insert(p2.id)
@@ -198,6 +203,11 @@ private final class ChangeFlag: @unchecked Sendable {
         try require(groups.orphanWorktrees.map(\.folderName) == ["broken"]
                         && groups.projects.contains { $0.worktrees.contains { $0.path == lonely.path } && $0.worktrees.contains { $0.path == extra.path } },
                     "Adding the main repository adopts its orphan")
+        let lonelyRegistration = WorktreeFolder.registration(of: URL(fileURLWithPath: lonely.path))
+        try require(lonelyRegistration?.deletingLastPathComponent().path == WorkspacePath.canonical(lonelyRoot.appendingPathComponent(".git/worktrees")),
+                    "A linked worktree knows its own registration in the repository")
+        try require(WorktreeFolder.registration(of: lonelyRoot) == nil && WorktreeFolder.registration(of: broken) == nil,
+                    "A main folder or a broken worktree has no registration to remove")
         print("PASS worktree folder adoption")
 
         let legacy = Data(#"{"version":1,"folders":[],"collapsed":[],"projects":[{"id":"\#(UUID())","name":"Old","path":"/tmp/old","worktrees":[{"id":"\#(UUID())","name":"Principal","path":"/tmp/old","isPrimary":true,"terminals":[]}]}]}"#.utf8)

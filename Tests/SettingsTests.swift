@@ -30,6 +30,21 @@ enum SettingsTests {
         defaults.set(["~/agentui", "", "relative", "/tmp/worktrees"], forKey: WorkspaceDisk.scannedWorktreesDirectoriesKey)
         try CoreTests.require(WorkspaceDisk.storedScannedWorktreesDirectories(in: defaults).map(\.path) == [home.appendingPathComponent("agentui").path, "/tmp/worktrees"],
                               "Scanned folders keep only absolute paths")
+        let legacySuite = "AgentUI.SettingsTests.Legacy.\(UUID().uuidString)"
+        let legacyDefaults = UserDefaults(suiteName: legacySuite)!
+        defer { legacyDefaults.removePersistentDomain(forName: legacySuite) }
+        let legacy = FileManager.default.temporaryDirectory.appendingPathComponent("agentui-legacy-\(UUID().uuidString)")
+        WorkspaceDisk.scanLegacyWorktreesDirectory(in: legacyDefaults, legacy: legacy)
+        try CoreTests.require(WorkspaceDisk.storedScannedWorktreesDirectories(in: legacyDefaults).isEmpty, "A missing legacy folder is not scanned")
+        legacyDefaults.removeObject(forKey: WorkspaceDisk.legacyWorktreesDirectoryCheckedKey)
+        try FileManager.default.createDirectory(at: legacy, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: legacy) }
+        WorkspaceDisk.scanLegacyWorktreesDirectory(in: legacyDefaults, legacy: legacy)
+        try CoreTests.require(WorkspaceDisk.storedScannedWorktreesDirectories(in: legacyDefaults).map(\.path) == [legacy.standardizedFileURL.path],
+                              "Worktrees left in the former ~/agentui folder keep being found")
+        legacyDefaults.removeObject(forKey: WorkspaceDisk.scannedWorktreesDirectoriesKey)
+        WorkspaceDisk.scanLegacyWorktreesDirectory(in: legacyDefaults, legacy: legacy)
+        try CoreTests.require(WorkspaceDisk.storedScannedWorktreesDirectories(in: legacyDefaults).isEmpty, "A removed legacy folder doesn’t come back")
         print("PASS worktree folder settings")
 
         var appearance = TerminalAppearance()

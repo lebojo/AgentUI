@@ -436,6 +436,14 @@ import Foundation
         let codex = AgentProcess(agent: .codex, startedAt: runStart, directory: root.path, sessionID: "session", transcriptPath: sessionJournal.path)
         let codexSubagents = await catalog.list(of: codex)
         try require(codexSubagents.isEmpty, "Only Claude sessions have subagent journals")
+        let longDirectory = root.appendingPathComponent("claude/long/subagents")
+        try fm.createDirectory(at: longDirectory, withIntermediateDirectories: true)
+        let report = String(repeating: "x", count: 200_000)
+        let longJournal = #"{"type":"assistant","message":{"stop_reason":"tool_use"}}"# + "\n"
+            + #"{"type":"assistant","message":{"stop_reason":"end_turn","content":""# + report + #""}}"# + "\n"
+        try Data(longJournal.utf8).write(to: longDirectory.appendingPathComponent("agent-long.jsonl"))
+        let long = await catalog.list(in: longDirectory, since: runStart)
+        try require(long.first?.status == .done, "A final answer longer than the read window still ends the subagent")
         print("PASS Claude subagents")
     }
 

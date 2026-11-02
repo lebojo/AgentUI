@@ -44,9 +44,7 @@ struct MobileSidebar: View {
             HStack {
                 Image(systemName: store.isConnected ? "network" : "network.slash")
                 Text(store.statusText).lineLimit(2)
-                Spacer()
-                Button("Settings", systemImage: "gearshape", action: showSettings).labelStyle(.iconOnly)
-            }.font(Typography.caption).padding(Spacing.l).background(Palette.bar)
+            }.font(Typography.caption).padding(Spacing.l).frame(maxWidth: .infinity, alignment: .leading).background(Palette.bar)
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

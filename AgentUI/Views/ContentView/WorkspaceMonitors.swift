@@ -15,6 +15,7 @@ struct WorkspaceMonitors: ViewModifier {
     private struct WorktreeFolderScan: Equatable {
         let directories: [URL]
         let knownPaths: [String]
+        let isVisible: Bool
     }
 
     @Environment(AppVisibility.self) private var visibility
@@ -34,14 +35,18 @@ struct WorkspaceMonitors: ViewModifier {
     private var worktreeFolderScan: WorktreeFolderScan {
         let projects = store.projects
         return WorktreeFolderScan(directories: settings.watchedWorktreesDirectories,
-                                  knownPaths: projects.map(\.path) + projects.flatMap(\.worktrees).map(\.path))
+                                  knownPaths: projects.map(\.path) + projects.flatMap(\.worktrees).map(\.path),
+                                  isVisible: visibility.isVisible)
     }
 
     func body(content: Content) -> some View {
         content
             .task(id: repositoryWatch, priority: .utility) { await watchRepositories(repositoryWatch) }
             .task(id: worktreeFolderWatch, priority: .utility) { await watchWorktreeFolders(worktreeFolderWatch) }
-            .task(id: worktreeFolderScan, priority: .utility) { await store.adoptWorktrees(in: worktreeFolderScan.directories) }
+            .task(id: worktreeFolderScan, priority: .utility) {
+                guard worktreeFolderScan.isVisible else { return }
+                await store.adoptWorktrees(in: worktreeFolderScan.directories)
+            }
             .task(id: visibility.isVisible, priority: .utility) {
                 guard visibility.isVisible else { return }
                 await usage.monitor()
@@ -68,7 +73,7 @@ struct WorkspaceMonitors: ViewModifier {
     private func watchWorktreeFolders(_ watch: WorktreeFolderWatch) async {
         guard watch.isVisible else { return }
         try? FileManager.default.createDirectory(at: watch.creationDirectory, withIntermediateDirectories: true)
-        for await _ in FileEvents.entries(of: watch.directories, every: .seconds(30)) {
+        for await _ in FileEvents.entries(of: watch.directories, every: .seconds(30)).dropFirst() {
             await store.adoptWorktrees(in: watch.directories)
         }
     }

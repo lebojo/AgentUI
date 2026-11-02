@@ -83,17 +83,21 @@ import Observation
         let known = savedHosts.first { $0.addresses.contains(value) }
         let saved = (known ?? SavedHost(name: value, addresses: [value])).preferring(value)
         try pairingStores(saved.pairingAccount).save(code)
-        remember(saved, replacing: known)
+        remember(saved, replacing: [known].compactMap(\.self))
         open(saved, pairingCode: code)
     }
 
     func pair(with invitation: PairingInvitation) throws {
-        let known = savedHosts.first { $0.id == invitation.hostID }
+        let matches = savedHosts.filter { $0.id == invitation.hostID || !Set($0.addresses).isDisjoint(with: invitation.addresses) }
+        let known = matches.first { $0.id == invitation.hostID } ?? matches.first
         var saved = SavedHost(id: invitation.hostID, name: invitation.name, addresses: invitation.addresses,
                               pairingAccount: known?.pairingAccount)
         if let working = known?.addresses.first, saved.addresses.contains(working) { saved = saved.preferring(working) }
         try pairingStores(saved.pairingAccount).save(invitation.code)
-        remember(saved, replacing: known)
+        for duplicate in matches where duplicate.pairingAccount != saved.pairingAccount {
+            try? pairingStores(duplicate.pairingAccount).delete()
+        }
+        remember(saved, replacing: matches)
         open(saved, pairingCode: invitation.code)
     }
 
@@ -119,9 +123,9 @@ import Observation
         savedHosts.removeAll { $0.id == saved.id }
     }
 
-    private func remember(_ saved: SavedHost, replacing known: SavedHost?) {
+    private func remember(_ saved: SavedHost, replacing known: [SavedHost]) {
         var hosts = savedHosts
-        let replaced: Set<UUID> = Set([saved.id, known?.id].compactMap(\.self))
+        let replaced = Set([saved.id] + known.map(\.id))
         let index = hosts.firstIndex { replaced.contains($0.id) } ?? hosts.endIndex
         hosts.removeAll { replaced.contains($0.id) }
         hosts.insert(saved, at: min(index, hosts.endIndex))
@@ -156,7 +160,7 @@ import Observation
 
     private func rememberWorkingAddress() {
         guard let saved = selectedHost, saved.addresses.first != host, saved.addresses.contains(host) else { return }
-        remember(saved.preferring(host), replacing: nil)
+        remember(saved.preferring(host), replacing: [])
     }
 
     func disconnect() {

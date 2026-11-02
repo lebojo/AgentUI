@@ -5,6 +5,9 @@ struct AgentSkillInstaller: Installer {
     private static let bundledContent: String? = Bundle.main.url(forResource: "SKILL", withExtension: "md")
         .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
     private static let fileName = "SKILL.md"
+    private static let claudeConfigurationDirectory = Task {
+        await LoginShell.variable("CLAUDE_CONFIG_DIR").map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) }
+    }
 
     let content: String
     let sharedDirectory: URL
@@ -20,7 +23,7 @@ struct AgentSkillInstaller: Installer {
 
     static func load() async throws -> AgentSkillInstaller {
         guard let content = bundledContent else { throw WorkspaceError(message: String(localized: "The skill is missing from the app.")) }
-        let claudeConfiguration = await LoginShell.variable("CLAUDE_CONFIG_DIR").map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) }
+        let claudeConfiguration = await claudeConfigurationDirectory.value
         return AgentSkillInstaller(content: content, home: FileManager.default.homeDirectoryForCurrentUser, claudeConfiguration: claudeConfiguration)
     }
 

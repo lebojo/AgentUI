@@ -42,6 +42,23 @@ enum WorkspaceDisk {
         (defaults.stringArray(forKey: scannedWorktreesDirectoriesKey) ?? []).compactMap(directory)
     }
 
+    static let legacyWorktreesDirectoryCheckedKey = "settings.legacyWorktreesDirectoryChecked"
+
+    static var legacyWorktreesDirectory: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("agentui", isDirectory: true)
+    }
+
+    static func scanLegacyWorktreesDirectory(in defaults: UserDefaults, legacy: URL = legacyWorktreesDirectory) {
+        guard !defaults.bool(forKey: legacyWorktreesDirectoryCheckedKey) else { return }
+        defaults.set(true, forKey: legacyWorktreesDirectoryCheckedKey)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: legacy.path, isDirectory: &isDirectory), isDirectory.boolValue else { return }
+        let scanned = defaults.stringArray(forKey: scannedWorktreesDirectoriesKey) ?? []
+        let known = ([storedWorktreesDirectory(in: defaults)] + storedScannedWorktreesDirectories(in: defaults)).map(\.path)
+        guard !known.contains(legacy.standardizedFileURL.path) else { return }
+        defaults.set(scanned + [legacy.standardizedFileURL.path], forKey: scannedWorktreesDirectoriesKey)
+    }
+
     private static func directory(_ path: String) -> URL? {
         let expanded = (path as NSString).expandingTildeInPath
         guard (expanded as NSString).isAbsolutePath else { return nil }

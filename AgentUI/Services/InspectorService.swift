@@ -128,7 +128,7 @@ enum InspectorService {
     }
 
     private static func trimmed(_ data: Data) -> String {
-        String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        String(decoding: data, as: UTF8.self).trimmingCharacters(in: .newlines)
     }
 
     @concurrent private static func section(_ git: URL, _ arguments: [String], at root: String, kind: GitDiffSection.Kind,

@@ -163,6 +163,12 @@ try:
                                env=outside_env, capture_output=True, text=True, timeout=30)
     assert elsewhere.returncode != 0 and '--project' in json.loads(elsewhere.stdout)['message']
     print('PASS outside AgentUI, the CLI finds the running app and the project of the current directory', flush=True)
+    linked = root / 'linked-bin' / 'agentui'
+    linked.parent.mkdir(exist_ok=True)
+    linked.symlink_to(binary)
+    through_link = subprocess.run([str(linked),'list'], cwd=subfolder, env=outside_env, capture_output=True, text=True, timeout=30)
+    assert through_link.returncode == 0 and json.loads(through_link.stdout)['ok'], through_link
+    print('PASS the agentui link installed in PATH runs the CLI, not a second app', flush=True)
 
     disposable = cli('worktree','create','--project',pid,'--branch','feature/disposable')
     (pathlib.Path(disposable['path']) / 'draft.txt').write_text('work in progress')

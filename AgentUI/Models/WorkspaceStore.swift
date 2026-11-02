@@ -9,7 +9,7 @@ import Observation
     private var collapsed: Set<UUID> = []
     var selection: UUID? {
         didSet {
-            let persisted = persistedSelection
+            let persisted = selectedSubagent?.terminalID ?? oldValue
             selectedSubagent = sessions.subagent(selection)
             updateSelectedContext()
             if oldValue != selection, persisted != persistedSelection { save() }
@@ -635,9 +635,9 @@ import Observation
         guard let discovered = try? await GitService.existingWorktrees(project: project),
               !busyProjects.contains(id),
               let index = projects.firstIndex(where: { $0.id == id }) else { return }
-        for worktree in discovered where !projects[index].worktrees.contains(where: { $0.path == worktree.path }) {
-            projects[index].worktrees.append(worktree)
-        }
+        let added = discovered.filter { worktree in !projects[index].worktrees.contains { $0.path == worktree.path } }
+        guard !added.isEmpty else { return }
+        projects[index].worktrees.append(contentsOf: added)
         save()
     }
 
@@ -662,13 +662,12 @@ import Observation
 
     private func trashOrphanWorktree(at path: String) {
         guard let orphan = orphanWorktrees.first(where: { $0.path == path }) else { return }
+        let registration = WorktreeFolder.registration(of: URL(fileURLWithPath: orphan.path))
         do {
             try FileManager.default.trashItem(at: URL(fileURLWithPath: orphan.path), resultingItemURL: nil)
             orphanScan += 1
             orphanWorktrees.removeAll { $0.path == orphan.path }
-            if orphan.hasRepository, let repositoryPath = orphan.repositoryPath {
-                Task { _ = try? await GitService.run(["worktree", "prune"], at: repositoryPath, timeout: 10) }
-            }
+            if let registration { try? FileManager.default.removeItem(at: registration) }
         } catch { errorMessage = error.localizedDescription }
     }
 

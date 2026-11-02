@@ -46,6 +46,11 @@ import Foundation
                               "Git reads do not trigger themselves through file events, got \(settledReads) then \(idleReads) reads")
         try "two\n".write(to: repository.appendingPathComponent("tracked.txt"), atomically: true, encoding: .utf8)
         try await wait(until: { model.local?.changes.map(\.path) == ["tracked.txt"] }, "Editing a file refreshes Git status")
+        try await wait(until: { model.lacksChangeRequest }, "A branch without a pull request offers the comparison")
+        let firstHead = model.local?.headSHA
+        _ = try await GitService.run(["-c", "user.name=Tests", "-c", "user.email=tests@example.invalid", "commit", "-qam", "second"], at: repository.path)
+        try await wait(until: { model.local?.headSHA != firstHead }, "A commit refreshes HEAD")
+        try CoreTests.require(model.lacksChangeRequest, "A new commit on the same branch keeps the comparison in place")
         monitoring.cancel()
         await monitoring.value
         print("PASS event-driven inspector refresh without self-triggering")

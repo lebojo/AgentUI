@@ -4,10 +4,12 @@ import Foundation
 actor ClaudeSubagents {
     static let finishedVisibility: TimeInterval = 300
     static let abandonment: TimeInterval = 900
+    static let cacheLifetime: TimeInterval = 600
 
     private static let resourceKeys: Set<URLResourceKey> = [.creationDateKey, .contentModificationDateKey]
 
     private var cache: [URL: Entry] = [:]
+    private var listedDirectories: [URL: Date] = [:]
 
     func list(of process: AgentProcess, now: Date = .now) -> [Subagent] {
         guard process.agent == .claude, let transcriptPath = process.transcriptPath else { return [] }
@@ -19,7 +21,12 @@ actor ClaudeSubagents {
         let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: Array(Self.resourceKeys))) ?? []
         let journals = files.filter { $0.pathExtension == "jsonl" && $0.lastPathComponent.hasPrefix("agent-") }
         let present = Set(journals)
-        cache = cache.filter { $0.key.deletingLastPathComponent().path != directory.path || present.contains($0.key) }
+        listedDirectories[directory.standardizedFileURL] = now
+        listedDirectories = listedDirectories.filter { now.timeIntervalSince($0.value) < Self.cacheLifetime }
+        cache = cache.filter { journal, _ in
+            let parent = journal.deletingLastPathComponent().standardizedFileURL
+            return parent == directory.standardizedFileURL ? present.contains(journal) : listedDirectories[parent] != nil
+        }
         return journals.compactMap { subagent(journal: $0, since: start, now: now) }
             .sorted { ($0.startedAt, $0.journal.path) < ($1.startedAt, $1.journal.path) }
     }
@@ -52,13 +59,27 @@ actor ClaudeSubagents {
     private static func endsWithFinalAnswer(_ journal: URL) -> Bool {
         guard let file = try? FileHandle(forReadingFrom: journal) else { return false }
         defer { try? file.close() }
-        guard let size = try? file.seekToEnd(), (try? file.seek(toOffset: size > 65_536 ? size - 65_536 : 0)) != nil,
-              let tail = try? file.readToEnd() else { return false }
-        let lastAnswer = tail.split(separator: 10).reversed().lazy.compactMap { line in
+        guard let size = try? file.seekToEnd() else { return false }
+        var window: UInt64 = 65_536
+        while true {
+            let offset = size > window ? size - window : 0
+            guard (try? file.seek(toOffset: offset)) != nil, let tail = try? file.readToEnd() else { return false }
+            let complete = offset == 0 ? tail[...] : tail.drop { $0 != 10 }
+            if let answer = lastAnswer(in: complete) {
+                let stopReason = (answer["message"] as? [String: Any])?["stop_reason"] as? String
+                return stopReason == "end_turn" || stopReason == "stop_sequence"
+            }
+            guard offset > 0, window < maximumTail else { return false }
+            window *= 4
+        }
+    }
+
+    private static let maximumTail: UInt64 = 16_777_216
+
+    private static func lastAnswer(in records: Data.SubSequence) -> [String: Any]? {
+        records.split(separator: 10).reversed().lazy.compactMap { line in
             (try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any]).flatMap { $0["type"] as? String == "assistant" ? $0 : nil }
         }.first
-        let stopReason = (lastAnswer?["message"] as? [String: Any])?["stop_reason"] as? String
-        return stopReason == "end_turn" || stopReason == "stop_sequence"
     }
 
     private struct Entry {

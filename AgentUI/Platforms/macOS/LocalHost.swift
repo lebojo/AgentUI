@@ -24,9 +24,8 @@ import SystemConfiguration
     private(set) var pairingStorageError: String?
     private(set) var status = String(localized: "Local Access off")
     private(set) var addresses: [String] = []
-    private var identifier: UUID?
+    @ObservationIgnored private let identifier = LocalHost.deviceIdentifier()
     @ObservationIgnored private let pairingStore: any PairingCodeStore
-    @ObservationIgnored private let identifierStore: any PairingCodeStore
     @ObservationIgnored private let name = SCDynamicStoreCopyComputerName(nil, nil) as String? ?? "Mac"
     @ObservationIgnored private var pairingKey: PairingKey?
     @ObservationIgnored private var pairingUpdate: Task<PairingKey, Error>?
@@ -45,14 +44,12 @@ import SystemConfiguration
     private static let maximumConnectionsPerPeer = 16
     private static let incompatibleVersions = String(localized: "Incompatible versions. Update AgentUI on the Mac and on this device.")
 
-    init(pairingStore: any PairingCodeStore = PairingCodeStores.make(account: "localHost.pairingCode"),
-         identifierStore: any PairingCodeStore = PairingCodeStores.make(account: "localHost.identifier")) {
+    init(pairingStore: any PairingCodeStore = PairingCodeStores.make(account: "localHost.pairingCode")) {
         self.pairingStore = pairingStore
-        self.identifierStore = identifierStore
     }
 
     var invitation: PairingInvitation? {
-        guard enabled, let identifier, !pairingCode.isEmpty, !addresses.isEmpty else { return nil }
+        guard enabled, !pairingCode.isEmpty, !addresses.isEmpty else { return nil }
         return PairingInvitation(hostID: identifier, name: name, addresses: addresses, code: pairingCode)
     }
 
@@ -61,11 +58,6 @@ import SystemConfiguration
         self.store = store
         self.settings = settings
         self.installedAgents = installedAgents
-        let identifiers = identifierStore
-        Task { [weak self] in
-            let identifier = await Task.detached { Self.deviceIdentifier(in: identifiers) }.value
-            self?.identifier = identifier
-        }
         pathMonitor.pathUpdateHandler = { [weak self] _ in
             Task { @MainActor [weak self] in self?.refreshAddresses() }
         }
@@ -511,13 +503,12 @@ import SystemConfiguration
         return missing.reduce(existing.resolvingSymlinksInPath()) { $0.appendingPathComponent($1) }
     }
 
-    nonisolated private static func deviceIdentifier(in store: any PairingCodeStore) -> UUID? {
-        do {
-            if let stored = try store.load().flatMap(UUID.init(uuidString:)) { return stored }
-            let identifier = UUID()
-            try store.save(identifier.uuidString)
-            return identifier
-        } catch { return nil }
+    private static func deviceIdentifier(in defaults: UserDefaults = .standard) -> UUID {
+        let key = "localHost.identifier"
+        if let stored = defaults.string(forKey: key).flatMap(UUID.init(uuidString:)) { return stored }
+        let identifier = UUID()
+        defaults.set(identifier.uuidString, forKey: key)
+        return identifier
     }
 
     private static func localAddresses() -> [String] {
