@@ -38,17 +38,9 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000010 /* AgentUI */,
-				A20000000000000000000003 /* skills */,
+				A20000000000000000000003 /* skills/agentui */,
 				000000000000000000000020 /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		A20000000000000000000003 /* skills */ = {
-			isa = PBXGroup;
-			children = (
-				A20000000000000000000002 /* SKILL.md */,
-			);
-			path = skills/agentui;
 			sourceTree = "<group>";
 		};
 		000000000000000000000020 /* Products */ = {
@@ -57,6 +49,14 @@
 				000000000000000000000120 /* AgentUI.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A20000000000000000000003 /* skills/agentui */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000002 /* SKILL.md */,
+			);
+			path = skills/agentui;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
