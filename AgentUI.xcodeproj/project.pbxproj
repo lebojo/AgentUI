@@ -8,10 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000002 /* SwiftTerm */; };
+		A20000000000000000000001 /* SKILL.md in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* SKILL.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* AgentUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AgentUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000002 /* SKILL.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SKILL.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -36,8 +38,17 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000010 /* AgentUI */,
+				A20000000000000000000003 /* skills */,
 				000000000000000000000020 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		A20000000000000000000003 /* skills */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000002 /* SKILL.md */,
+			);
+			path = skills/agentui;
 			sourceTree = "<group>";
 		};
 		000000000000000000000020 /* Products */ = {
@@ -114,6 +125,7 @@
 		000000000000000140000000 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
+				A20000000000000000000001 /* SKILL.md in Resources */,
 			);
 		};
 /* End PBXResourcesBuildPhase section */

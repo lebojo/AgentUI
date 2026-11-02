@@ -55,6 +55,38 @@ import Foundation
         catch let error as WorkspaceError { try require(error.message.contains("--worktree UUID"), "Deletion never targets the current worktree implicitly") }
         do { _ = try AgentCLI.parse(["worktree", "delete", "--worktree", worktreeID.uuidString], environment: env); throw WorkspaceError(message: "FAIL: self deletion accepted") }
         catch let error as WorkspaceError { try require(error.message.contains("another worktree"), "A terminal cannot delete its own worktree") }
+        let inherited = try AgentCLI.parse(["terminal", "create"], environment: env, currentDirectory: "/tmp")
+        try require(inherited.projectID == projectID && inherited.directory == "/tmp", "An AgentUI terminal keeps its context and sends its directory")
+        let worktreeOnly = try AgentCLI.parse(["terminal", "create", "--worktree", explicitID.uuidString], environment: env)
+        try require(worktreeOnly.projectID == nil && worktreeOnly.worktreeID == explicitID, "--worktree alone lets the app find its project")
+        let foreignDeletion = try AgentCLI.parse(["worktree", "delete", "--worktree", explicitID.uuidString], environment: env)
+        try require(foreignDeletion.projectID == nil, "Deleting another project's worktree ignores the terminal's project")
+        let outside = try AgentCLI.parse(["terminal", "create"], environment: [:], currentDirectory: "/work/app/Sources")
+        try require(outside.projectID == nil && outside.directory == "/work/app/Sources", "Outside AgentUI, the current directory is sent")
+        let mainID = UUID(), featureID = UUID()
+        var locatedProject = Project(url: URL(fileURLWithPath: "/work/app"))
+        locatedProject.worktrees = [
+            Worktree(id: mainID, name: "main", path: "/work/app", isPrimary: true),
+            Worktree(id: featureID, name: "feature", path: "/work/app/.worktrees/feature")
+        ]
+        let located = Workspace(projects: [locatedProject])
+        try require(located.location(containing: "/work/app/Sources")?.worktreeID == mainID, "A subfolder belongs to its worktree")
+        try require(located.location(containing: "/work/app/.worktrees/feature/src")?.worktreeID == featureID, "The deepest worktree wins")
+        try require(located.location(containing: "/work/application") == nil, "Sibling folders with a common prefix are not matched")
+        let registry = root.appendingPathComponent("Instances")
+        try FileManager.default.createDirectory(at: registry, withIntermediateDirectories: true)
+        let liveInstance = root.appendingPathComponent("live-instance"), deadInstance = root.appendingPathComponent("dead-instance")
+        try FileManager.default.createDirectory(at: liveInstance, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: deadInstance, withIntermediateDirectories: true)
+        try require(AgentCLI.runningInstance(in: registry) == nil, "No registered instance means AgentUI is closed")
+        try Data().write(to: registry.appendingPathComponent("1.sb-pending"))
+        try require(AgentCLI.runningInstance(in: registry) == nil, "An atomic write in progress is not an instance")
+        try require(FileManager.default.fileExists(atPath: registry.appendingPathComponent("1.sb-pending").path), "An atomic write in progress is left alone")
+        try deadInstance.path.write(to: registry.appendingPathComponent("999999"), atomically: true, encoding: .utf8)
+        try require(AgentCLI.runningInstance(in: registry) == nil, "A crashed instance is ignored")
+        try require(!FileManager.default.fileExists(atPath: registry.appendingPathComponent("999999").path), "A crashed instance is unregistered")
+        try liveInstance.path.write(to: registry.appendingPathComponent(String(ProcessInfo.processInfo.processIdentifier)), atomically: true, encoding: .utf8)
+        try require(AgentCLI.runningInstance(in: registry)?.path == liveInstance.path, "A running instance is found")
         print("PASS CLI context, argument boundaries, validation")
 
         let mailbox = root.appendingPathComponent("mailbox")

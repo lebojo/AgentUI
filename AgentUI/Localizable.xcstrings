@@ -44,6 +44,16 @@
         }
       }
     },
+    "%@ already exists and doesn’t belong to AgentUI." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ existe déjà et n’appartient pas à AgentUI."
+          }
+        }
+      }
+    },
     "%@ of %@" : {
       "localizations" : {
         "fr" : {
@@ -805,11 +815,31 @@
         }
       }
     },
+    "AgentUI isn’t open. Launch the app, then try again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AgentUI n’est pas ouvert. Lance l’application puis réessaie."
+          }
+        }
+      }
+    },
     "AgentUI/Views/Settings/" : {
       "shouldTranslate" : false
     },
     "AgentUI/Views/TerminalDetail.swift" : {
       "shouldTranslate" : false
+    },
+    "AgentUI’s executable is missing." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’exécutable d’AgentUI est introuvable."
+          }
+        }
+      }
     },
     "Agents" : {
       "localizations" : {
@@ -847,6 +877,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Autoriser l’accès depuis le réseau local"
+          }
+        }
+      }
+    },
+    "Another file has this name" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un autre fichier porte ce nom"
           }
         }
       }
@@ -1207,6 +1247,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Couleurs"
+          }
+        }
+      }
+    },
+    "Command in PATH" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commande dans le PATH"
           }
         }
       }
@@ -2184,12 +2234,42 @@
         }
       }
     },
+    "Incomplete Installation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installation incomplète"
+          }
+        }
+      }
+    },
     "Indigo" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Indigo"
+          }
+        }
+      }
+    },
+    "Install" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installer"
+          }
+        }
+      }
+    },
+    "Installed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installé"
           }
         }
       }
@@ -2864,6 +2944,16 @@
         }
       }
     },
+    "Not Installed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non installé"
+          }
+        }
+      }
+    },
     "Not Signed In" : {
       "localizations" : {
         "fr" : {
@@ -3144,6 +3234,16 @@
         }
       }
     },
+    "Project not found. Use --project UUID, or run the command from an AgentUI terminal or from the folder of a project open in AgentUI." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projet introuvable. Utilise --project UUID, ou lance la commande depuis un terminal AgentUI ou le dossier d’un projet ouvert dans AgentUI."
+          }
+        }
+      }
+    },
     "Project or worktree not found." : {
       "localizations" : {
         "fr" : {
@@ -3410,6 +3510,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rouvrir le terminal"
+          }
+        }
+      }
+    },
+    "Repair" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réparer"
           }
         }
       }
@@ -3858,6 +3968,16 @@
         }
       }
     },
+    "Skill for Agents" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skill pour les agents"
+          }
+        }
+      }
+    },
     "Skipped" : {
       "localizations" : {
         "fr" : {
@@ -4238,6 +4358,26 @@
         }
       }
     },
+    "The command is linked in ~/.local/bin; add it to your PATH if it isn’t there. Outside an AgentUI terminal, it acts on the project of the current folder. The skill teaches Claude, Codex, Copilot and OpenCode when to use it; it can also be installed with npx skills add LeBojo/AgentUI." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La commande est liée dans ~/.local/bin, à ajouter au PATH s’il n’y est pas. Hors d’un terminal AgentUI, elle agit sur le projet du dossier courant. Le skill apprend à Claude, Codex, Copilot et OpenCode quand l’utiliser ; il est aussi installable avec npx skills add LeBojo/AgentUI."
+          }
+        }
+      }
+    },
+    "The current folder belongs to the worktree to delete. Run the command from another folder." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le dossier courant appartient au worktree à supprimer. Lance la commande depuis un autre dossier."
+          }
+        }
+      }
+    },
     "The file is outside this worktree." : {
       "localizations" : {
         "fr" : {
@@ -4354,6 +4494,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le code d’appairage enregistré est illisible. Génère un nouveau code pour appairer à nouveau tes appareils."
+          }
+        }
+      }
+    },
+    "The skill is missing from the app." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le skill est introuvable dans l’application."
           }
         }
       }
@@ -4648,6 +4798,16 @@
         }
       }
     },
+    "Uninstall" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désinstaller"
+          }
+        }
+      }
+    },
     "Unknown command. See agentui --help." : {
       "localizations" : {
         "fr" : {
@@ -4724,6 +4884,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Non suivi"
+          }
+        }
+      }
+    },
+    "Update" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mettre à jour"
+          }
+        }
+      }
+    },
+    "Update Available" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mise à jour disponible"
           }
         }
       }
@@ -4888,12 +5068,22 @@
         }
       }
     },
-    "agentui — organize the terminals and worktrees of the running app\n\nagentui list\nagentui project add /path/to/project\nagentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree delete --worktree UUID [--force]\n\nFrom an AgentUI terminal, the project and worktree are implicit.\nChild commands are passed as arguments, without shell interpretation.\nExamples:\n  agentui terminal create --name Review -- claude \"Review the changes\"\n  agentui worktree create --branch feature/tests -- codex \"Add the tests\"\nEach creation returns the identifiers and path as JSON.\nAn existing branch is opened as is; otherwise it is created from the project’s HEAD.\nworktree delete closes its terminals and erases its folder; the branch and its commits stay in the repository.\nWithout --force, a worktree with uncommitted changes or untracked files is kept.\nA project’s main folder and the current terminal’s worktree can’t be deleted." : {
+    "agentui Command" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "agentui — organiser les terminaux et worktrees de l’application ouverte\n\nagentui list\nagentui project add /chemin/du/projet\nagentui terminal create [--name NOM] [--project UUID] [--worktree UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree create --branch BRANCHE [--name NOM] [--project UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree delete --worktree UUID [--force]\n\nDepuis un terminal AgentUI, le projet et le worktree sont implicites.\nLes commandes enfant sont passées comme arguments, sans interprétation shell.\nExemples :\n  agentui terminal create --name Review -- claude \"Relis les modifications\"\n  agentui worktree create --branch feature/tests -- codex \"Ajoute les tests\"\nChaque création renvoie les identifiants et le chemin au format JSON.\nUne branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.\nworktree delete ferme ses terminaux et efface son dossier ; la branche et ses commits restent dans le dépôt.\nSans --force, un worktree avec des modifications non commitées ou des fichiers non suivis est conservé.\nLe dossier principal d’un projet et le worktree du terminal courant ne peuvent pas être supprimés."
+            "value" : "Commande agentui"
+          }
+        }
+      }
+    },
+    "agentui — organize the terminals and worktrees of the running app\n\nagentui list\nagentui project add /path/to/project\nagentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree delete --worktree UUID [--force]\n\nFrom an AgentUI terminal, the project and worktree are implicit.\nElsewhere, they are inferred from the current folder if it belongs to a project open in AgentUI.\nChild commands are passed as arguments, without shell interpretation.\nExamples:\n  agentui terminal create --name Review -- claude \"Review the changes\"\n  agentui worktree create --branch feature/tests -- codex \"Add the tests\"\nEach creation returns the identifiers and path as JSON.\nAn existing branch is opened as is; otherwise it is created from the project’s HEAD.\nworktree delete closes its terminals and erases its folder; the branch and its commits stay in the repository.\nWithout --force, a worktree with uncommitted changes or untracked files is kept.\nA project’s main folder and the current terminal’s worktree can’t be deleted." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "agentui — organiser les terminaux et worktrees de l’application ouverte\n\nagentui list\nagentui project add /chemin/du/projet\nagentui terminal create [--name NOM] [--project UUID] [--worktree UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree create --branch BRANCHE [--name NOM] [--project UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree delete --worktree UUID [--force]\n\nDepuis un terminal AgentUI, le projet et le worktree sont implicites.\nAilleurs, ils sont déduits du dossier courant s’il appartient à un projet ouvert dans AgentUI.\nLes commandes enfant sont passées comme arguments, sans interprétation shell.\nExemples :\n  agentui terminal create --name Review -- claude \"Relis les modifications\"\n  agentui worktree create --branch feature/tests -- codex \"Ajoute les tests\"\nChaque création renvoie les identifiants et le chemin au format JSON.\nUne branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.\nworktree delete ferme ses terminaux et efface son dossier ; la branche et ses commits restent dans le dépôt.\nSans --force, un worktree avec des modifications non commitées ou des fichiers non suivis est conservé.\nLe dossier principal d’un projet et le worktree du terminal courant ne peuvent pas être supprimés."
           }
         }
       }
@@ -4926,6 +5116,16 @@
     },
     "ls" : {
       "shouldTranslate" : false
+    },
+    "macOS is running AgentUI from a temporary copy. Move the app to the Applications folder, relaunch it, then try again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS exécute AgentUI depuis une copie temporaire. Déplace l’app dans le dossier Applications, relance-la, puis réessaie."
+          }
+        }
+      }
     },
     "main" : {
       "shouldTranslate" : false

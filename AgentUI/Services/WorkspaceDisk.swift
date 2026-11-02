@@ -10,6 +10,10 @@ enum WorkspaceDisk {
         return defaultApplicationDirectory
     }
 
+    static var instancesDirectory: URL {
+        applicationDirectory.appendingPathComponent("Instances", isDirectory: true)
+    }
+
     static var worktreesDirectory: URL {
         testWorktreesDirectory ?? storedWorktreesDirectory(in: .standard)
     }

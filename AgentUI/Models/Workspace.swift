@@ -111,6 +111,16 @@ struct Workspace: Codable, Equatable, Sendable {
     var collapsed: Set<UUID> = []
 }
 
+extension Workspace {
+    func location(containing directory: String) -> (projectID: UUID, worktreeID: UUID)? {
+        let matches = projects.flatMap { project in
+            project.worktrees.filter { directory == $0.path || directory.hasPrefix($0.path + "/") }.map { (project, $0) }
+        }
+        guard let (project, worktree) = matches.max(by: { $0.1.path.count < $1.1.path.count }) else { return nil }
+        return (project.id, worktree.id)
+    }
+}
+
 struct FolderDestination: Identifiable, Equatable, Sendable {
     let id: UUID
     let title: String

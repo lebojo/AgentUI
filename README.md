@@ -166,6 +166,19 @@ Commands return JSON with `ok`, `projectID`, `worktreeID`, `terminalID` and `pat
 
 The CLI waits for the save before reporting success. If the write fails after creation, it returns `ok: false` with the identifiers already created: retry the save in the app, without recreating the terminal. Claude, Codex, Copilot, OpenCode and other tools must already be installed and authenticated on the Mac. Commands run through your interactive login shell, so a tool installed via npm, nvm, bun or any PATH set in `~/.zshrc` is found like in a regular terminal.
 
+To use `agentui` from any terminal, click **Install** next to **Command in PATH** in **Settings → Agents**: it links `~/.local/bin/agentui` to the app, so add that folder to your PATH if needed. Outside AgentUI terminals, the CLI reaches the most recently launched AgentUI that is still running, registered in `~/Library/Application Support/AgentUI/Instances`, and the project and worktree come from the current directory when it belongs to a project open in AgentUI (otherwise pass `--project`).
+
+To teach agents when and how to use these commands, install the `agentui` skill from **Settings → Agents → agentui command**. It is written to `~/.agents/skills/agentui` (read by Codex) and linked from `~/.claude/skills/agentui` (read by Claude Code, and by Copilot and OpenCode). Agents use it in AgentUI terminals (`AGENTUI_INSTANCE` set), and elsewhere only when you ask them to drive AgentUI.
+
+The skill lives in [`skills/agentui`](skills/agentui/SKILL.md), so it can also be installed and updated without a new app release:
+
+```sh
+npx skills add LeBojo/AgentUI --skill agentui --global
+npx skills update
+```
+
+The app bundles the same file and compares the `metadata.version` field: Settings offers an update only when the bundled version is newer, and never replaces a newer skill installed from GitHub.
+
 Communication uses a request mailbox private to the app instance, with no network port and no Node/Python dependency. The command runs the same native executable, in CLI mode.
 
 ## Data and lifetime

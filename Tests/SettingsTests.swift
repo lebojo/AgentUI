@@ -56,5 +56,114 @@ enum SettingsTests {
         let decodedConfirmations = try JSONDecoder().decode(RemovalConfirmations.self, from: JSONEncoder().encode(confirmations))
         try CoreTests.require(decodedConfirmations == confirmations, "Removal confirmations round-trip")
         print("PASS removal confirmations")
+
+        try runAgentSkill()
+    }
+
+    private static func runAgentSkill() throws {
+        let home = FileManager.default.temporaryDirectory.appending(path: "agentui-skill-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: home) }
+        let skill = { (version: Int) in "---\nname: agentui\nmetadata:\n  version: \"\(version)\"\n---\nv\(version)\n" }
+        let read = { (directory: URL) in try? String(contentsOf: directory.appending(path: "SKILL.md"), encoding: .utf8) }
+        let repository = try String(contentsOf: URL(fileURLWithPath: "skills/agentui/SKILL.md"), encoding: .utf8)
+        try CoreTests.require(AgentSkillInstaller.version(of: repository) > 0, "The repository skill declares a readable version")
+        try CoreTests.require(AgentSkillInstaller.version(of: "---\r\nmetadata:\r\n  version: 4 # bump\r\n---\r\n") == 4, "Versions tolerate CRLF and comments")
+        try CoreTests.require(AgentSkillInstaller.version(of: "no frontmatter") == 0, "A file without frontmatter has no version")
+
+        let installer = AgentSkillInstaller(content: skill(2), home: home)
+        try CoreTests.require(installer.status == .notInstalled, "The skill starts uninstalled")
+        try installer.install()
+        try CoreTests.require(installer.status == .installed, "Installing writes the skill")
+        let link = try FileManager.default.destinationOfSymbolicLink(atPath: installer.claudeDirectory.path)
+        try CoreTests.require(link == installer.sharedDirectory.path, "Claude skills link to the shared copy")
+
+        try installer.uninstall()
+        try AgentSkillInstaller(content: skill(1), home: home).install()
+        try CoreTests.require(installer.status == .outdated, "An older installed version is outdated")
+        try installer.install()
+        try CoreTests.require(installer.status == .installed && read(installer.claudeDirectory) == skill(2), "Updating replaces an older version")
+
+        try AgentSkillInstaller(content: skill(3), home: home).install()
+        try CoreTests.require(installer.status == .installed, "A newer version installed elsewhere is up to date")
+        try installer.install()
+        try CoreTests.require(read(installer.sharedDirectory) == skill(3), "Installing never downgrades the shared copy")
+
+        try installer.uninstall()
+        try FileManager.default.createDirectory(at: installer.claudeDirectory, withIntermediateDirectories: true)
+        try Data(skill(3).utf8).write(to: installer.claudeDirectory.appending(path: "SKILL.md"))
+        try CoreTests.require(installer.status == .incomplete, "A single current copy is incomplete, not outdated")
+        try installer.install()
+        try CoreTests.require(installer.status == .installed, "Repairing completes the installation")
+        try CoreTests.require(read(installer.claudeDirectory) == skill(3) && read(installer.sharedDirectory) == skill(3), "Repairing keeps the newer Claude copy")
+
+        try installer.uninstall()
+        try installer.install()
+        try FileManager.default.removeItem(at: installer.claudeDirectory)
+        try FileManager.default.createDirectory(at: installer.claudeDirectory, withIntermediateDirectories: true)
+        try Data(skill(1).utf8).write(to: installer.claudeDirectory.appending(path: "SKILL.md"))
+        try CoreTests.require(installer.status == .incomplete, "A stale Claude copy is incomplete")
+        try installer.install()
+        try CoreTests.require(installer.status == .installed, "Installing replaces a stale Claude copy")
+
+        try installer.uninstall()
+        try FileManager.default.createDirectory(at: installer.claudeDirectory, withIntermediateDirectories: true)
+        try Data(skill(1).utf8).write(to: installer.claudeDirectory.appending(path: "SKILL.md"))
+        try Data("notes".utf8).write(to: installer.claudeDirectory.appending(path: "notes.md"))
+        try installer.install()
+        try CoreTests.require(installer.status == .installed && FileManager.default.fileExists(atPath: installer.claudeDirectory.appending(path: "notes.md").path),
+                              "Updating a real Claude folder keeps the user's other files")
+        try installer.uninstall()
+        try CoreTests.require(installer.status == .notInstalled && FileManager.default.fileExists(atPath: installer.claudeDirectory.appending(path: "notes.md").path),
+                              "Uninstalling keeps the user's other files")
+        try FileManager.default.removeItem(at: installer.claudeDirectory)
+        try installer.install()
+
+        let configuration = home.appending(path: "claude-config")
+        let configured = AgentSkillInstaller(content: skill(2), home: home.appending(path: "configured"), claudeConfiguration: configuration)
+        try CoreTests.require(configured.claudeDirectory.path == configuration.appending(path: "skills/agentui").path, "CLAUDE_CONFIG_DIR moves the Claude skills folder")
+
+        let sharedHome = home.appending(path: "shared")
+        try FileManager.default.createDirectory(at: sharedHome.appending(path: ".agents/skills"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: sharedHome.appending(path: ".claude"), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(atPath: sharedHome.appending(path: ".claude/skills").path,
+                                                   withDestinationPath: sharedHome.appending(path: ".agents/skills").path)
+        let linkedHome = AgentSkillInstaller(content: installer.content, home: sharedHome)
+        try linkedHome.install()
+        try linkedHome.install()
+        try CoreTests.require(linkedHome.status == .installed, "A Claude skills folder linked to the shared one keeps the skill")
+
+        try installer.uninstall()
+        try CoreTests.require(installer.status == .notInstalled, "Uninstalling removes both copies")
+        try installer.uninstall()
+        print("PASS agent skill installer")
+
+        let bin = home.appending(path: "bin")
+        let app = home.appending(path: "AgentUI.app/Contents/MacOS/AgentUI")
+        let command = CommandLineInstaller(executable: app, directory: bin)
+        try CoreTests.require(command.status == .notInstalled, "The command starts outside PATH")
+        try command.install()
+        try CoreTests.require(command.status == .installed, "Installing links the command")
+        try CoreTests.require((try? FileManager.default.destinationOfSymbolicLink(atPath: command.link.path)) == app.path, "The command links to the app executable")
+        let moved = CommandLineInstaller(executable: home.appending(path: "Moved/AgentUI.app/Contents/MacOS/AgentUI"), directory: bin)
+        try CoreTests.require(moved.status == .outdated, "A link to another AgentUI copy is outdated")
+        try moved.install()
+        try CoreTests.require(moved.status == .installed && command.status == .outdated, "Updating relinks to the running copy")
+        try moved.uninstall()
+        try CoreTests.require(moved.status == .notInstalled, "Uninstalling removes the link")
+        try Data("#!/bin/sh\n".utf8).write(to: command.link)
+        try CoreTests.require(command.status == .conflict, "A foreign file is a conflict")
+        do { try command.install(); throw WorkspaceError(message: "FAIL: foreign command replaced") }
+        catch let error as WorkspaceError { try CoreTests.require(error.message.contains("doesn’t belong"), "A foreign command is never replaced") }
+        try command.uninstall()
+        try CoreTests.require(FileManager.default.fileExists(atPath: command.link.path), "Uninstalling never removes a foreign file")
+        try FileManager.default.removeItem(at: command.link)
+        try FileManager.default.createSymbolicLink(atPath: command.link.path, withDestinationPath: "/usr/bin/true")
+        try CoreTests.require(command.status == .conflict, "A link to another program is a conflict")
+        try FileManager.default.removeItem(at: command.link)
+        let translocated = CommandLineInstaller(executable: URL(fileURLWithPath: "/private/var/folders/x/AppTranslocation/1/d/AgentUI.app/Contents/MacOS/AgentUI"), directory: bin)
+        do { try translocated.install(); throw WorkspaceError(message: "FAIL: translocated app linked") }
+        catch let error as WorkspaceError { try CoreTests.require(error.message.contains("Applications"), "A translocated app is never linked") }
+        try CoreTests.require(translocated.status == .notInstalled, "A refused installation leaves nothing behind")
+        print("PASS agent command installer")
     }
 }

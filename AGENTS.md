@@ -15,6 +15,10 @@ git tag -a <version> -m "AgentUI <version>"
 git push origin <version>
 ```
 
+## Agent skill
+
+`skills/agentui/SKILL.md` documents the `agentui` CLI for agents and is bundled in the app. Update it with any change to the CLI (`AgentUI/Services/AgentCLI.swift`, `AgentUI/Services/AgentBridge.swift`), and increase `metadata.version` with every change to the file: the app relies on it to offer the new version in Settings (`npx skills update` detects changes on its own).
+
 ## Lint
 
 SwiftUI views must declare their members in this order, with one blank line between sections and `private` where shown:
