@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// The same navigation and inspector placement on Mac, iPad and iPhone.
 struct WorkspaceSplitView<Sidebar: View, Detail: View, Inspector: View>: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -18,13 +17,6 @@ struct WorkspaceSplitView<Sidebar: View, Detail: View, Inspector: View>: View {
                                                 max: Dimension.Sidebar.maxWidth)
         } detail: {
             detail()
-                .inspector(isPresented: $inspectorVisible) {
-                    inspector()
-                        .inspectorColumnWidth(min: Dimension.Inspector.minWidth, ideal: Dimension.Inspector.idealWidth,
-                                              max: Dimension.Inspector.maxWidth)
-                        .presentationDetents([.medium, .large])
-                        .presentationDragIndicator(.visible)
-                }
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
                         Button("Right Panel", systemImage: "sidebar.right") { inspectorVisible.toggle() }
@@ -35,5 +27,12 @@ struct WorkspaceSplitView<Sidebar: View, Detail: View, Inspector: View>: View {
                 }
         }
         .navigationSplitViewStyle(.balanced)
+        .inspector(isPresented: $inspectorVisible) {
+            inspector()
+                .inspectorColumnWidth(min: Dimension.Inspector.minWidth, ideal: Dimension.Inspector.idealWidth,
+                                      max: Dimension.Inspector.maxWidth)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
     }
 }
