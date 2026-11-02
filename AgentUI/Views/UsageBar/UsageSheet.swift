@@ -16,7 +16,7 @@ struct UsageSheet: View {
                         .help("Refresh")
                         .accessibilityLabel("Refresh Usage")
                 }
-                ForEach(UsageProvider.allCases) { provider in
+                ForEach(usage.providers) { provider in
                     UsageProviderSection(provider: provider, state: usage.state(for: provider), now: context.date)
                 }
                 HStack {

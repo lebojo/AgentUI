@@ -9,6 +9,12 @@ enum UsageProvider: String, CaseIterable, Identifiable, Sendable {
         case .codex: "Codex"
         }
     }
+    var agent: ConversationAgent {
+        switch self {
+        case .claude: .claude
+        case .codex: .codex
+        }
+    }
     var signInHint: String {
         switch self {
         case .claude: String(localized: "Open Claude Code in a terminal to sign in with your Claude subscription.")

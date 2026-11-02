@@ -61,7 +61,7 @@ import AppKit
 struct AgentUIApplication: App {
     @NSApplicationDelegateAdaptor(ApplicationDelegate.self) private var delegate
     @State private var store = WorkspaceStore()
-    @State private var usage = UsageStore()
+    @State private var usage = UsageStore(providers: [])
     @State private var settings = SettingsStore()
     @State private var visibility = AppVisibility()
     @State private var host = LocalHost()
@@ -76,6 +76,7 @@ struct AgentUIApplication: App {
                 .environment(visibility)
                 .environment(installedAgents)
                 .task(id: visibility.isVisible) { if visibility.isVisible { await installedAgents.refresh() } }
+                .task(id: installedAgents.agents) { await usage.setInstalled(installedAgents.agents) }
                 .onAppear {
                     delegate.store = store
                     delegate.host = host

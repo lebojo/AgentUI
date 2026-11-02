@@ -88,6 +88,31 @@ enum UsageTests {
         await signIn.waitForSignIn(.claude, interval: .milliseconds(5), timeout: .milliseconds(30))
         try require(signIn.pendingSignIns.isEmpty && signIn.state(for: .claude) == .signedOut, "Sign-in wait gives up after its timeout")
         print("PASS usage sign-in wait")
+
+        let queried = Recorder()
+        let installed = UsageStore(providers: []) { provider in
+            await queried.append(provider)
+            return provider == .claude ? claude : codex
+        }
+        await installed.refresh()
+        let queriedBeforeInstall = await queried.values
+        try require(installed.connectedProviders.isEmpty && !installed.isSignedOutEverywhere && queriedBeforeInstall.isEmpty,
+                    "Without any installed agent, no usage is fetched or shown")
+        await installed.setInstalled([.codex, .copilot])
+        let queriedAfterInstall = await queried.values
+        try require(installed.providers == [.codex] && installed.connectedProviders == [.codex] && queriedAfterInstall == [.codex],
+                    "Only installed agents get a usage row, fetched as soon as they are detected")
+        await installed.refresh()
+        let queriedAfterRefresh = await queried.values
+        try require(queriedAfterRefresh == [.codex, .codex], "Refreshing skips agents that aren’t installed")
+        await installed.setInstalled([])
+        try require(installed.connectedProviders.isEmpty, "An uninstalled agent leaves the usage bar")
+        print("PASS usage follows installed agents")
+    }
+
+    private actor Recorder {
+        private(set) var values: [UsageProvider] = []
+        func append(_ value: UsageProvider) { values.append(value) }
     }
 
     private final class Flag: @unchecked Sendable {

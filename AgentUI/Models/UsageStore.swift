@@ -6,21 +6,31 @@ import Observation
     private(set) var isRefreshing = false
     private(set) var lastRefresh: Date?
     private(set) var pendingSignIns: Set<UsageProvider> = []
+    private(set) var providers: [UsageProvider]
 
     typealias Query = @Sendable (UsageProvider) async throws -> ProviderUsage?
     @ObservationIgnored private let query: Query
     @ObservationIgnored private var signInTasks: [UsageProvider: Task<Void, Never>] = [:]
 
-    init(query: @escaping Query = { try await UsageService.fetch($0) }) {
+    init(providers: [UsageProvider] = UsageProvider.allCases, query: @escaping Query = { try await UsageService.fetch($0) }) {
+        self.providers = providers
         self.query = query
     }
 
     var connectedProviders: [UsageProvider] {
-        UsageProvider.allCases.filter { state(for: $0).usage != nil || state(for: $0).error != nil }
+        providers.filter { state(for: $0).usage != nil || state(for: $0).error != nil }
     }
 
     var isSignedOutEverywhere: Bool {
-        UsageProvider.allCases.allSatisfy { state(for: $0) == .signedOut }
+        !providers.isEmpty && providers.allSatisfy { state(for: $0) == .signedOut }
+    }
+
+    func setInstalled(_ agents: [ConversationAgent]) async {
+        let installed = UsageProvider.allCases.filter { agents.contains($0.agent) }
+        guard installed != providers else { return }
+        let added = installed.filter { !providers.contains($0) }
+        providers = installed
+        await load(added)
     }
 
     func watchSignIn(_ provider: UsageProvider) {
@@ -57,16 +67,20 @@ import Observation
         guard !isRefreshing, Date().timeIntervalSince(lastRefresh ?? .distantPast) >= minimumAge else { return }
         isRefreshing = true
         defer { isRefreshing = false }
+        await load(providers)
+        lastRefresh = Date()
+    }
+
+    private func load(_ providers: [UsageProvider]) async {
         let query = query
         await withTaskGroup(of: (UsageProvider, Result<ProviderUsage?, Error>).self) { group in
-            for provider in UsageProvider.allCases {
+            for provider in providers {
                 group.addTask { (provider, await Result { try await query(provider) }) }
             }
-            for await (provider, result) in group {
+            for await (provider, result) in group where self.providers.contains(provider) {
                 apply(result, to: provider)
             }
         }
-        lastRefresh = Date()
     }
 
     private func apply(_ result: Result<ProviderUsage?, Error>, to provider: UsageProvider) {
