@@ -4,6 +4,98 @@
     " M " : {
       "shouldTranslate" : false
     },
+    "—" : {
+      "shouldTranslate" : false
+    },
+    "… and %lld more." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "… and %lld more."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "… and %lld more."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "… et %lld autre."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "… et %lld autres."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "·" : {
+      "shouldTranslate" : false
+    },
+    "(content truncated)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(contenu tronqué)"
+          }
+        }
+      }
+    },
+    "❯ " : {
+      "shouldTranslate" : false
+    },
+    "%@ — idle, click to open it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — en veille, cliquer pour l’ouvrir"
+          }
+        }
+      }
+    },
+    "%@ · %@ → %@" : {
+      "shouldTranslate" : false
+    },
+    "%@ · Local HEAD" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · HEAD local"
+          }
+        }
+      }
+    },
+    "%@ already exists and doesn’t belong to AgentUI." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ existe déjà et n’appartient pas à AgentUI."
+          }
+        }
+      }
+    },
     "%@ Conversation" : {
       "localizations" : {
         "fr" : {
@@ -24,6 +116,16 @@
         }
       }
     },
+    "%@ of %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ sur %2$@"
+          }
+        }
+      }
+    },
     "%@ Retrying in 5 seconds…" : {
       "localizations" : {
         "fr" : {
@@ -40,26 +142,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connexion %@"
-          }
-        }
-      }
-    },
-    "%@ already exists and doesn’t belong to AgentUI." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ existe déjà et n’appartient pas à AgentUI."
-          }
-        }
-      }
-    },
-    "%@ of %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ sur %2$@"
           }
         }
       }
@@ -104,35 +186,6 @@
         }
       }
     },
-    "%@ · %@ → %@" : {
-      "shouldTranslate" : false
-    },
-    "%@ · Local HEAD" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ · HEAD local"
-          }
-        }
-      }
-    },
-    "%@ — idle, click to open it" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ — en veille, cliquer pour l’ouvrir"
-          }
-        }
-      }
-    },
-    "%@%@" : {
-      "shouldTranslate" : false
-    },
-    "%@%lld · %@" : {
-      "shouldTranslate" : false
-    },
     "%@-specific limit, over 7 days" : {
       "localizations" : {
         "fr" : {
@@ -153,48 +206,14 @@
         }
       }
     },
-    "%lld" : {
+    "%@%@" : {
       "shouldTranslate" : false
     },
-    "%lld Git repositories found. Choose the ones to add: virtual folders mirror the folder structure on disk. Files stay where they are." : {
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Git repository found. Choose the ones to add: virtual folders mirror the folder structure on disk. Files stay where they are."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Git repositories found. Choose the ones to add: virtual folders mirror the folder structure on disk. Files stay where they are."
-                }
-              }
-            }
-          }
-        },
-        "fr" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld dépôt Git trouvé. Choisis ceux à ajouter : les dossiers virtuels reprennent l’arborescence sur le disque. Les fichiers restent à leur emplacement."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld dépôts Git trouvés. Choisis ceux à ajouter : les dossiers virtuels reprennent l’arborescence sur le disque. Les fichiers restent à leur emplacement."
-                }
-              }
-            }
-          }
-        }
-      }
+    "%@%lld · %@" : {
+      "shouldTranslate" : false
+    },
+    "%lld" : {
+      "shouldTranslate" : false
     },
     "%lld additions, %lld deletions" : {
       "localizations" : {
@@ -329,6 +348,46 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld commits d’avance sur %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld Git repositories found. Choose the ones to add: virtual folders mirror the folder structure on disk. Files stay where they are." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Git repository found. Choose the ones to add: virtual folders mirror the folder structure on disk. Files stay where they are."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Git repositories found. Choose the ones to add: virtual folders mirror the folder structure on disk. Files stay where they are."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld dépôt Git trouvé. Choisis ceux à ajouter : les dossiers virtuels reprennent l’arborescence sur le disque. Les fichiers restent à leur emplacement."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld dépôts Git trouvés. Choisis ceux à ajouter : les dossiers virtuels reprennent l’arborescence sur le disque. Les fichiers restent à leur emplacement."
                 }
               }
             }
@@ -646,17 +705,39 @@
         }
       }
     },
-    "(content truncated)" : {
+    "+%lld" : {
+      "shouldTranslate" : false
+    },
+    "~/agentui " : {
+      "shouldTranslate" : false
+    },
+    "−%lld" : {
+      "shouldTranslate" : false
+    },
+    "⌘T  New Terminal   ⌘D  Split" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "(contenu tronqué)"
+            "value" : "⌘T  Nouveau terminal   ⌘D  Diviser"
           }
         }
       }
     },
-    "+%lld" : {
+    "⌘T and the “New Terminal” buttons open the agent instead of a shell." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘T et les boutons « Nouveau terminal » ouvrent l’agent au lieu d’un shell."
+          }
+        }
+      }
+    },
+    "█" : {
+      "shouldTranslate" : false
+    },
+    "✓ " : {
       "shouldTranslate" : false
     },
     "7d" : {
@@ -682,6 +763,16 @@
     "A  " : {
       "shouldTranslate" : false
     },
+    "A branch name is required: --branch feature/my-task." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le nom de branche est requis : --branch feature/ma-tache."
+          }
+        }
+      }
+    },
     "A Git operation is already in progress on this project." : {
       "localizations" : {
         "fr" : {
@@ -698,16 +789,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Une opération Git est en cours sur ce projet. Réessaie quand elle sera terminée."
-          }
-        }
-      }
-    },
-    "A branch name is required: --branch feature/my-task." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le nom de branche est requis : --branch feature/ma-tache."
           }
         }
       }
@@ -742,26 +823,6 @@
         }
       }
     },
-    "ANSI Color %lld" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couleur ANSI %lld"
-          }
-        }
-      }
-    },
-    "ANSI Colors" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couleurs ANSI"
-          }
-        }
-      }
-    },
     "Add" : {
       "localizations" : {
         "fr" : {
@@ -772,42 +833,12 @@
         }
       }
     },
-    "Add Folder…" : {
+    "Add “%@” as Project" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter un dossier…"
-          }
-        }
-      }
-    },
-    "Add Manually" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajouter manuellement"
-          }
-        }
-      }
-    },
-    "Add Projects…" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajouter des projets…"
-          }
-        }
-      }
-    },
-    "Add Project…" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajouter un projet…"
+            "value" : "Ajouter « %@ » comme projet"
           }
         }
       }
@@ -842,6 +873,36 @@
         }
       }
     },
+    "Add Folder…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter un dossier…"
+          }
+        }
+      }
+    },
+    "Add Manually" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter manuellement"
+          }
+        }
+      }
+    },
+    "Add Project…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter un projet…"
+          }
+        }
+      }
+    },
     "Add projects or a virtual folder" : {
       "localizations" : {
         "fr" : {
@@ -852,12 +913,12 @@
         }
       }
     },
-    "Add “%@” as Project" : {
+    "Add Projects…" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter « %@ » comme projet"
+            "value" : "Ajouter des projets…"
           }
         }
       }
@@ -902,8 +963,38 @@
         }
       }
     },
+    "Agents" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents"
+          }
+        }
+      }
+    },
     "AgentUI" : {
       "shouldTranslate" : false
+    },
+    "agentui — organize the terminals and worktrees of the running app\n\nagentui list\nagentui project add /path/to/project\nagentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree delete --worktree UUID [--force]\n\nFrom an AgentUI terminal, the project and worktree are implicit.\nElsewhere, they are inferred from the current folder if it belongs to a project open in AgentUI.\nChild commands are passed as arguments, without shell interpretation.\nExamples:\n  agentui terminal create --name Review -- claude \"Review the changes\"\n  agentui worktree create --branch feature/tests -- codex \"Add the tests\"\nEach creation returns the identifiers and path as JSON.\nAn existing branch is opened as is; otherwise it is created from the project’s HEAD.\nworktree delete closes its terminals and erases its folder; the branch and its commits stay in the repository.\nWithout --force, a worktree with uncommitted changes or untracked files is kept.\nA project’s main folder and the current terminal’s worktree can’t be deleted." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "agentui — organiser les terminaux et worktrees de l’application ouverte\n\nagentui list\nagentui project add /chemin/du/projet\nagentui terminal create [--name NOM] [--project UUID] [--worktree UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree create --branch BRANCHE [--name NOM] [--project UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree delete --worktree UUID [--force]\n\nDepuis un terminal AgentUI, le projet et le worktree sont implicites.\nAilleurs, ils sont déduits du dossier courant s’il appartient à un projet ouvert dans AgentUI.\nLes commandes enfant sont passées comme arguments, sans interprétation shell.\nExemples :\n  agentui terminal create --name Review -- claude \"Relis les modifications\"\n  agentui worktree create --branch feature/tests -- codex \"Ajoute les tests\"\nChaque création renvoie les identifiants et le chemin au format JSON.\nUne branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.\nworktree delete ferme ses terminaux et efface son dossier ; la branche et ses commits restent dans le dépôt.\nSans --force, un worktree avec des modifications non commitées ou des fichiers non suivis est conservé.\nLe dossier principal d’un projet et le worktree du terminal courant ne peuvent pas être supprimés."
+          }
+        }
+      }
+    },
+    "agentui Command" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commande agentui"
+          }
+        }
+      }
     },
     "AgentUI didn’t respond within 120 seconds. The operation may still be running; check agentui list before trying again." : {
       "localizations" : {
@@ -925,12 +1016,6 @@
         }
       }
     },
-    "AgentUI/Views/Settings/" : {
-      "shouldTranslate" : false
-    },
-    "AgentUI/Views/TerminalDetail.swift" : {
-      "shouldTranslate" : false
-    },
     "AgentUI’s executable is missing." : {
       "localizations" : {
         "fr" : {
@@ -941,15 +1026,11 @@
         }
       }
     },
-    "Agents" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agents"
-          }
-        }
-      }
+    "AgentUI/Views/Settings/" : {
+      "shouldTranslate" : false
+    },
+    "AgentUI/Views/TerminalDetail.swift" : {
+      "shouldTranslate" : false
     },
     "All models combined, over 7 days" : {
       "localizations" : {
@@ -997,6 +1078,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un autre fichier porte ce nom"
+          }
+        }
+      }
+    },
+    "ANSI Color %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couleur ANSI %lld"
+          }
+        }
+      }
+    },
+    "ANSI Colors" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couleurs ANSI"
           }
         }
       }
@@ -1231,26 +1332,6 @@
         }
       }
     },
-    "Choose a Git repository or a folder containing several repositories. They’ll be grouped automatically." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisis un dépôt Git ou un dossier contenant plusieurs dépôts. Ils seront regroupés automatiquement."
-          }
-        }
-      }
-    },
-    "Choose a Terminal" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisis un terminal"
-          }
-        }
-      }
-    },
     "Choose a branch to compare with." : {
       "localizations" : {
         "fr" : {
@@ -1267,6 +1348,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choisis un dossier dont AgentUI affiche les worktrees dans la barre latérale."
+          }
+        }
+      }
+    },
+    "Choose a Git repository or a folder containing several repositories. They’ll be grouped automatically." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisis un dépôt Git ou un dossier contenant plusieurs dépôts. Ils seront regroupés automatiquement."
+          }
+        }
+      }
+    },
+    "Choose a Terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisis un terminal"
           }
         }
       }
@@ -1290,6 +1391,9 @@
           }
         }
       }
+    },
+    "claude" : {
+      "shouldTranslate" : false
     },
     "Claude, Codex, Copilot and OpenCode conversations started in this folder will appear here." : {
       "localizations" : {
@@ -1341,26 +1445,6 @@
         }
       }
     },
-    "Close This Pane" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fermer ce panneau"
-          }
-        }
-      }
-    },
-    "Close Window" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fermer la fenêtre"
-          }
-        }
-      }
-    },
     "Close terminal %@" : {
       "localizations" : {
         "fr" : {
@@ -1371,12 +1455,32 @@
         }
       }
     },
+    "Close This Pane" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer ce panneau"
+          }
+        }
+      }
+    },
     "Close this terminal?" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fermer ce terminal ?"
+          }
+        }
+      }
+    },
+    "Close Window" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer la fenêtre"
           }
         }
       }
@@ -1481,22 +1585,22 @@
         }
       }
     },
-    "Connect to the Mac in Settings to find your projects and sessions." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connecte-toi au Mac depuis les réglages pour retrouver tes projets et tes sessions."
-          }
-        }
-      }
-    },
     "Connect to the local network to continue a session." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connecte-toi au réseau local pour continuer une session."
+          }
+        }
+      }
+    },
+    "Connect to the Mac in Settings to find your projects and sessions." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecte-toi au Mac depuis les réglages pour retrouver tes projets et tes sessions."
           }
         }
       }
@@ -1521,22 +1625,22 @@
         }
       }
     },
-    "Connection Settings" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réglages de connexion"
-          }
-        }
-      }
-    },
     "Connection interrupted. Check the session before sending again." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connexion interrompue. Vérifie la session avant de renvoyer."
+          }
+        }
+      }
+    },
+    "Connection Settings" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réglages de connexion"
           }
         }
       }
@@ -1621,26 +1725,6 @@
         }
       }
     },
-    "Couldn’t Resume" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reprise impossible"
-          }
-        }
-      }
-    },
-    "Couldn’t Send" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Envoi impossible"
-          }
-        }
-      }
-    },
     "Couldn’t follow the command. The operation was interrupted." : {
       "localizations" : {
         "fr" : {
@@ -1701,12 +1785,32 @@
         }
       }
     },
+    "Couldn’t Resume" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprise impossible"
+          }
+        }
+      }
+    },
     "Couldn’t save the pairing code to the keychain (error %d)." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Impossible d’enregistrer le code d’appairage dans le trousseau (erreur %d)."
+          }
+        }
+      }
+    },
+    "Couldn’t Send" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoi impossible"
           }
         }
       }
@@ -1741,16 +1845,6 @@
         }
       }
     },
-    "Create Worktree" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Créer le worktree"
-          }
-        }
-      }
-    },
     "Create a Virtual Folder" : {
       "localizations" : {
         "fr" : {
@@ -1771,6 +1865,16 @@
         }
       }
     },
+    "Create Worktree" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer le worktree"
+          }
+        }
+      }
+    },
     "Creating worktree…" : {
       "localizations" : {
         "fr" : {
@@ -1781,22 +1885,22 @@
         }
       }
     },
-    "Creation Folder" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dossier de création"
-          }
-        }
-      }
-    },
     "Creation cancelled." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Création annulée."
+          }
+        }
+      }
+    },
+    "Creation Folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dossier de création"
           }
         }
       }
@@ -1974,22 +2078,22 @@
         }
       }
     },
-    "Done" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Terminé"
-          }
-        }
-      }
-    },
     "Don’t ask again" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ne plus me demander"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminé"
           }
         }
       }
@@ -2134,6 +2238,16 @@
         }
       }
     },
+    "feature/my-task" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "feature/ma-tache"
+          }
+        }
+      }
+    },
     "Fetch Remote Branches" : {
       "localizations" : {
         "fr" : {
@@ -2224,22 +2338,25 @@
         }
       }
     },
-    "Git Unavailable" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Git indisponible"
-          }
-        }
-      }
-    },
     "Git branch: %@" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Branche Git : %@"
+          }
+        }
+      }
+    },
+    "git status --short" : {
+      "shouldTranslate" : false
+    },
+    "Git Unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git indisponible"
           }
         }
       }
@@ -2374,6 +2491,16 @@
         }
       }
     },
+    "Import “%@”" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer « %@ »"
+          }
+        }
+      }
+    },
     "Import Everything at the Same Level" : {
       "localizations" : {
         "fr" : {
@@ -2390,16 +2517,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Importer un dossier…"
-          }
-        }
-      }
-    },
-    "Import “%@”" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Importer « %@ »"
           }
         }
       }
@@ -2574,6 +2691,16 @@
         }
       }
     },
+    "iPhone and iPad" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone et iPad"
+          }
+        }
+      }
+    },
     "Its folder, including uncommitted changes, goes to the Trash, where you can restore it. Its branch and commits stay in the repository." : {
       "localizations" : {
         "fr" : {
@@ -2674,6 +2801,9 @@
         }
       }
     },
+    "ls" : {
+      "shouldTranslate" : false
+    },
     "Mac IP" : {
       "localizations" : {
         "fr" : {
@@ -2704,6 +2834,16 @@
         }
       }
     },
+    "macOS is running AgentUI from a temporary copy. Move the app to the Applications folder, relaunch it, then try again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS exécute AgentUI depuis une copie temporaire. Déplace l’app dans le dossier Applications, relance-la, puis réessaie."
+          }
+        }
+      }
+    },
     "Macs" : {
       "localizations" : {
         "fr" : {
@@ -2713,6 +2853,9 @@
           }
         }
       }
+    },
+    "main" : {
+      "shouldTranslate" : false
     },
     "Main" : {
       "localizations" : {
@@ -2824,22 +2967,22 @@
         }
       }
     },
-    "Move To" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Déplacer vers"
-          }
-        }
-      }
-    },
     "Move the worktree “%@” to the Trash?" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Placer le worktree « %@ » dans la corbeille ?"
+          }
+        }
+      }
+    },
+    "Move To" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer vers"
           }
         }
       }
@@ -2914,6 +3057,26 @@
         }
       }
     },
+    "New terminal in %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau terminal dans %@"
+          }
+        }
+      }
+    },
+    "New terminal in this worktree" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau terminal dans ce worktree"
+          }
+        }
+      }
+    },
     "New Untracked File" : {
       "localizations" : {
         "fr" : {
@@ -2984,26 +3147,6 @@
         }
       }
     },
-    "New terminal in %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nouveau terminal dans %@"
-          }
-        }
-      }
-    },
-    "New terminal in this worktree" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nouveau terminal dans ce worktree"
-          }
-        }
-      }
-    },
     "New worktrees are created in this folder. Existing worktrees stay where they are." : {
       "localizations" : {
         "fr" : {
@@ -3024,6 +3167,16 @@
         }
       }
     },
+    "No commits in this repository." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun commit dans ce dépôt."
+          }
+        }
+      }
+    },
     "No Conversations" : {
       "localizations" : {
         "fr" : {
@@ -3040,6 +3193,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucun diff"
+          }
+        }
+      }
+    },
+    "No diff available for this file." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun diff disponible pour ce fichier."
+          }
+        }
+      }
+    },
+    "No differences with %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune différence avec %@"
           }
         }
       }
@@ -3094,12 +3267,42 @@
         }
       }
     },
+    "No limits reported for this account." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune limite communiquée pour ce compte."
+          }
+        }
+      }
+    },
     "No Local Changes" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune modification locale"
+          }
+        }
+      }
+    },
+    "No newline at end of file" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de saut de ligne en fin de fichier"
+          }
+        }
+      }
+    },
+    "No other branch to compare with." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune autre branche à comparer."
           }
         }
       }
@@ -3134,66 +3337,6 @@
         }
       }
     },
-    "No commits in this repository." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun commit dans ce dépôt."
-          }
-        }
-      }
-    },
-    "No diff available for this file." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun diff disponible pour ce fichier."
-          }
-        }
-      }
-    },
-    "No differences with %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune différence avec %@"
-          }
-        }
-      }
-    },
-    "No limits reported for this account." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune limite communiquée pour ce compte."
-          }
-        }
-      }
-    },
-    "No newline at end of file" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pas de saut de ligne en fin de fichier"
-          }
-        }
-      }
-    },
-    "No other branch to compare with." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune autre branche à comparer."
-          }
-        }
-      }
-    },
     "Not Installed" : {
       "localizations" : {
         "fr" : {
@@ -3210,6 +3353,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Non connecté"
+          }
+        }
+      }
+    },
+    "now" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "maintenant"
           }
         }
       }
@@ -3264,6 +3417,16 @@
         }
       }
     },
+    "Open a terminal to explore its project." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre un terminal pour explorer son projet."
+          }
+        }
+      }
+    },
     "Open Claude Code in a terminal to sign in with your Claude subscription." : {
       "localizations" : {
         "fr" : {
@@ -3290,16 +3453,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ouvrir un terminal"
-          }
-        }
-      }
-    },
-    "Open a terminal to explore its project." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ouvre un terminal pour explorer son projet."
           }
         }
       }
@@ -3384,16 +3537,6 @@
         }
       }
     },
-    "Pairing QR Code" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "QR code d’appairage"
-          }
-        }
-      }
-    },
     "Pairing code rejected. Copy the code shown on the Mac in Settings → Local Access." : {
       "localizations" : {
         "fr" : {
@@ -3410,6 +3553,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Code d’appairage, p. ex. ABCD-EFGH-JKLM"
+          }
+        }
+      }
+    },
+    "Pairing QR Code" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "QR code d’appairage"
           }
         }
       }
@@ -3474,16 +3627,6 @@
         }
       }
     },
-    "Preview Unavailable" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aperçu indisponible"
-          }
-        }
-      }
-    },
     "Preview limited to 128 KB" : {
       "localizations" : {
         "fr" : {
@@ -3494,22 +3637,22 @@
         }
       }
     },
+    "Preview Unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aperçu indisponible"
+          }
+        }
+      }
+    },
     "Project not found." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Projet introuvable."
-          }
-        }
-      }
-    },
-    "Project not found. Use --project UUID or run the command in an AgentUI terminal." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Projet introuvable. Utilise --project UUID ou exécute la commande dans un terminal AgentUI."
           }
         }
       }
@@ -3644,22 +3787,22 @@
         }
       }
     },
-    "Refresh %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Actualiser %@"
-          }
-        }
-      }
-    },
     "Refresh (⌘R)" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Actualiser (⌘R)"
+          }
+        }
+      }
+    },
+    "Refresh %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualiser %@"
           }
         }
       }
@@ -3754,22 +3897,22 @@
         }
       }
     },
-    "Renamed" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Renommé"
-          }
-        }
-      }
-    },
     "Rename…" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Renommer…"
+          }
+        }
+      }
+    },
+    "Renamed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renommé"
           }
         }
       }
@@ -3810,6 +3953,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Réinitialiser"
+          }
+        }
+      }
+    },
+    "resets in %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "réinitialisation dans %@"
           }
         }
       }
@@ -3988,16 +4141,6 @@
         }
       }
     },
-    "Run agentui from a terminal in the app." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exécute agentui depuis un terminal de l’application."
-          }
-        }
-      }
-    },
     "Run “codex login” in a terminal to sign in with your ChatGPT account." : {
       "localizations" : {
         "fr" : {
@@ -4098,6 +4241,26 @@
         }
       }
     },
+    "Session ended" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session terminée"
+          }
+        }
+      }
+    },
+    "Session ended (%d)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session terminée (%d)"
+          }
+        }
+      }
+    },
     "Session ID not supported" : {
       "localizations" : {
         "fr" : {
@@ -4128,26 +4291,6 @@
         }
       }
     },
-    "Session ended" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Session terminée"
-          }
-        }
-      }
-    },
-    "Session ended (%d)" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Session terminée (%d)"
-          }
-        }
-      }
-    },
     "Settings" : {
       "localizations" : {
         "fr" : {
@@ -4164,16 +4307,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Forme"
-          }
-        }
-      }
-    },
-    "Show Right Panel" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Afficher le panneau de droite"
           }
         }
       }
@@ -4214,6 +4347,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Afficher ou masquer le panneau de droite"
+          }
+        }
+      }
+    },
+    "Show Right Panel" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le panneau de droite"
           }
         }
       }
@@ -4488,16 +4631,6 @@
         }
       }
     },
-    "Terminal Screen" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Écran du terminal"
-          }
-        }
-      }
-    },
     "Terminal not found." : {
       "localizations" : {
         "fr" : {
@@ -4528,6 +4661,16 @@
         }
       }
     },
+    "Terminal Screen" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écran du terminal"
+          }
+        }
+      }
+    },
     "Terminals and their processes will be stopped. Your project organization will be kept and agent sessions will resume the next time you open AgentUI." : {
       "localizations" : {
         "fr" : {
@@ -4554,76 +4697,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le service %1$@ a répondu %2$lld."
-          }
-        }
-      }
-    },
-    "The Git repositories in this folder will be added as projects under a virtual folder. The files stay where they are." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les dépôts Git de ce dossier seront ajoutés comme projets sous un dossier virtuel. Les fichiers restent à leur emplacement."
-          }
-        }
-      }
-    },
-    "The Mac is disconnected." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le Mac est déconnecté."
-          }
-        }
-      }
-    },
-    "The Mac isn’t ready." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le Mac n’est pas prêt."
-          }
-        }
-      }
-    },
-    "The Mac isn’t responding. Check its IP address, the local network and its Local Access settings." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le Mac ne répond pas. Vérifie son IP, le réseau local et ses réglages d’accès local."
-          }
-        }
-      }
-    },
-    "The Mac’s organization is read-only." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "L’organisation du Mac est en lecture seule."
-          }
-        }
-      }
-    },
-    "The Session Is Ready" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La session est prête"
-          }
-        }
-      }
-    },
-    "The System theme follows macOS light or dark mode. Choose another theme to edit its colors." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le thème Système suit le mode clair ou sombre de macOS. Choisis un autre thème pour modifier ses couleurs."
           }
         }
       }
@@ -4758,6 +4831,56 @@
         }
       }
     },
+    "The Git repositories in this folder will be added as projects under a virtual folder. The files stay where they are." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les dépôts Git de ce dossier seront ajoutés comme projets sous un dossier virtuel. Les fichiers restent à leur emplacement."
+          }
+        }
+      }
+    },
+    "The Mac is disconnected." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le Mac est déconnecté."
+          }
+        }
+      }
+    },
+    "The Mac isn’t ready." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le Mac n’est pas prêt."
+          }
+        }
+      }
+    },
+    "The Mac isn’t responding. Check its IP address, the local network and its Local Access settings." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le Mac ne répond pas. Vérifie son IP, le réseau local et ses réglages d’accès local."
+          }
+        }
+      }
+    },
+    "The Mac’s organization is read-only." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’organisation du Mac est en lecture seule."
+          }
+        }
+      }
+    },
     "The operation was applied in memory, but saving it failed. Retry saving in the app before running the command again. %@" : {
       "localizations" : {
         "fr" : {
@@ -4848,12 +4971,32 @@
         }
       }
     },
+    "The Session Is Ready" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La session est prête"
+          }
+        }
+      }
+    },
     "The skill is missing from the app." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le skill est introuvable dans l’application."
+          }
+        }
+      }
+    },
+    "The System theme follows macOS light or dark mode. Choose another theme to edit its colors." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le thème Système suit le mode clair ou sombre de macOS. Choisis un autre thème pour modifier ses couleurs."
           }
         }
       }
@@ -4878,22 +5021,22 @@
         }
       }
     },
-    "The worktrees in these folders also appear in the sidebar. AgentUI never creates worktrees there." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les worktrees de ces dossiers apparaissent aussi dans la barre latérale. AgentUI n’y crée jamais de worktrees."
-          }
-        }
-      }
-    },
     "The worktree’s first terminal starts directly in the agent." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le premier terminal du worktree démarre directement sur l’agent."
+          }
+        }
+      }
+    },
+    "The worktrees in these folders also appear in the sidebar. AgentUI never creates worktrees there." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les worktrees de ces dossiers apparaissent aussi dans la barre latérale. AgentUI n’y crée jamais de worktrees."
           }
         }
       }
@@ -4914,26 +5057,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ces checks concernent le commit distant de la %@, différent du HEAD local."
-          }
-        }
-      }
-    },
-    "This Mac’s pairing code is missing. Scan its QR code again." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le code d’appairage de ce Mac est introuvable. Scanne à nouveau son QR code."
-          }
-        }
-      }
-    },
-    "This QR code doesn’t come from AgentUI. Scan the code shown on the Mac in Settings → Local Access." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ce QR code ne vient pas d’AgentUI. Scanne le code affiché sur le Mac dans Réglages → Accès local."
           }
         }
       }
@@ -5018,6 +5141,16 @@
         }
       }
     },
+    "This Mac’s pairing code is missing. Scan its QR code again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le code d’appairage de ce Mac est introuvable. Scanne à nouveau son QR code."
+          }
+        }
+      }
+    },
     "This name will be shown in the sidebar." : {
       "localizations" : {
         "fr" : {
@@ -5044,6 +5177,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cette organisation utilise une version plus récente d’AgentUI."
+          }
+        }
+      }
+    },
+    "This QR code doesn’t come from AgentUI. Scan the code shown on the Mac in Settings → Local Access." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce QR code ne vient pas d’AgentUI. Scanne le code affiché sur le Mac dans Réglages → Accès local."
           }
         }
       }
@@ -5188,22 +5331,22 @@
         }
       }
     },
-    "Unknown command. See agentui --help." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Commande inconnue. Consulte agentui --help."
-          }
-        }
-      }
-    },
     "Unknown command: %@" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Commande inconnue : %@"
+          }
+        }
+      }
+    },
+    "Unknown command. See agentui --help." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commande inconnue. Consulte agentui --help."
           }
         }
       }
@@ -5294,6 +5437,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mis à jour %@"
+          }
+        }
+      }
+    },
+    "usage unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "usage indisponible"
           }
         }
       }
@@ -5447,179 +5600,6 @@
           }
         }
       }
-    },
-    "agentui Command" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Commande agentui"
-          }
-        }
-      }
-    },
-    "agentui — organize the terminals and worktrees of the running app\n\nagentui list\nagentui project add /path/to/project\nagentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree delete --worktree UUID [--force]\n\nFrom an AgentUI terminal, the project and worktree are implicit.\nElsewhere, they are inferred from the current folder if it belongs to a project open in AgentUI.\nChild commands are passed as arguments, without shell interpretation.\nExamples:\n  agentui terminal create --name Review -- claude \"Review the changes\"\n  agentui worktree create --branch feature/tests -- codex \"Add the tests\"\nEach creation returns the identifiers and path as JSON.\nAn existing branch is opened as is; otherwise it is created from the project’s HEAD.\nworktree delete closes its terminals and erases its folder; the branch and its commits stay in the repository.\nWithout --force, a worktree with uncommitted changes or untracked files is kept.\nA project’s main folder and the current terminal’s worktree can’t be deleted." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "agentui — organiser les terminaux et worktrees de l’application ouverte\n\nagentui list\nagentui project add /chemin/du/projet\nagentui terminal create [--name NOM] [--project UUID] [--worktree UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree create --branch BRANCHE [--name NOM] [--project UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree delete --worktree UUID [--force]\n\nDepuis un terminal AgentUI, le projet et le worktree sont implicites.\nAilleurs, ils sont déduits du dossier courant s’il appartient à un projet ouvert dans AgentUI.\nLes commandes enfant sont passées comme arguments, sans interprétation shell.\nExemples :\n  agentui terminal create --name Review -- claude \"Relis les modifications\"\n  agentui worktree create --branch feature/tests -- codex \"Ajoute les tests\"\nChaque création renvoie les identifiants et le chemin au format JSON.\nUne branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.\nworktree delete ferme ses terminaux et efface son dossier ; la branche et ses commits restent dans le dépôt.\nSans --force, un worktree avec des modifications non commitées ou des fichiers non suivis est conservé.\nLe dossier principal d’un projet et le worktree du terminal courant ne peuvent pas être supprimés."
-          }
-        }
-      }
-    },
-    "claude" : {
-      "shouldTranslate" : false
-    },
-    "feature/my-task" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "feature/ma-tache"
-          }
-        }
-      }
-    },
-    "git status --short" : {
-      "shouldTranslate" : false
-    },
-    "iPhone and iPad" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone et iPad"
-          }
-        }
-      }
-    },
-    "ls" : {
-      "shouldTranslate" : false
-    },
-    "macOS is running AgentUI from a temporary copy. Move the app to the Applications folder, relaunch it, then try again." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "macOS exécute AgentUI depuis une copie temporaire. Déplace l’app dans le dossier Applications, relance-la, puis réessaie."
-          }
-        }
-      }
-    },
-    "main" : {
-      "shouldTranslate" : false
-    },
-    "now" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "maintenant"
-          }
-        }
-      }
-    },
-    "resets in %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "réinitialisation dans %@"
-          }
-        }
-      }
-    },
-    "usage unavailable" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "usage indisponible"
-          }
-        }
-      }
-    },
-    "~/agentui " : {
-      "shouldTranslate" : false
-    },
-    "·" : {
-      "shouldTranslate" : false
-    },
-    "—" : {
-      "shouldTranslate" : false
-    },
-    "… and %lld more." : {
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "… and %lld more."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "… and %lld more."
-                }
-              }
-            }
-          }
-        },
-        "fr" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "… et %lld autre."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "… et %lld autres."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "−%lld" : {
-      "shouldTranslate" : false
-    },
-    "⌘T  New Terminal   ⌘D  Split" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "⌘T  Nouveau terminal   ⌘D  Diviser"
-          }
-        }
-      }
-    },
-    "⌘T and the “New Terminal” buttons open the agent instead of a shell." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "⌘T et les boutons « Nouveau terminal » ouvrent l’agent au lieu d’un shell."
-          }
-        }
-      }
-    },
-    "█" : {
-      "shouldTranslate" : false
-    },
-    "✓ " : {
-      "shouldTranslate" : false
-    },
-    "❯ " : {
-      "shouldTranslate" : false
     }
   },
   "version" : "1.0"
