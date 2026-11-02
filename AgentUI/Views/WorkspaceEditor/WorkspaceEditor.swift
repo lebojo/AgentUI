@@ -24,13 +24,21 @@ struct WorkspaceEditor: View {
     @State private var submission: Task<Void, Never>?
     @State private var error: String?
     @State private var appearance: SidebarAppearance?
+    @State private var launch = AgentLaunch()
+    @State private var branches: [BranchSuggestion] = []
+    @State private var fetching = false
 
     @FocusState private var focused: Bool
 
     let store: WorkspaceStore
     let sheet: WorkspaceSheet
 
-    private var isWorktree: Bool { if case .worktree = sheet { true } else { false } }
+    private var isWorktree: Bool { worktreeProject != nil }
+    private var worktreeProject: UUID? { if case .worktree(let id, _) = sheet { id } else { nil } }
+    private var suggestions: [BranchSuggestion] {
+        let query = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Array(branches.lazy.filter { $0.matches(query) }.prefix(12))
+    }
     private var title: String {
         switch sheet {
         case .folder(nil): String(localized: "New Virtual Folder")
@@ -66,7 +74,7 @@ struct WorkspaceEditor: View {
     }
 
     private var worktreeLaunchDescription: String {
-        settings.agentLaunch.launches(on: .newWorktree) ? String(localized: "\(settings.agentLaunch.agent.title) will be launched there.") : String(localized: "A terminal will be opened there.")
+        launch.launches(on: .newWorktree) ? String(localized: "\(launch.agent.title) will be launched there.") : String(localized: "A terminal will be opened there.")
     }
 
     var body: some View {
@@ -81,9 +89,24 @@ struct WorkspaceEditor: View {
             Text(explanation).foregroundStyle(Palette.textSecondary).font(Typography.body).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: Spacing.s) {
                 Text(isWorktree ? "Branch" : "Name").font(Typography.label)
-                TextField(placeholder, text: $name)
-                    .textFieldStyle(.roundedBorder).focused($focused)
-                    .onSubmit { submit() }.disabled(submitting)
+                HStack(spacing: Spacing.s) {
+                    TextField(placeholder, text: $name)
+                        .textFieldStyle(.roundedBorder).focused($focused)
+                        .onSubmit { submit() }.disabled(submitting)
+                        .modifier(BranchSuggestions(suggestions: suggestions))
+                    if let project = worktreeProject {
+                        if fetching {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Button("Fetch Remote Branches", systemImage: "arrow.clockwise") { fetchRemotes(of: project) }
+                                .labelStyle(.iconOnly).help("Fetch Remote Branches")
+                                .disabled(submitting || store.busyProjects.contains(project))
+                        }
+                    }
+                }
+            }
+            if isWorktree {
+                WorktreeLaunchPicker(launch: $launch).disabled(submitting)
             }
             if let appearance = Binding($appearance) {
                 SidebarAppearancePicker(appearance: appearance)
@@ -100,7 +123,7 @@ struct WorkspaceEditor: View {
                 }.keyboardShortcut(.cancelAction)
                 Button(isWorktree ? "Create Worktree" : "Save") { submit() }
                     .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || submitting)
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || submitting || fetching)
             }
         }
         .padding(Spacing.xxl).frame(width: Dimension.Sheet.width)
@@ -111,15 +134,21 @@ struct WorkspaceEditor: View {
             case .rename(let id, let current):
                 name = current
                 appearance = store.appearance(of: id)
-            case .worktree, .worktreeGroup: break
+            case .worktree:
+                launch = settings.agentLaunch
+            case .worktreeGroup: break
             }
             focused = true
+        }
+        .task {
+            guard let project = worktreeProject else { return }
+            branches = await store.availableBranches(projectID: project)
         }
     }
 
     private func submit() {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !submitting else { return }
+        guard !trimmed.isEmpty, !submitting, !fetching else { return }
         switch sheet {
         case .folder(let parentID):
             let id = store.addFolder(trimmed, parentID: parentID)
@@ -133,15 +162,27 @@ struct WorkspaceEditor: View {
             store.addWorktreeGroup(trimmed, projectID: project, moving: worktree)
             dismiss()
         case .worktree(let project, _):
+            let remote = branches.first { $0.name == trimmed }?.remote
             submitting = true
             error = nil
             submission = Task {
-                do { _ = try await store.createWorktree(projectID: project, branch: trimmed, command: settings.agentLaunch.command(on: .newWorktree)); dismiss() }
+                do { _ = try await store.createWorktree(projectID: project, branch: trimmed, remote: remote, command: launch.command(on: .newWorktree)); dismiss() }
                 catch is CancellationError { self.error = String(localized: "Creation cancelled.") }
                 catch { self.error = error.localizedDescription }
                 submitting = false
                 submission = nil
             }
+        }
+    }
+
+    private func fetchRemotes(of project: UUID) {
+        fetching = true
+        error = nil
+        Task {
+            do { try await store.fetchRemotes(projectID: project) }
+            catch { self.error = error.localizedDescription }
+            branches = await store.availableBranches(projectID: project)
+            fetching = false
         }
     }
 }

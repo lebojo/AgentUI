@@ -7,7 +7,7 @@ enum GitService {
         return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    @concurrent static func createWorktree(project: Project, branch: String, root: URL = WorkspaceDisk.worktreesDirectory, timeout: TimeInterval = 90) async throws -> Worktree {
+    @concurrent static func createWorktree(project: Project, branch: String, remote: String? = nil, root: URL = WorkspaceDisk.worktreesDirectory, timeout: TimeInterval = 90) async throws -> Worktree {
         guard !branch.isEmpty, !branch.hasPrefix("-") else {
             throw WorkspaceError(message: String(localized: "Enter a branch name, for example feature/interface."))
         }
@@ -20,7 +20,11 @@ enum GitService {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let destination = availableDestination(in: root, name: "\(project.name)-\(branch.replacingOccurrences(of: "/", with: "-"))")
         do {
-            let arguments = source == .new ? ["worktree", "add", "-b", branch, destination.path, "HEAD"] : ["worktree", "add", destination.path, branch]
+            let arguments = switch (source, remote) {
+            case (.new, _): ["worktree", "add", "-b", branch, destination.path, "HEAD"]
+            case (.remote, let remote?): ["worktree", "add", "--track", "-b", branch, destination.path, "\(remote)/\(branch)"]
+            default: ["worktree", "add", destination.path, branch]
+            }
             _ = try await run(arguments, at: project.path, timeout: timeout)
         } catch {
             let reason = error is CancellationError ? String(localized: "Creation cancelled.") : error.localizedDescription
@@ -64,6 +68,41 @@ enum GitService {
             suffix += 1
         }
         return destination
+    }
+
+    @concurrent static func availableBranches(project: Project) async throws -> [BranchSuggestion] {
+        let output = try await run(["for-each-ref", "--sort=-committerdate", "--format=%(refname)\t%(worktreepath)", "refs/heads", "refs/remotes"],
+                                   at: project.path, timeout: 10)
+        let remotes = try await run(["remote"], at: project.path, timeout: 10).split(whereSeparator: \.isNewline).map(String.init)
+        return branchSuggestions(from: output, remotes: remotes)
+    }
+
+    @concurrent static func fetchRemotes(project: Project) async throws {
+        _ = try await run(["fetch", "--all", "--quiet"], at: project.path, timeout: 30)
+    }
+
+    static func branchSuggestions(from output: String, remotes: [String]) -> [BranchSuggestion] {
+        let localPrefix = "refs/heads/", remotePrefix = "refs/remotes/"
+        let remotesByLength = remotes.sorted { $0.count > $1.count }
+        let references = output.split(whereSeparator: \.isNewline).map { line in
+            let fields = line.split(separator: "\t", maxSplits: 1, omittingEmptySubsequences: false)
+            return (name: String(fields[0]), worktree: fields.count > 1 ? String(fields[1]) : "")
+        }
+        var known = Set(references.compactMap { $0.name.hasPrefix(localPrefix) ? String($0.name.dropFirst(localPrefix.count)) : nil })
+        var suggestions: [BranchSuggestion] = []
+        for reference in references {
+            if reference.name.hasPrefix(localPrefix) {
+                guard reference.worktree.isEmpty else { continue }
+                suggestions.append(BranchSuggestion(name: String(reference.name.dropFirst(localPrefix.count)), origin: .local))
+            } else if reference.name.hasPrefix(remotePrefix) {
+                let path = reference.name.dropFirst(remotePrefix.count)
+                guard let remote = remotesByLength.first(where: { path.hasPrefix($0 + "/") }) else { continue }
+                let name = String(path.dropFirst(remote.count + 1))
+                guard !name.isEmpty, name != "HEAD", known.insert(name).inserted else { continue }
+                suggestions.append(BranchSuggestion(name: name, origin: .remote(remote)))
+            }
+        }
+        return suggestions
     }
 
     @concurrent static func existingWorktrees(project: Project) async throws -> [Worktree] {

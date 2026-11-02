@@ -782,6 +782,16 @@
         }
       }
     },
+    "Agent" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent"
+          }
+        }
+      }
+    },
     "Agent Commands" : {
       "localizations" : {
         "fr" : {
@@ -1920,6 +1930,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Échec"
+          }
+        }
+      }
+    },
+    "Fetch Remote Branches" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Récupérer les branches distantes"
           }
         }
       }
@@ -4074,6 +4094,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Modifications indexées"
+          }
+        }
+      }
+    },
+    "Start with" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrer avec"
           }
         }
       }
