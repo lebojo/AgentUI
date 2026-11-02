@@ -11,6 +11,7 @@ enum AgentCLI {
     agentui worktree delete --worktree UUID [--force]
 
     Depuis un terminal AgentUI, le projet et le worktree sont implicites.
+    Ailleurs, ils sont déduits du dossier courant s’il appartient à un projet ouvert dans AgentUI.
     Les commandes enfant sont passées comme arguments, sans interprétation shell.
     Exemples :
       agentui terminal create --name Review -- claude "Relis les modifications"
@@ -29,14 +30,8 @@ enum AgentCLI {
         }
         do {
             let environment = ProcessInfo.processInfo.environment
-            guard let instance = environment["AGENTUI_INSTANCE"] else {
-                throw WorkspaceError(message: "Exécute agentui depuis un terminal de l’application.")
-            }
-            let directory = URL(fileURLWithPath: instance)
-            guard FileManager.default.fileExists(atPath: directory.path) else {
-                throw WorkspaceError(message: "Cette instance d’AgentUI est fermée.")
-            }
-            let request = try parse(arguments, environment: environment)
+            let directory = try instanceDirectory(environment: environment)
+            let request = try parse(arguments, environment: environment, currentDirectory: FileManager.default.currentDirectoryPath)
             let requestURL = directory.appendingPathComponent("\(request.id.uuidString).request")
             let responseURL = directory.appendingPathComponent("\(request.id.uuidString).response")
             defer { try? FileManager.default.removeItem(at: responseURL) }
@@ -66,9 +61,44 @@ enum AgentCLI {
         }
     }
 
-    static func parse(_ arguments: [String], environment: [String: String]) throws -> BridgeRequest {
+    static func instanceDirectory(environment: [String: String]) throws -> URL {
+        if let instance = environment["AGENTUI_INSTANCE"] {
+            guard FileManager.default.fileExists(atPath: instance) else { throw WorkspaceError(message: "Cette instance d’AgentUI est fermée.") }
+            return URL(fileURLWithPath: instance)
+        }
+        guard let published = runningInstance(in: WorkspaceDisk.instancesDirectory) else {
+            throw WorkspaceError(message: "AgentUI n’est pas ouvert. Lance l’application puis réessaie.")
+        }
+        return published
+    }
+
+    static func runningInstance(in registry: URL) -> URL? {
+        let entries = (try? FileManager.default.contentsOfDirectory(at: registry, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
+        let running = entries.filter { entry in
+            guard let pid = pid_t(entry.lastPathComponent) else { return false }
+            guard isRunning(pid), let path = try? String(contentsOf: entry, encoding: .utf8),
+                  FileManager.default.fileExists(atPath: path) else {
+                try? FileManager.default.removeItem(at: entry)
+                return false
+            }
+            return true
+        }
+        let newest = running.max { modificationDate(of: $0) < modificationDate(of: $1) }
+        return newest.flatMap { try? String(contentsOf: $0, encoding: .utf8) }.map { URL(fileURLWithPath: $0) }
+    }
+
+    private static func isRunning(_ pid: pid_t) -> Bool {
+        pid > 0 && (kill(pid, 0) == 0 || errno == EPERM)
+    }
+
+    private static func modificationDate(of url: URL) -> Date {
+        (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+    }
+
+    static func parse(_ arguments: [String], environment: [String: String], currentDirectory: String? = nil) throws -> BridgeRequest {
         var request = BridgeRequest(id: UUID(), action: "", projectID: environment["AGENTUI_PROJECT_ID"].flatMap(UUID.init(uuidString:)),
                                     worktreeID: environment["AGENTUI_WORKTREE_ID"].flatMap(UUID.init(uuidString:)), command: [])
+        request.directory = currentDirectory
         if arguments == ["list"] { request.action = "list"; return request }
         if arguments.count == 3, arguments[0...1] == ["project", "add"] {
             request.action = "project.add"
@@ -82,8 +112,10 @@ enum AgentCLI {
         request.action = arguments[0] + "." + arguments[1]
         let isDeletion = request.action == "worktree.delete"
         let currentWorktreeID = request.worktreeID
-        let explicitlyTargetsProject = arguments.prefix(while: { $0 != "--" }).contains("--project")
+        let options = arguments.prefix { $0 != "--" }
+        let explicitlyTargetsProject = options.contains("--project")
         if explicitlyTargetsProject || isDeletion { request.worktreeID = nil }
+        if options.contains("--worktree") && !explicitlyTargetsProject { request.projectID = nil }
         var index = 2
         while index < arguments.count {
             let option = arguments[index]

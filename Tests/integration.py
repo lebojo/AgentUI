@@ -2,6 +2,7 @@
 """Run against a Debug .app. Uses isolated repositories and state, never user data."""
 import json
 import os
+import shutil
 import shlex
 import pathlib
 import subprocess
@@ -13,6 +14,8 @@ import uuid
 binary = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else '/tmp/agentui-build/Build/Products/Debug/AgentUI.app/Contents/MacOS/AgentUI')
 screenshots = pathlib.Path(__file__).resolve().parents[1] / '.impeccable/review'
 screenshots.mkdir(parents=True, exist_ok=True)
+for name in [name for name in os.environ if name.startswith('AGENTUI_')]:
+    del os.environ[name]
 root = pathlib.Path(tempfile.mkdtemp(prefix='agentui-integration-')).resolve()
 state = root / 'state'
 repo = root / 'Studio' / 'App macOS'
@@ -30,12 +33,13 @@ def wait_for(predicate, description, timeout=20):
 
 def start():
     global app, instance
-    locator = state / 'instance-path'
-    locator.unlink(missing_ok=True)
+    instances = state / 'Instances'
+    shutil.rmtree(instances, ignore_errors=True)
     app = subprocess.Popen([str(binary)], env=os.environ | {'AGENTUI_STATE_DIRECTORY': str(state)},
                            stdout=open(root / 'app.log', 'a'), stderr=subprocess.STDOUT)
-    wait_for(locator.exists, 'app bridge')
-    instance = pathlib.Path(locator.read_text())
+    registered = lambda: [entry for entry in instances.iterdir() if entry.name.isdigit()] if instances.is_dir() else []
+    wait_for(registered, 'app bridge')
+    instance = pathlib.Path(registered()[0].read_text())
 
 def request(action, **kwargs):
     ident = str(uuid.uuid4()).upper()
@@ -147,6 +151,18 @@ try:
     assert result['ok']
     hook.unlink()
     print('PASS concurrent refresh/create does not duplicate a worktree', flush=True)
+
+    outside_env = os.environ | {'AGENTUI_STATE_DIRECTORY': str(state)}
+    subfolder = repo / 'Sources'
+    subfolder.mkdir(exist_ok=True)
+    outside = subprocess.run([str(instance/'bin/agentui'),'terminal','create','--name','Outside'], cwd=subfolder,
+                             env=outside_env, capture_output=True, text=True, timeout=30)
+    data = json.loads(outside.stdout)
+    assert data['ok'] and data['projectID'] == pid and data['worktreeID'] == wid, data
+    elsewhere = subprocess.run([str(instance/'bin/agentui'),'terminal','create'], cwd=root,
+                               env=outside_env, capture_output=True, text=True, timeout=30)
+    assert elsewhere.returncode != 0 and '--project' in json.loads(elsewhere.stdout)['message']
+    print('PASS outside AgentUI, the CLI finds the running app and the project of the current directory', flush=True)
 
     disposable = cli('worktree','create','--project',pid,'--branch','feature/disposable')
     (pathlib.Path(disposable['path']) / 'draft.txt').write_text('work in progress')

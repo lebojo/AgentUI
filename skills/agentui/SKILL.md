@@ -1,6 +1,6 @@
 ---
 name: agentui
-description: Drive the AgentUI macOS app from inside one of its terminals with the `agentui` CLI. Use only when the AGENTUI_INSTANCE environment variable is set. Use it to start another agent in parallel on its own branch (`agentui worktree create`), to ask another agent for a review or a second opinion in the same worktree (`agentui terminal create`), to run a long process such as a dev server or watcher in a visible terminal, to add a project to the sidebar, to list projects, worktrees and terminals, or to delete a worktree once its branch is merged. Prefer it over raw `git worktree add`, background jobs or a new shell when AgentUI is running.
+description: Drive the AgentUI macOS app with the `agentui` CLI. Use when the AGENTUI_INSTANCE environment variable is set (you are in an AgentUI terminal), or when the user asks to use AgentUI from another terminal. Use it to start another agent in parallel on its own branch (`agentui worktree create`), to ask another agent for a review or a second opinion in the same worktree (`agentui terminal create`), to run a long process such as a dev server or watcher in a visible terminal, to add a project to the sidebar, to list projects, worktrees and terminals, or to delete a worktree once its branch is merged. Prefer it over raw `git worktree add`, background jobs or a new shell when AgentUI is running.
 metadata:
   version: "1"
 ---
@@ -11,11 +11,13 @@ AgentUI is a macOS app that organizes projects, Git worktrees and terminals in a
 
 | Variable | Meaning |
 | --- | --- |
-| `AGENTUI_INSTANCE` | Set only inside an AgentUI terminal. If it is missing, this skill does not apply. |
+| `AGENTUI_INSTANCE` | Set only inside an AgentUI terminal. |
 | `AGENTUI_CLI` | Absolute path of `agentui`, for shells that reset PATH. |
 | `AGENTUI_PROJECT_ID`, `AGENTUI_WORKTREE_ID`, `AGENTUI_TERMINAL_ID` | The context of the current terminal. |
 
 Check first: `test -n "$AGENTUI_INSTANCE" && agentui list`.
+
+Outside an AgentUI terminal, `agentui` works only if the user installed it in their PATH (Settings → Agents) and AgentUI is running. The project and worktree then come from the current directory when it belongs to a project open in AgentUI; otherwise pass `--project UUID` from `agentui list`. Do not use it outside AgentUI unless the user asked.
 
 This skill may be newer or older than the installed app. `agentui --help` is the reference for the installed version: read it when a command or option is refused.
 
@@ -42,7 +44,7 @@ agentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMA
 agentui worktree delete --worktree UUID [--force]
 ```
 
-- Without `--project` or `--worktree`, commands target the current project and worktree. `--project` alone targets that project's main folder.
+- Without `--project` or `--worktree`, commands target the current project and worktree. `--project` alone targets that project's main folder; `--worktree` alone finds its project.
 - `agentui list` prints the whole workspace as JSON: `projects[].id`, `projects[].path`, `projects[].worktrees[]` with `id`, `name` (the branch), `path`, `isPrimary` and `terminals[]`.
 - Every other command prints `{"ok": true, "projectID": …, "worktreeID": …, "terminalID": …, "path": …}`. On failure: `{"ok": false, "message": …}` and a non-zero exit code. Read `message` and fix the call instead of retrying blindly.
 - If the command times out after 120 seconds, the operation may still finish: run `agentui list` before trying again.
@@ -64,7 +66,7 @@ agentui worktree delete --worktree UUID [--force]
 ## Limits
 
 - You cannot read a child terminal's output, send it input or wait for it to finish. Coordinate through Git (commits on the child's branch) or files in its worktree, or let the user follow it on screen.
-- `agentui` only works while the AgentUI instance that opened your terminal is running.
+- `agentui` only works while AgentUI is running.
 
 ## Deleting a worktree
 

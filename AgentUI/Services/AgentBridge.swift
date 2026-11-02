@@ -24,19 +24,23 @@ import AppKit
                 MainActor.assumeIsolated { self?.drain() }
             }
         } catch { throw WorkspaceError(message: "Impossible d’initialiser la commande agentui.") }
-        #if DEBUG
-        if ProcessInfo.processInfo.environment["AGENTUI_STATE_DIRECTORY"] != nil {
-            let stateDirectory = WorkspaceDisk.applicationDirectory
-            try FileManager.default.createDirectory(at: stateDirectory, withIntermediateDirectories: true)
-            try directory.path.write(to: stateDirectory.appendingPathComponent("instance-path"), atomically: true, encoding: .utf8)
-        }
-        #endif
+        publish()
+    }
+
+    private var registration: URL {
+        WorkspaceDisk.instancesDirectory.appendingPathComponent(String(ProcessInfo.processInfo.processIdentifier))
     }
 
     func stop() {
         watcher?.cancel()
         watcher = nil
         try? FileManager.default.removeItem(at: directory)
+        try? FileManager.default.removeItem(at: registration)
+    }
+
+    private func publish() {
+        try? FileManager.default.createDirectory(at: WorkspaceDisk.instancesDirectory, withIntermediateDirectories: true)
+        try? directory.path.write(to: registration, atomically: true, encoding: .utf8)
     }
 
     private func drain() {
@@ -78,10 +82,12 @@ import AppKit
             let project = try store.addProject(URL(fileURLWithPath: path))
             return BridgeResponse(ok: true, projectID: project.id, worktreeID: project.worktrees[0].id, path: project.path)
         }
-        if request.action == "worktree.delete" { return try await deleteWorktree(request) }
+        let location = location(of: request.directory)
+        if request.action == "worktree.delete" { return try await deleteWorktree(request, currentLocation: location) }
+        let request = resolvingContext(of: request, location: location)
         guard let projectID = request.projectID,
               let project = store.projects.first(where: { $0.id == projectID }) else {
-            throw WorkspaceError(message: "Projet introuvable. Utilise --project UUID ou exécute la commande dans un terminal AgentUI.")
+            throw WorkspaceError(message: "Projet introuvable. Utilise --project UUID, ou lance la commande depuis un terminal AgentUI ou le dossier d’un projet ouvert dans AgentUI.")
         }
         let context: TerminalContext
         switch request.action {
@@ -100,19 +106,42 @@ import AppKit
                               terminalID: context.terminal.id, path: context.worktree.path)
     }
 
-    private func deleteWorktree(_ request: BridgeRequest) async throws -> BridgeResponse {
+    private func deleteWorktree(_ request: BridgeRequest, currentLocation: (projectID: UUID, worktreeID: UUID)?) async throws -> BridgeResponse {
         guard let worktreeID = request.worktreeID,
-              let project = store.projects.first(where: { $0.worktrees.contains { $0.id == worktreeID } }),
+              let project = project(containing: worktreeID),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }) else {
             throw WorkspaceError(message: "Worktree introuvable. Récupère son UUID avec agentui list.")
         }
         if let projectID = request.projectID, projectID != project.id {
             throw WorkspaceError(message: "Ce worktree n’appartient pas au projet indiqué.")
         }
+        if currentLocation?.worktreeID == worktreeID {
+            throw WorkspaceError(message: "Le dossier courant appartient au worktree à supprimer. Lance la commande depuis un autre dossier.")
+        }
         if request.force != true, try await GitService.hasLocalChanges(at: worktree.path) {
             throw WorkspaceError(message: "Le worktree « \(worktree.name) » contient des modifications non commitées ou des fichiers non suivis. Relance avec --force pour les effacer.")
         }
         try await store.deleteWorktree(projectID: project.id, worktreeID: worktreeID)
         return BridgeResponse(ok: true, projectID: project.id, worktreeID: worktreeID, path: worktree.path)
+    }
+
+    private func resolvingContext(of request: BridgeRequest, location: (projectID: UUID, worktreeID: UUID)?) -> BridgeRequest {
+        guard request.projectID == nil else { return request }
+        var request = request
+        if let worktreeID = request.worktreeID {
+            request.projectID = project(containing: worktreeID)?.id
+        } else if let location {
+            request.projectID = location.projectID
+            request.worktreeID = location.worktreeID
+        }
+        return request
+    }
+
+    private func location(of directory: String?) -> (projectID: UUID, worktreeID: UUID)? {
+        directory.flatMap { store.state.location(containing: WorkspaceDisk.canonicalPath(URL(fileURLWithPath: $0))) }
+    }
+
+    private func project(containing worktreeID: UUID) -> Project? {
+        store.projects.first { $0.worktrees.contains { $0.id == worktreeID } }
     }
 }
