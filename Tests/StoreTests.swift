@@ -120,6 +120,49 @@ private final class ChangeFlag: @unchecked Sendable {
         try require(reloaded.folders == nested.folders, "Nested folders and appearances persist")
         print("PASS nested folders and appearance")
 
+        struct Item: Identifiable, Equatable { let id: Int }
+        let items = (1...6).map(Item.init)
+        try require(items.moving([1, 2, 3], from: [2], to: 0)?.map(\.id) == [3, 1, 2, 4, 5, 6], "Moving up keeps the others in order")
+        try require(items.moving([1, 2, 3], from: [0], to: 3)?.map(\.id) == [2, 3, 1, 4, 5, 6], "Moving to the end stays after the last visible sibling")
+        try require(items.moving([2, 4, 6], from: [2], to: 1)?.map(\.id) == [1, 2, 3, 6, 4, 5], "Moving among a subset keeps hidden elements in place")
+        try require(items.moving([2, 4, 6], from: [0, 1], to: 3)?.map(\.id) == [1, 3, 5, 6, 2, 4], "Several siblings move together")
+        try require(items.moving([1, 2], from: [5], to: 0) == nil, "Invalid indices change nothing")
+        try require(items.moving([3], from: [0], to: 1) == nil && items.moving([2, 4], from: [0, 1], to: 0) == nil,
+                    "Dropping every visible sibling in place leaves hidden ones untouched")
+        try require(items.moving([1, 2, 3], from: [1], to: 1) == nil, "Dropping in place reports no change")
+
+        let orderedRoot = root.appendingPathComponent("ordered")
+        let orderedURLs = ["alpha", "beta", "gamma"].map { orderedRoot.appendingPathComponent($0) }
+        for url in orderedURLs { try fm.createDirectory(at: url, withIntermediateDirectories: true) }
+        let orderedFile = root.appendingPathComponent("ordered.json")
+        let ordered = WorkspaceStore(fileURL: orderedFile)
+        let alpha = try ordered.addProject(orderedURLs[0]).id, beta = try ordered.addProject(orderedURLs[1]).id, gamma = try ordered.addProject(orderedURLs[2]).id
+        ordered.reorderProjects([alpha, beta, gamma], from: [2], to: 0)
+        try require(ordered.projects.map(\.id) == [gamma, alpha, beta], "Projects reorder")
+        let folderOne = ordered.addFolder("Un"), folderTwo = ordered.addFolder("Deux"), inner = ordered.addFolder("Sous", parentID: folderOne)
+        ordered.reorderFolders([folderOne, folderTwo], from: [1], to: 0)
+        try require(ordered.folders.map(\.id) == [folderTwo, folderOne, inner], "Root folders reorder without touching subfolders")
+        let alphaRecord = ordered.projects.first { $0.id == alpha }!
+        let main = alphaRecord.worktrees[0]
+        let second = try ordered.addTerminal(projectID: alpha, worktreeID: main.id, select: false)
+        let terminalIDs = ordered.projects.first { $0.id == alpha }!.worktrees[0].terminals.map(\.id)
+        ordered.reorderTerminals(in: main.id, terminalIDs, from: [terminalIDs.count - 1], to: 0)
+        try require(ordered.projects.first { $0.id == alpha }!.worktrees[0].terminals.first?.id == second.terminal.id, "Terminals reorder inside their worktree")
+        ordered.moveProject(alpha, to: folderOne)
+        ordered.moveProject(gamma, to: folderOne)
+        try require(ordered.projects.filter { $0.folderID == folderOne }.map(\.id) == [alpha, gamma], "A project moved into a folder lands last in it")
+        ordered.moveProject(alpha, to: nil)
+        ordered.moveProject(gamma, to: nil)
+        ordered.reorderProjects([beta, alpha, gamma], from: [0], to: 3)
+        ordered.reorderProjects([alpha, gamma, beta], from: [1], to: 0)
+        let orderedTree = SidebarFilterInput(folders: ordered.folders, projects: ordered.projects, query: "").filtered()
+        try require(orderedTree.groups.map(\.folder.name) == ["Deux", "Un"] && orderedTree.ungrouped.map(\.id) == [gamma, alpha, beta],
+                    "The sidebar follows the new order")
+        try await ordered.flushPersistence()
+        let reloadedOrder = try WorkspaceDisk.load(from: orderedFile)
+        try require(reloadedOrder == ordered.state, "The order persists")
+        print("PASS sibling reordering")
+
         let splitFile = root.appendingPathComponent("split.json")
         let split = WorkspaceStore(fileURL: splitFile)
         let splitRoot = root.appendingPathComponent("split-project")

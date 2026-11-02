@@ -22,9 +22,11 @@ struct SidebarFolderRow: View {
             ForEach(group.subgroups) { subgroup in
                 SidebarFolderRow(sheet: $sheet, removal: $removal, store: store, group: subgroup, query: query)
             }
+            .onMove(perform: store.isReadOnly ? nil : { store.reorderFolders(group.subgroups.map(\.id), from: $0, to: $1) })
             ForEach(group.projects) { project in
                 SidebarProjectRow(sheet: $sheet, removal: $removal, store: store, project: project, query: query, showAll: group.showsAll)
             }
+            .onMove(perform: store.isReadOnly ? nil : { store.reorderProjects(group.projects.map(\.id), from: $0, to: $1) })
             if group.isEmpty {
                 Button("Add Project…") { store.chooseProjects(in: folder.id) }
                     .font(Typography.m).foregroundStyle(Palette.textSecondary)

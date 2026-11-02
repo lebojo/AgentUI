@@ -13,25 +13,34 @@ struct SidebarProjectRow: View {
     let query: String
     let showAll: Bool
 
+    private var visibleGroups: [WorktreeGroup] {
+        project.worktreeGroups.filter { showAll || matches(project.name) || matches($0.name) || !visibleWorktrees(in: $0.id).isEmpty }
+    }
+
     var body: some View {
         DisclosureGroup(isExpanded: expanded(project.id)) {
             ForEach(project.worktrees.filter(\.isPrimary)) { worktree in
-                ForEach(worktree.terminals.filter { showAll || matches(project.name) || matches($0.name) }) { terminal in
+                let terminals = worktree.terminals.filter { showAll || matches(project.name) || matches($0.name) }
+                ForEach(terminals) { terminal in
                     SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, worktree: worktree)
                 }
+                .onMove(perform: store.isReadOnly ? nil : { store.reorderTerminals(in: worktree.id, terminals.map(\.id), from: $0, to: $1) })
                 if worktree.terminals.isEmpty {
                     Button("Open Terminal") { store.openTerminal(project, worktree, launch: settings.agentLaunch) }
                         .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 }
             }
-            ForEach(project.worktreeGroups.filter { showAll || matches(project.name) || matches($0.name) || !visibleWorktrees(in: $0.id).isEmpty }) { group in
+            ForEach(visibleGroups) { group in
                 SidebarWorktreeGroupRow(sheet: $sheet, removal: $removal, store: store, project: project, group: group, query: query,
                                         showAll: showAll || matches(project.name) || matches(group.name))
             }
-            ForEach(visibleWorktrees(in: nil)) { worktree in
+            .onMove(perform: store.isReadOnly ? nil : { store.reorderWorktreeGroups(in: project.id, visibleGroups.map(\.id), from: $0, to: $1) })
+            let ungrouped = visibleWorktrees(in: nil)
+            ForEach(ungrouped) { worktree in
                 SidebarWorktreeRow(sheet: $sheet, removal: $removal, store: store, project: project, worktree: worktree, query: query,
                                    showAll: showAll || matches(project.name))
             }
+            .onMove(perform: store.isReadOnly ? nil : { store.reorderWorktrees(in: project.id, ungrouped.map(\.id), from: $0, to: $1) })
         } label: {
             HStack(spacing: Spacing.s) {
                 Image(systemName: project.appearance.displaySymbol.systemName).foregroundStyle(project.appearance.color)

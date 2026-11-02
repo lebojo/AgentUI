@@ -16,6 +16,9 @@ struct SidebarWorktreeRow: View {
     let query: String
     let showAll: Bool
 
+    private var terminals: [TerminalRecord] {
+        worktree.terminals.filter { showAll || matches(worktree.displayName) || matches($0.name) }
+    }
     private var worktreeRemoval: Removal { .worktree(projectID: project.id, worktreeID: worktree.id, name: worktree.displayName) }
     private var isExpanded: Binding<Bool> {
         guard isInserted else { return .constant(false) }
@@ -24,9 +27,10 @@ struct SidebarWorktreeRow: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: isExpanded) {
-            ForEach(worktree.terminals.filter { showAll || matches(worktree.displayName) || matches($0.name) }) { terminal in
+            ForEach(terminals) { terminal in
                 SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, worktree: worktree)
             }
+            .onMove(perform: store.isReadOnly ? nil : { store.reorderTerminals(in: worktree.id, terminals.map(\.id), from: $0, to: $1) })
             if worktree.terminals.isEmpty {
                 Button("Open Terminal") { openTerminal() }
                     .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)

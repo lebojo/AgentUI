@@ -23,7 +23,7 @@ xcrun swiftc "${swift_flags[@]}" \
 "$test_binary"
 
 xcrun swiftc "${swift_flags[@]}" \
-  AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/WorkspaceStore.swift AgentUI/Models/SidebarFilter.swift AgentUI/Models/Removal.swift \
+  AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/WorkspaceStore.swift AgentUI/Extensions/Array+Moving.swift AgentUI/Models/SidebarFilter.swift AgentUI/Models/Removal.swift \
   AgentUI/Models/AgentConversation.swift AgentUI/Models/Subagent.swift \
   AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Models/DiscoveredWorktree.swift AgentUI/Models/RepositoryImport.swift AgentUI/Models/GitBranch.swift AgentUI/Services/WorkspaceWriter.swift \
   AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/GitConfiguration.swift \

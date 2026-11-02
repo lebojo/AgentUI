@@ -20,9 +20,11 @@ struct SidebarProjectList: View {
                 ForEach(result.groups) { group in
                     SidebarFolderRow(sheet: $sheet, removal: $removal, store: store, group: group, query: query)
                 }
+                .onMove(perform: store.isReadOnly ? nil : { store.reorderFolders(result.groups.map(\.id), from: $0, to: $1) })
                 ForEach(result.ungrouped) { project in
                     SidebarProjectRow(sheet: $sheet, removal: $removal, store: store, project: project, query: query, showAll: false)
                 }
+                .onMove(perform: store.isReadOnly ? nil : { store.reorderProjects(result.ungrouped.map(\.id), from: $0, to: $1) })
             }
             if !orphans.isEmpty {
                 Section("Orphans") {

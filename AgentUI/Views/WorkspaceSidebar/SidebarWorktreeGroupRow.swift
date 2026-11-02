@@ -25,6 +25,7 @@ struct SidebarWorktreeGroupRow: View {
             ForEach(worktrees) { worktree in
                 SidebarWorktreeRow(sheet: $sheet, removal: $removal, store: store, project: project, worktree: worktree, query: query, showAll: showAll)
             }
+            .onMove(perform: store.isReadOnly ? nil : { store.reorderWorktrees(in: project.id, worktrees.map(\.id), from: $0, to: $1) })
             if project.worktrees(in: group.id).isEmpty {
                 Text("Drag a worktree here").font(Typography.caption).foregroundStyle(Palette.textSecondary)
             }

@@ -125,7 +125,9 @@ import Observation
 
     func moveFolder(_ id: UUID, to parentID: UUID?) {
         guard canMoveFolder(id, to: parentID), let index = folders.firstIndex(where: { $0.id == id }) else { return }
-        folders[index].parentID = parentID
+        var folder = folders[index]
+        folder.parentID = parentID
+        folders = folders.removingAndAppending(at: index, folder)
         if let parentID { revealFolder(parentID) }
         save()
     }
@@ -324,8 +326,10 @@ import Observation
     }
 
     func moveProject(_ id: UUID, to folderID: UUID?) {
-        guard let index = projects.firstIndex(where: { $0.id == id }) else { return }
-        projects[index].folderID = folderID
+        guard let index = projects.firstIndex(where: { $0.id == id }), projects[index].folderID != folderID else { return }
+        var project = projects[index]
+        project.folderID = folderID
+        projects = projects.removingAndAppending(at: index, project)
         if let folderID { revealFolder(folderID) }
         save()
     }
@@ -612,12 +616,47 @@ import Observation
     }
 
     @discardableResult func moveWorktree(_ worktreeID: UUID, to groupID: UUID?) -> Bool {
-        guard let project = projects.first(where: { $0.worktrees.contains { $0.id == worktreeID && !$0.isPrimary } }),
-              groupID == nil || project.worktreeGroups.contains(where: { $0.id == groupID }) else { return false }
-        updateWorktree(worktreeID) { $0.groupID = groupID }
+        guard let p = projects.firstIndex(where: { $0.worktrees.contains { $0.id == worktreeID && !$0.isPrimary } }),
+              groupID == nil || projects[p].worktreeGroups.contains(where: { $0.id == groupID }),
+              let w = projects[p].worktrees.firstIndex(where: { $0.id == worktreeID }) else { return false }
+        guard projects[p].worktrees[w].groupID != groupID else { return true }
+        var worktree = projects[p].worktrees[w]
+        worktree.groupID = groupID
+        projects[p].worktrees = projects[p].worktrees.removingAndAppending(at: w, worktree)
         if let groupID { collapsed.remove(groupID) }
         save()
         return true
+    }
+
+    func reorderFolders(_ visible: [UUID], from source: IndexSet, to destination: Int) {
+        reorder(\.folders, visible, from: source, to: destination)
+    }
+
+    func reorderProjects(_ visible: [UUID], from source: IndexSet, to destination: Int) {
+        reorder(\.projects, visible, from: source, to: destination)
+    }
+
+    func reorderWorktreeGroups(in projectID: UUID, _ visible: [UUID], from source: IndexSet, to destination: Int) {
+        guard let p = projects.firstIndex(where: { $0.id == projectID }) else { return }
+        reorder(\.projects[p].worktreeGroups, visible, from: source, to: destination)
+    }
+
+    func reorderWorktrees(in projectID: UUID, _ visible: [UUID], from source: IndexSet, to destination: Int) {
+        guard let p = projects.firstIndex(where: { $0.id == projectID }) else { return }
+        reorder(\.projects[p].worktrees, visible, from: source, to: destination)
+    }
+
+    func reorderTerminals(in worktreeID: UUID, _ visible: [UUID], from source: IndexSet, to destination: Int) {
+        guard let p = projects.firstIndex(where: { $0.worktrees.contains { $0.id == worktreeID } }),
+              let w = projects[p].worktrees.firstIndex(where: { $0.id == worktreeID }) else { return }
+        reorder(\.projects[p].worktrees[w].terminals, visible, from: source, to: destination)
+    }
+
+    private func reorder<Element: Identifiable>(_ elements: ReferenceWritableKeyPath<WorkspaceStore, [Element]>, _ visible: [Element.ID],
+                                                from source: IndexSet, to destination: Int) {
+        guard !isReadOnly, let reordered = self[keyPath: elements].moving(visible, from: source, to: destination) else { return }
+        self[keyPath: elements] = reordered
+        save()
     }
 
     func removeWorktreeGroup(_ id: UUID) {
