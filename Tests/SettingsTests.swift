@@ -15,6 +15,20 @@ enum SettingsTests {
         try CoreTests.require(decodedLaunch == launch, "Agent launch round-trips")
         print("PASS agent launch settings")
 
+        let suite = "AgentUI.SettingsTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        try CoreTests.require(WorkspaceDisk.storedWorktreesDirectory(in: defaults).path == home.appendingPathComponent(".agentui").path,
+                              "Worktrees go to the hidden ~/.agentui folder by default")
+        defaults.set("", forKey: WorkspaceDisk.worktreesDirectoryKey)
+        try CoreTests.require(WorkspaceDisk.storedWorktreesDirectory(in: defaults) == WorkspaceDisk.defaultWorktreesDirectory,
+                              "An empty folder falls back to the default")
+        defaults.set("~/Worktrees/", forKey: WorkspaceDisk.worktreesDirectoryKey)
+        try CoreTests.require(WorkspaceDisk.storedWorktreesDirectory(in: defaults).path == home.appendingPathComponent("Worktrees").path,
+                              "A stored folder expands the tilde")
+        print("PASS worktree folder settings")
+
         var appearance = TerminalAppearance()
         try CoreTests.require(appearance.palette == nil && !appearance.isEditable, "The system theme follows macOS and is not editable")
         appearance.setColor(TerminalColor(hex: 0xFF0000), at: \.background)

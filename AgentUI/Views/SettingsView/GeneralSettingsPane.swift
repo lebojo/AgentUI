@@ -10,6 +10,7 @@ struct GeneralSettingsPane: View {
                 Toggle("Before removing a project", isOn: $settings.confirmations.onProjectRemoval)
                 Toggle("Before closing a terminal", isOn: $settings.confirmations.onTerminalClosing)
             }
+            WorktreeFolderSettings()
         }
         .formStyle(.grouped)
     }

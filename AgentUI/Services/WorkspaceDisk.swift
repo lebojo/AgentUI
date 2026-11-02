@@ -11,12 +11,32 @@ enum WorkspaceDisk {
     }
 
     static var worktreesDirectory: URL {
+        testWorktreesDirectory ?? storedWorktreesDirectory(in: .standard)
+    }
+
+    static var testWorktreesDirectory: URL? {
         #if DEBUG
         if ProcessInfo.processInfo.environment["AGENTUI_STATE_DIRECTORY"] != nil {
             return applicationDirectory.appendingPathComponent("Worktrees", isDirectory: true)
         }
         #endif
-        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("agentui", isDirectory: true)
+        return nil
+    }
+
+    static let worktreesDirectoryKey = "settings.worktreesDirectory"
+
+    static var defaultWorktreesDirectory: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".agentui", isDirectory: true)
+    }
+
+    static func storedWorktreesDirectory(in defaults: UserDefaults) -> URL {
+        defaults.string(forKey: worktreesDirectoryKey).flatMap(directory) ?? defaultWorktreesDirectory
+    }
+
+    private static func directory(_ path: String) -> URL? {
+        let expanded = (path as NSString).expandingTildeInPath
+        guard (expanded as NSString).isAbsolutePath else { return nil }
+        return URL(fileURLWithPath: expanded, isDirectory: true).standardizedFileURL
     }
 
     private static var defaultApplicationDirectory: URL {

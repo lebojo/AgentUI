@@ -17,6 +17,11 @@ import Observation
     var confirmations: RemovalConfirmations {
         didSet { if oldValue != confirmations { save(confirmations, forKey: Key.confirmations) } }
     }
+    var worktreesDirectory: URL {
+        didSet { if oldValue != worktreesDirectory { saveWorktreesDirectory() } }
+    }
+    var usesDefaultWorktreesDirectory: Bool { worktreesDirectory.path == WorkspaceDisk.defaultWorktreesDirectory.path }
+    var creationWorktreesDirectory: URL { WorkspaceDisk.testWorktreesDirectory ?? worktreesDirectory }
     @ObservationIgnored private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -24,6 +29,12 @@ import Observation
         terminal = Self.load(TerminalAppearance.self, forKey: Key.terminal, from: defaults) ?? TerminalAppearance()
         agentLaunch = Self.load(AgentLaunch.self, forKey: Key.agentLaunch, from: defaults) ?? AgentLaunch()
         confirmations = Self.load(RemovalConfirmations.self, forKey: Key.confirmations, from: defaults) ?? RemovalConfirmations()
+        worktreesDirectory = WorkspaceDisk.storedWorktreesDirectory(in: defaults)
+    }
+
+    private func saveWorktreesDirectory() {
+        if usesDefaultWorktreesDirectory { defaults.removeObject(forKey: WorkspaceDisk.worktreesDirectoryKey) }
+        else { defaults.set(worktreesDirectory.path, forKey: WorkspaceDisk.worktreesDirectoryKey) }
     }
 
     private func save(_ value: some Encodable, forKey key: String) {

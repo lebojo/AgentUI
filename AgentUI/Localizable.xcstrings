@@ -1011,6 +1011,16 @@
         }
       }
     },
+    "Choose" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir"
+          }
+        }
+      }
+    },
     "Choose a Git repository or a folder containing several repositories. They’ll be grouped automatically." : {
       "localizations" : {
         "fr" : {
@@ -1027,6 +1037,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choisis un terminal"
+          }
+        }
+      }
+    },
+    "Choose the folder where AgentUI creates new worktrees." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisis le dossier où AgentUI crée les nouveaux worktrees."
+          }
+        }
+      }
+    },
+    "Choose…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir…"
           }
         }
       }
@@ -1467,6 +1497,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Création du worktree…"
+          }
+        }
+      }
+    },
+    "Creation Folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dossier de création"
           }
         }
       }
@@ -2590,6 +2630,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nouveau terminal dans ce worktree"
+          }
+        }
+      }
+    },
+    "New worktrees are created in this folder. Existing worktrees stay where they are." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les nouveaux worktrees sont créés dans ce dossier. Les worktrees existants restent où ils sont."
           }
         }
       }
@@ -4674,6 +4724,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Worktree introuvable. Récupère son UUID avec agentui list."
+          }
+        }
+      }
+    },
+    "Worktrees" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Worktrees"
           }
         }
       }

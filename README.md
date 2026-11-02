@@ -172,7 +172,7 @@ Communication uses a request mailbox private to the app instance, with no networ
 | Data | Location |
 | --- | --- |
 | Organization (projects, folders, terminals) | `~/Library/Application Support/AgentUI/workspace.json` |
-| Worktrees created by the app | `~/agentui/<project>-<branch>/` |
+| Worktrees created by the app | `~/.agentui/<project>-<branch>/` (configurable in Settings › General) |
 
 Saves are coalesced during interactions, then written off the UI thread. A banner reports unsaved changes and offers a retry. Quitting waits for the last write; a save failure cancels the quit to keep changes in memory. Removing a project from the UI deletes no files, branches or worktrees.
 
