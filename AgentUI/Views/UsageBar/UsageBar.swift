@@ -52,6 +52,8 @@ struct UsageBar: View {
                 UsageSignedOutRow(isWaiting: !usage.pendingSignIns.isEmpty) { showsDetails = true }
             }
         }
+        .glassBackground()
+        .padding(Spacing.s)
         .sheet(isPresented: $showsDetails) {
             UsageSheet().environment(workspace).environment(usage)
         }
