@@ -96,6 +96,9 @@ enum RemoteRequest: Codable, Sendable {
     case git(terminal: UUID)
     case github(terminal: UUID)
     case diff(terminal: UUID, change: GitChange)
+    case branches(terminal: UUID)
+    case comparison(terminal: UUID, base: ComparisonBranch)
+    case comparisonDiff(terminal: UUID, base: ComparisonBranch, change: GitChange)
     case conversations(terminal: UUID, fresh: Bool)
     case resume(terminal: UUID, conversation: AgentConversation)
     case launchAgent(terminal: UUID, agent: ConversationAgent)
@@ -109,7 +112,7 @@ enum RemoteRequest: Codable, Sendable {
 
     var timeout: Duration {
         switch self {
-        case .git, .github, .diff, .conversations, .resume: .seconds(60)
+        case .git, .github, .diff, .branches, .comparison, .comparisonDiff, .conversations, .resume: .seconds(60)
         default: .seconds(15)
         }
     }

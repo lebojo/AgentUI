@@ -24,7 +24,7 @@ struct InspectorContents: View {
                     ExplorerDirectory(url: URL(fileURLWithPath: context.worktree.path), source: source)
                 }.listStyle(.plain).id(refresh)
             case .agents: AgentConversationList(context: context, refresh: refresh, source: source)
-            case .git, .checks: InspectorRepositoryContent(model: model, tab: tab)
+            case .git, .checks: InspectorRepositoryContent(model: model, tab: tab, refresh: refresh, source: source)
             }
         }
         .environment(previews)

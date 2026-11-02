@@ -43,8 +43,7 @@ enum InspectorService {
 
     @concurrent static func localGit(at path: String, changesIn paths: [String]? = nil) async throws -> LocalGitSnapshot {
         let git = URL(fileURLWithPath: "/usr/bin/git")
-        let rootData = try await ReadCommand.run(git, ["rev-parse", "--show-toplevel"], at: path)
-        let root = String(decoding: rootData, as: UTF8.self).trimmingCharacters(in: .newlines)
+        let root = try await root(at: path)
         async let head = try? ReadCommand.run(git, ["rev-parse", "--verify", "HEAD"], at: root)
         let safety = try await GitFilterGuard.shared.configuration(at: root)
         let status = ["--literal-pathspecs", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=dirty"]
@@ -65,11 +64,71 @@ enum InspectorService {
         }
         let git = URL(fileURLWithPath: "/usr/bin/git")
         let paths = [change.path] + (change.originalPath.map { [$0] } ?? [])
-        let flags = ["--literal-pathspecs", "--no-pager", "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--ignore-submodules=dirty"]
         let safety = try await GitFilterGuard.shared.configuration(at: root)
-        async let staged = section(git, flags + ["--cached", "--"] + paths, at: root, kind: .staged, safety: safety)
-        async let unstaged = section(git, flags + ["--"] + paths, at: root, kind: .unstaged, safety: safety)
+        async let staged = section(git, diffFlags + ["--cached", "--"] + paths, at: root, kind: .staged, safety: safety)
+        async let unstaged = section(git, diffFlags + ["--"] + paths, at: root, kind: .unstaged, safety: safety)
         return GitDiff(path: change.path, sections: try await [staged, unstaged].compactMap { $0 })
+    }
+
+    @concurrent static func root(at path: String) async throws -> String {
+        let git = URL(fileURLWithPath: "/usr/bin/git")
+        return trimmed(try await ReadCommand.run(git, ["rev-parse", "--show-toplevel"], at: path))
+    }
+
+    @concurrent static func branches(at root: String, limit: Int = 200) async throws -> GitBranchList {
+        let git = URL(fileURLWithPath: "/usr/bin/git")
+        async let remoteDefault = try? ReadCommand.run(git, ["symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"], at: root)
+        let refs = try await ReadCommand.run(git, ["for-each-ref", "--sort=-committerdate", "--format=%(refname)%09%(symref)",
+                                                   "refs/heads", "refs/remotes"], at: root)
+        let branch = GitRepository.containing(root)?.branch
+        let current = branch.flatMap { $0.isDetached ? nil : "refs/heads/" + $0.name }
+        let all = String(decoding: refs, as: UTF8.self).split(separator: "\n").compactMap { line -> ComparisonBranch? in
+            let fields = line.split(separator: "\t", omittingEmptySubsequences: false)
+            guard fields.count == 2, fields[1].isEmpty, String(fields[0]) != current else { return nil }
+            return ComparisonBranch(reference: String(fields[0]))
+        }
+        let candidates = [await remoteDefault.map(trimmed)].compactMap { $0 }
+            + ["refs/heads/main", "refs/heads/master", "refs/remotes/origin/main", "refs/remotes/origin/master"]
+        let preferred = candidates.lazy.compactMap { candidate in all.first { $0.reference == candidate } }.first
+        var shown = Array(all.prefix(limit))
+        if let preferred, !shown.contains(preferred) { shown.insert(preferred, at: 0) }
+        return GitBranchList(branches: shown, defaultBranch: preferred, omitted: all.count - shown.count)
+    }
+
+    @concurrent static func comparison(with base: ComparisonBranch, at root: String) async throws -> BranchComparison {
+        let git = URL(fileURLWithPath: "/usr/bin/git")
+        try validate(base)
+        async let changes = comparedChanges(with: base, at: root)
+        async let commits = ReadCommand.run(git, ["rev-list", "--count", base.reference + "..HEAD", "--"], at: root)
+        return BranchComparison(base: base, commits: Int(trimmed(try await commits)) ?? 0, changes: try await changes)
+    }
+
+    @concurrent static func comparedChanges(with base: ComparisonBranch, at root: String, paths: [String]? = nil) async throws -> [GitChange] {
+        let git = URL(fileURLWithPath: "/usr/bin/git")
+        try validate(base)
+        let safety = try await GitFilterGuard.shared.configuration(at: root)
+        let arguments = diffFlags + ["--name-status", "-z", "--find-renames", base.reference + "...HEAD", "--"] + (paths ?? [])
+        return GitChange.parseNameStatus(try await ReadCommand.run(git, arguments, at: root, gitConfiguration: safety))
+    }
+
+    @concurrent static func comparisonDiff(_ change: GitChange, base: ComparisonBranch, at root: String) async throws -> GitDiff {
+        let git = URL(fileURLWithPath: "/usr/bin/git")
+        try validate(base)
+        let paths = [change.path] + (change.originalPath.map { [$0] } ?? [])
+        let arguments = diffFlags + ["--find-renames", base.reference + "...HEAD", "--"] + paths
+        let safety = try await GitFilterGuard.shared.configuration(at: root)
+        let section = try await section(git, arguments, at: root, kind: .committed, safety: safety)
+        return GitDiff(path: change.path, sections: [section].compactMap { $0 })
+    }
+
+    private static let diffFlags = ["--literal-pathspecs", "--no-pager", "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--ignore-submodules=dirty"]
+
+    private static func validate(_ base: ComparisonBranch) throws {
+        guard base.isBranchReference else { throw ReadCommandError(message: String(localized: "Choose a branch to compare with.")) }
+    }
+
+    private static func trimmed(_ data: Data) -> String {
+        String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     @concurrent private static func section(_ git: URL, _ arguments: [String], at root: String, kind: GitDiffSection.Kind,

@@ -296,6 +296,46 @@
         }
       }
     },
+    "%lld commits ahead of %@" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commit ahead of %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commits ahead of %@"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commit d’avance sur %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commits d’avance sur %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld lines not sent" : {
       "localizations" : {
         "en" : {
@@ -432,6 +472,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$lld sur %2$lld sélectionnés"
+          }
+        }
+      }
+    },
+    "%lld older branches not listed" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld older branch not listed"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld older branches not listed"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld branche plus ancienne non affichée"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld branches plus anciennes non affichées"
+                }
+              }
+            }
           }
         }
       }
@@ -1001,6 +1081,36 @@
         }
       }
     },
+    "Branch Changes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifications de la branche"
+          }
+        }
+      }
+    },
+    "Branch Comparison" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparaison de branches"
+          }
+        }
+      }
+    },
+    "Branches Unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Branches indisponibles"
+          }
+        }
+      }
+    },
     "Bright ANSI Colors" : {
       "localizations" : {
         "fr" : {
@@ -1107,6 +1217,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choisis un terminal"
+          }
+        }
+      }
+    },
+    "Choose a branch to compare with." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez une branche à comparer."
           }
         }
       }
@@ -1277,6 +1397,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Commande introuvable (127) : vérifie qu’elle est installée et dans le PATH de ton shell"
+          }
+        }
+      }
+    },
+    "Compare With" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparer avec"
+          }
+        }
+      }
+    },
+    "Comparison Unavailable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparaison indisponible"
           }
         }
       }
@@ -2944,6 +3084,16 @@
         }
       }
     },
+    "No differences with %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune différence avec %@"
+          }
+        }
+      }
+    },
     "No limits reported for this account." : {
       "localizations" : {
         "fr" : {
@@ -2960,6 +3110,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pas de saut de ligne en fin de fichier"
+          }
+        }
+      }
+    },
+    "No other branch to compare with." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune autre branche à comparer."
           }
         }
       }
@@ -4418,6 +4578,16 @@
         }
       }
     },
+    "The file no longer differs from this branch." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier ne diffère plus de cette branche."
+          }
+        }
+      }
+    },
     "The file no longer has changes." : {
       "localizations" : {
         "fr" : {
@@ -4604,6 +4774,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cette instance d’AgentUI est fermée."
+          }
+        }
+      }
+    },
+    "This branch is no longer available." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette branche n’est plus disponible."
           }
         }
       }

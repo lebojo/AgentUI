@@ -71,6 +71,70 @@ struct GitChange: Codable, Identifiable, Equatable, Sendable {
         }
         return result
     }
+
+    static func parseNameStatus(_ data: Data) -> [GitChange] {
+        let fields = String(decoding: data, as: UTF8.self).components(separatedBy: "\0")
+        var result: [GitChange] = []
+        var index = 0
+        while index + 1 < fields.count {
+            let status = String(fields[index].prefix(1))
+            index += 1
+            guard !status.isEmpty else { continue }
+            if status == "R" || status == "C", index + 1 < fields.count {
+                result.append(GitChange(path: fields[index + 1], originalPath: fields[index], indexStatus: status, worktreeStatus: " "))
+                index += 2
+            } else {
+                result.append(GitChange(path: fields[index], originalPath: nil, indexStatus: status, worktreeStatus: " "))
+                index += 1
+            }
+        }
+        return result
+    }
+}
+
+enum GitChangeScope: Hashable, Sendable {
+    case workingTree
+    case branch(ComparisonBranch)
+
+    var emptyTitle: String {
+        switch self {
+        case .workingTree: String(localized: "No Local Changes")
+        case .branch(let base): String(localized: "No differences with \(base.name)")
+        }
+    }
+}
+
+struct ComparisonBranch: Codable, Hashable, Identifiable, Sendable {
+    private static let prefixes = ["refs/heads/", "refs/remotes/"]
+
+    let reference: String
+
+    var id: String { reference }
+    var isBranchReference: Bool {
+        Self.prefixes.contains { reference.hasPrefix($0) && reference.count > $0.count } && !reference.contains("..")
+            && !reference.contains(where: { $0.isWhitespace || "^~:?*[\\".contains($0) })
+    }
+    var name: String {
+        Self.prefixes.first(where: reference.hasPrefix).map { String(reference.dropFirst($0.count)) } ?? reference
+    }
+}
+
+struct GitBranchList: Codable, Equatable, Sendable {
+    let branches: [ComparisonBranch]
+    let defaultBranch: ComparisonBranch?
+    var omitted = 0
+
+    func preferred(over current: ComparisonBranch?) -> ComparisonBranch? {
+        if let current, branches.contains(current) { return current }
+        return defaultBranch ?? branches.first
+    }
+}
+
+struct BranchComparison: Codable, Equatable, Sendable {
+    let base: ComparisonBranch
+    let commits: Int
+    let changes: [GitChange]
+    var omittedChanges = 0
 }
 
 struct LocalGitSnapshot: Codable, Equatable, Sendable {

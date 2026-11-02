@@ -6,11 +6,13 @@ import Observation
         case changed, periodic
     }
 
+    var comparisonBase: ComparisonBranch?
     private(set) var local: LocalGitSnapshot?
     private(set) var remote: RemoteSnapshot?
     private(set) var localLoading = false
     private(set) var remoteLoading = false
     var loading: Bool { localLoading || remoteLoading }
+    var lacksChangeRequest: Bool { remote.map { $0.changeRequest == nil } ?? (remoteError != nil) }
     private(set) var localError: String?
     private(set) var remoteError: String?
     @ObservationIgnored private var path: String?

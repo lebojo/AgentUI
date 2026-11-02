@@ -4,8 +4,7 @@ import Observation
 @MainActor @Observable final class InspectorPreviews {
     enum Request: Equatable, Sendable {
         case file(URL)
-        case diff(GitChange, root: String)
-
+        case diff(GitChange, scope: GitChangeScope = .workingTree, root: String)
     }
 
     var current: InspectorPreview?
@@ -16,15 +15,17 @@ import Observation
 
     func open(_ url: URL) { submit(.file(url)) }
 
-    func diff(_ change: GitChange, at root: String) { submit(.diff(change, root: root)) }
+    func diff(_ change: GitChange, in scope: GitChangeScope = .workingTree, at root: String) {
+        submit(.diff(change, scope: scope, root: root))
+    }
 
     func load(readFile: @Sendable (URL) async throws -> String,
-              readDiff: @Sendable (GitChange, String) async throws -> GitDiff) async {
+              readDiff: @Sendable (GitChange, GitChangeScope, String) async throws -> GitDiff) async {
         guard let request else { return }
         do {
             switch request {
             case .file(let url): current = .file(TextPreview(title: url.lastPathComponent, text: try await readFile(url), url: url))
-            case .diff(let change, let root): current = .diff(try await readDiff(change, root))
+            case .diff(let change, let scope, let root): current = .diff(try await readDiff(change, scope, root))
             }
         }
         catch is CancellationError { return }

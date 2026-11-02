@@ -5,10 +5,11 @@ struct GitChangeRow: View {
 
     let change: GitChange
     let root: String
+    let scope: GitChangeScope
 
     var body: some View {
         Button {
-            previews.diff(change, at: root)
+            previews.diff(change, in: scope, at: root)
         } label: {
             HStack(alignment: .top, spacing: Spacing.m) {
                 Text(change.status).font(Typography.captionMono).foregroundStyle(Palette.textSecondary).frame(width: Dimension.Inspector.statusColumnWidth)

@@ -36,6 +36,8 @@ enum InspectorTests {
         try require(empty.headSHA == nil && empty.branch?.name == "develop", "Inspector supports unborn HEAD")
         print("PASS inspector status and real staged/unstaged diffs")
 
+        try await branchComparison(root: root)
+
         let patch = "diff --git a/f b/f\nindex 1..2 100644\n--- a/f\n+++ b/f\n@@ -3,4 +3,4 @@ func\n keep\n--- old\n-gone\n++++ new\n+\tadded\n same\n\\ No newline at end of file\n"
         let lines = GitDiffLine.parse(patch)
         try require(lines.map(\.kind) == [.hunk, .context, .deletion, .deletion, .addition, .addition, .context], "Parse hunks without mistaking content for headers")
@@ -187,6 +189,57 @@ enum InspectorTests {
         } catch let error as ReadCommandError { try require(error.message.contains("limit"), "Stop excessive output while query runs") }
         try require(Date().timeIntervalSince(start) < 2, "Output termination should precede timeout")
         print("PASS query cancellation, timeout and live output limit")
+    }
+
+    private static func branchComparison(root: URL) async throws {
+        let require = CoreTests.require
+        let parsed = GitChange.parseNameStatus(Data("M\0edited file\0R087\0old name\0new name\0D\0gone\0".utf8))
+        try require(parsed.map(\.path) == ["edited file", "new name", "gone"] && parsed[1].originalPath == "old name"
+                    && parsed.map(\.description) == ["Modified", "Renamed", "Deleted"], "Name-status parsing keeps renames and statuses")
+
+        let repository = root.appendingPathComponent("comparison repository")
+        try FileManager.default.createDirectory(at: repository, withIntermediateDirectories: true)
+        let commit = ["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "-m"]
+        _ = try await GitService.run(["init", "-b", "main"], at: repository.path)
+        try "shared\n".write(to: repository.appendingPathComponent("shared.txt"), atomically: true, encoding: .utf8)
+        try "doomed\n".write(to: repository.appendingPathComponent("doomed.txt"), atomically: true, encoding: .utf8)
+        _ = try await GitService.run(["add", "-A"], at: repository.path)
+        _ = try await GitService.run(commit + ["Base"], at: repository.path)
+        _ = try await GitService.run(["update-ref", "refs/heads/-dangerous", "HEAD"], at: repository.path)
+        _ = try await GitService.run(["switch", "-q", "-c", "feature"], at: repository.path)
+        try "shared\nfeature\n".write(to: repository.appendingPathComponent("shared.txt"), atomically: true, encoding: .utf8)
+        try FileManager.default.removeItem(at: repository.appendingPathComponent("doomed.txt"))
+        _ = try await GitService.run(["add", "-A"], at: repository.path)
+        _ = try await GitService.run(commit + ["Feature"], at: repository.path)
+        try "uncommitted\n".write(to: repository.appendingPathComponent("local.txt"), atomically: true, encoding: .utf8)
+
+        let main = ComparisonBranch(reference: "refs/heads/main")
+        let dangerous = ComparisonBranch(reference: "refs/heads/-dangerous")
+        let branches = try await InspectorService.branches(at: repository.path)
+        try require(Set(branches.branches) == [main, dangerous] && branches.defaultBranch == main && branches.omitted == 0
+                    && branches.preferred(over: ComparisonBranch(reference: "refs/heads/gone")) == main && main.name == "main",
+                    "Comparison branches keep full references, exclude the current branch and default to main")
+        let limited = try await InspectorService.branches(at: repository.path, limit: 1)
+        try require(limited.branches.contains(main) && limited.branches.count <= 2 && limited.branches.count + limited.omitted == 2,
+                    "A long branch list is truncated but keeps the default branch")
+        let comparison = try await InspectorService.comparison(with: main, at: repository.path)
+        try require(comparison.commits == 1 && comparison.changes.map(\.path) == ["doomed.txt", "shared.txt"]
+                    && comparison.changes.map(\.status) == ["D", "M"], "Comparison lists committed changes since the merge base, without local edits")
+        let fromDangerous = try await InspectorService.comparison(with: dangerous, at: repository.path)
+        try require(fromDangerous.changes == comparison.changes, "Branch names starting with a dash are passed to Git as full references")
+        let scoped = try await InspectorService.comparedChanges(with: main, at: repository.path, paths: ["shared.txt"])
+        try require(scoped.map(\.path) == ["shared.txt"], "Remote diff validation only compares the requested path")
+        guard let shared = comparison.changes.first(where: { $0.path == "shared.txt" }) else { fatalError("Missing compared change") }
+        let diff = try await InspectorService.comparisonDiff(shared, base: main, at: repository.path)
+        try require(diff.sections.map(\.kind) == [.committed] && diff.onlySection?.additions == 1 && diff.onlySection?.deletions == 0,
+                    "Comparison diff shows the branch changes for one file")
+        for reference in ["--output=/tmp/agentui", "refs/heads/main..HEAD", "refs/heads/", "refs/tags/v1"] {
+            do {
+                _ = try await InspectorService.comparison(with: ComparisonBranch(reference: reference), at: repository.path)
+                throw WorkspaceError(message: "FAIL: comparison base \(reference) accepted")
+            } catch is ReadCommandError {}
+        }
+        print("PASS branch comparison lists and diffs changes against another branch")
     }
 }
 

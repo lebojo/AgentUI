@@ -301,9 +301,18 @@ import Observation
     func remote(_ snapshot: LocalGitSnapshot) async throws -> RemoteSnapshot {
         try await request(.github(terminal: terminal))
     }
-    func diff(_ change: GitChange, at root: String) async throws -> GitDiff {
-        let value: RemoteDiff = try await request(.diff(terminal: terminal, change: change))
+    func diff(_ change: GitChange, in scope: GitChangeScope, at root: String) async throws -> GitDiff {
+        let value: RemoteDiff = switch scope {
+        case .workingTree: try await request(.diff(terminal: terminal, change: change))
+        case .branch(let base): try await request(.comparisonDiff(terminal: terminal, base: base, change: change))
+        }
         return value.diff
+    }
+    func branches(at root: String) async throws -> GitBranchList {
+        try await request(.branches(terminal: terminal))
+    }
+    func comparison(with base: ComparisonBranch, at root: String) async throws -> BranchComparison {
+        try await request(.comparison(terminal: terminal, base: base))
     }
     func conversations(at path: String, fresh: Bool) async throws -> [AgentConversation] {
         try await request(.conversations(terminal: terminal, fresh: fresh))
