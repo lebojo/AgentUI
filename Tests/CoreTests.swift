@@ -384,6 +384,59 @@ import Foundation
         try require(AgentStatus(screen: ["› Ask Codex to do anything"], lastOutput: now.addingTimeInterval(-10), now: now) == .ready,
                     "A quiet agent without prompt is ready")
         print("PASS agent status")
+
+        let fm = FileManager.default
+        let sessionJournal = root.appendingPathComponent("claude/session.jsonl")
+        let subagents = sessionJournal.deletingPathExtension().appendingPathComponent("subagents")
+        try fm.createDirectory(at: subagents, withIntermediateDirectories: true)
+        try Data().write(to: sessionJournal)
+        let runStart = Date().addingTimeInterval(-60)
+        func spawn(_ id: String, metadata: String?, modified: Date, journal content: String = "{}\n") throws {
+            let journal = subagents.appendingPathComponent("agent-\(id).jsonl")
+            try Data(content.utf8).write(to: journal)
+            try fm.setAttributes([.modificationDate: modified], ofItemAtPath: journal.path)
+            if let metadata { try Data(metadata.utf8).write(to: subagents.appendingPathComponent("agent-\(id).meta.json")) }
+        }
+        try spawn("old", metadata: #"{"description":"Previous run"}"#, modified: runStart.addingTimeInterval(-10))
+        try spawn("running", metadata: #"{"description":"Explore the sidebar","agentType":"Explore"}"#, modified: Date())
+        try spawn("done", metadata: #"{"description":"  ","name":"code-review","finished":true}"#, modified: Date())
+        try spawn("stale", metadata: #"{"description":"Long finished","finished":true}"#, modified: runStart.addingTimeInterval(1))
+        try spawn("stopped", metadata: #"{"description":"Cancelled","stoppedByUser":true,"finished":true}"#, modified: Date())
+        try spawn("bare", metadata: nil, modified: Date())
+        try spawn("answered", metadata: #"{"description":"Legacy background agent"}"#, modified: Date(),
+                  journal: #"{"type":"assistant","message":{"stop_reason":"tool_use"}}"# + "\n" + #"{"type":"user","message":{}}"# + "\n"
+                    + #"{"type":"assistant","message":{"stop_reason":"end_turn"}}"# + "\n" + #"{"type":"attachment"}"# + "\n")
+        try Data("{}".utf8).write(to: subagents.appendingPathComponent("agent-running.forked-skill.json"))
+        let process = AgentProcess(agent: .claude, startedAt: runStart, directory: root.path, sessionID: "session", transcriptPath: sessionJournal.path)
+        let catalog = ClaudeSubagents()
+        let listed = Dictionary(uniqueKeysWithValues: await catalog.list(of: process, now: runStart.addingTimeInterval(ClaudeSubagents.finishedVisibility + 30))
+            .map { ($0.journal.lastPathComponent, $0) })
+        try require(Set(listed.keys) == ["agent-running.jsonl", "agent-done.jsonl", "agent-stale.jsonl", "agent-stopped.jsonl", "agent-bare.jsonl", "agent-answered.jsonl"],
+                    "List the subagents of the current run only")
+        try require(listed["agent-running.jsonl"]?.title == "Explore the sidebar" && listed["agent-running.jsonl"]?.status == .working
+                    && listed["agent-done.jsonl"]?.title == "code-review" && listed["agent-done.jsonl"]?.status == .done
+                    && listed["agent-stopped.jsonl"]?.status == .stopped && listed["agent-bare.jsonl"]?.status == .working
+                    && listed["agent-answered.jsonl"]?.status == .done,
+                    "Read subagent titles and statuses from their metadata")
+        try require(listed["agent-done.jsonl"]?.isVisible == true && listed["agent-stale.jsonl"]?.isVisible == false
+                    && listed["agent-running.jsonl"]?.isVisible == true, "Finished subagents leave the sidebar after a while, running ones stay")
+        let abandoned = await catalog.list(of: process, now: Date().addingTimeInterval(ClaudeSubagents.abandonment + 60))
+        try require(abandoned.first { $0.journal.lastPathComponent == "agent-bare.jsonl" }?.status == .stopped
+                    && abandoned.allSatisfy { !$0.isVisible }, "A silent unfinished subagent is eventually treated as stopped")
+        let fresh = await ClaudeSubagents().list(of: process).map(\.id)
+        let cached = await catalog.list(of: process).map(\.id)
+        try require(cached == fresh
+                    && Set(listed.values.map(\.id)).count == listed.count, "Subagent identifiers are stable and distinct")
+        let runningMetadata = subagents.appendingPathComponent("agent-running.meta.json")
+        try Data(#"{"description":"Explore the sidebar","finished":true}"#.utf8).write(to: runningMetadata)
+        try fm.setAttributes([.modificationDate: Date().addingTimeInterval(5)], ofItemAtPath: runningMetadata.path)
+        let updated = await catalog.list(of: process)
+        try require(updated.first { $0.journal.lastPathComponent == "agent-running.jsonl" }?.status == .done,
+                    "Cached subagents pick up metadata changes")
+        let codex = AgentProcess(agent: .codex, startedAt: runStart, directory: root.path, sessionID: "session", transcriptPath: sessionJournal.path)
+        let codexSubagents = await catalog.list(of: codex)
+        try require(codexSubagents.isEmpty, "Only Claude sessions have subagent journals")
+        print("PASS Claude subagents")
     }
 
     static func agentChild(of pid: Int32) -> Int32 {

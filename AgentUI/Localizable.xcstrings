@@ -1291,6 +1291,16 @@
         }
       }
     },
+    "Close Subagent" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer le sous-agent"
+          }
+        }
+      }
+    },
     "Close Terminal" : {
       "localizations" : {
         "fr" : {
@@ -4098,6 +4108,16 @@
         }
       }
     },
+    "Show the parent terminal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le terminal parent"
+          }
+        }
+      }
+    },
     "Show usage details" : {
       "localizations" : {
         "fr" : {
@@ -4294,6 +4314,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ne plus lire ce dossier"
+          }
+        }
+      }
+    },
+    "Stopped" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêté"
+          }
+        }
+      }
+    },
+    "Subagent" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sous-agent"
           }
         }
       }

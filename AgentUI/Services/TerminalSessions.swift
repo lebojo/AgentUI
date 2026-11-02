@@ -28,6 +28,7 @@ import Observation
     private(set) var agent: AgentProcess?
     private(set) var agentKind: ConversationAgent?
     private(set) var agentStatus: AgentStatus?
+    private(set) var subagents: [Subagent] = []
     @ObservationIgnored private(set) var hadAgent = false
     @ObservationIgnored var resume: AgentResume?
 
@@ -202,6 +203,7 @@ import Observation
         agent = nil
         agentKind = nil
         agentStatus = nil
+        subagents = []
         journalMonitor.attach(nil)
         self.exitCode = exitCode.flatMap { $0 & 0x7f == 0 ? ($0 >> 8) & 0xff : nil }
     }
@@ -210,8 +212,9 @@ import Observation
         if self.branch != branch { self.branch = branch }
     }
 
-    func updateAgent(_ process: AgentProcess?) {
+    func updateAgent(_ process: AgentProcess?, subagents: [Subagent]) {
         let running = hasExited ? nil : process?.keepingTranscript(of: agent)
+        let children = running == nil ? [] : subagents
         let status = running.map { process in
             process.claudeStatus.flatMap(AgentStatus.init(claudeStatus:))
                 ?? AgentStatus(screen: view.visibleLines, lastOutput: view.lastOutput)
@@ -221,6 +224,7 @@ import Observation
         if agentChanged { agent = running }
         if agentKind != running?.agent { agentKind = running?.agent }
         if agentStatus != status { agentStatus = status }
+        if self.subagents != children { self.subagents = children }
         if chatViewers > 0 || chatRelease != nil { journalMonitor.attach(running?.journal) }
         if agentChanged { scheduleTranscriptRefresh() }
     }
@@ -242,6 +246,7 @@ import Observation
     @ObservationIgnored private var refreshingAgents = false
     @ObservationIgnored private var agentWatchers = 0
     @ObservationIgnored private var agentPolling: Task<Void, Never>?
+    @ObservationIgnored private let subagentCatalog = ClaudeSubagents()
 
     func branch(for terminalID: UUID, initialPath: String) -> GitBranch? {
         if let session = entries[terminalID] { return session.branch }
@@ -325,13 +330,21 @@ import Observation
             session.hasExited ? nil : (id: id, identity: session.identity, pid: session.view.process.shellPid,
                                        directory: session.currentDirectory, previous: session.agent)
         }
+        let catalog = subagentCatalog
         let found = await Task.detached(priority: .utility) {
-            shells.reduce(into: [UUID: AgentProcess]()) { result, shell in
-                result[shell.identity] = AgentProcess.find(under: shell.pid, fallbackDirectory: shell.directory, previous: shell.previous)
+            let now = Date.now
+            var result: [UUID: (process: AgentProcess, subagents: [Subagent])] = [:]
+            for shell in shells {
+                guard let process = AgentProcess.find(under: shell.pid, fallbackDirectory: shell.directory, previous: shell.previous) else { continue }
+                result[shell.identity] = (process, await catalog.list(of: process.keepingTranscript(of: shell.previous), now: now))
             }
+            return result
         }.value
         guard !Task.isCancelled else { return }
-        for session in entries.values { session.updateAgent(found[session.identity]) }
+        for session in entries.values {
+            let agent = found[session.identity]
+            session.updateAgent(agent?.process, subagents: agent?.subagents ?? [])
+        }
         onAgentsRefreshed?()
     }
 
@@ -373,6 +386,12 @@ import Observation
     var runningAgents: [UUID: ConversationAgent] { entries.compactMapValues(\.agentKind) }
 
     func session(_ id: UUID) -> TerminalSession? { entries[id] }
+    func subagent(_ id: UUID?) -> SubagentSelection? {
+        guard let id else { return nil }
+        return entries.lazy.compactMap { terminalID, session in
+            session.subagents.first { $0.id == id }.map { SubagentSelection(terminalID: terminalID, subagent: $0) }
+        }.first
+    }
     func isRunning(_ id: UUID) -> Bool { entries[id]?.hasExited == false }
     @discardableResult func start(_ context: TerminalContext, command: [String] = []) -> TerminalSession {
         if let session = entries[context.terminal.id] { return session }

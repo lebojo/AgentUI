@@ -4,17 +4,21 @@ import Observation
 @MainActor @Observable final class WorkspaceStore {
     private(set) var folders: [ProjectFolder] = []
     private(set) var projects: [Project] = [] {
-        didSet { selectedContext = context(for: selection) }
+        didSet { updateSelectedContext() }
     }
     private var collapsed: Set<UUID> = []
     var selection: UUID? {
         didSet {
-            selectedContext = context(for: selection)
-            if oldValue != selection { save() }
+            let persisted = persistedSelection
+            selectedSubagent = sessions.subagent(selection)
+            updateSelectedContext()
+            if oldValue != selection, persisted != persistedSelection { save() }
         }
     }
     private(set) var selectedContext: TerminalContext?
-    var state: Workspace { Workspace(folders: folders, projects: projects, selection: selection, collapsed: collapsed) }
+    private(set) var selectedSubagent: SubagentSelection?
+    private var persistedSelection: UUID? { selectedSubagent?.terminalID ?? selection }
+    var state: Workspace { Workspace(folders: folders, projects: projects, selection: persistedSelection, collapsed: collapsed) }
     private(set) var persistenceError: String?
     private(set) var hasUnsavedChanges = false
     @ObservationIgnored private var revision: UInt64 = 0
@@ -61,6 +65,24 @@ import Observation
     }
 
     var terminalCount: Int { projects.flatMap(\.worktrees).flatMap(\.terminals).count }
+
+    private func updateSelectedContext() {
+        selectedContext = context(for: persistedSelection)
+    }
+
+    private func refreshSelectedSubagent() {
+        guard let current = selectedSubagent else { return }
+        guard let latest = sessions.subagent(current.subagent.id) else {
+            selection = current.terminalID
+            return
+        }
+        if latest != current { selectedSubagent = latest }
+    }
+
+    func leaveSubagent() {
+        guard let current = selectedSubagent else { return }
+        selection = current.terminalID
+    }
 
     func context(for terminalID: UUID?) -> TerminalContext? {
         TerminalContext(terminalID: terminalID, in: projects)
@@ -334,7 +356,10 @@ import Observation
         if changed { save() }
     }
 
-    func recordAgentSessions() { applyAgentResumes(sessions.agentResumes()) }
+    func recordAgentSessions() {
+        refreshSelectedSubagent()
+        applyAgentResumes(sessions.agentResumes())
+    }
 
     func applyAgentResumes(_ resumes: [UUID: AgentResume?]) {
         guard !resumes.isEmpty else { return }
@@ -473,6 +498,7 @@ import Observation
         let previous = context(for: id)
         let neighbour = worktree(containing: id)?.layout(containing: id)?.neighbour(of: id)
         sessions.close(id)
+        collapsed.remove(id)
         for p in projects.indices {
             for w in projects[p].worktrees.indices {
                 projects[p].worktrees[w].terminals.removeAll { $0.id == id }
@@ -480,7 +506,7 @@ import Observation
                     .compactMap { $0.removing(id) }.filter(\.isSplit)
             }
         }
-        if selection == id {
+        if selection == id || selectedSubagent?.terminalID == id {
             let project = projects.first { $0.id == previous?.project.id }
             selection = neighbour
                 ?? project?.worktrees.first(where: { $0.id == previous?.worktree.id })?.terminals.first?.id

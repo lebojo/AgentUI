@@ -1,7 +1,12 @@
 import Foundation
 
 struct ClaudeChatDecoder: ChatJournalDecoder {
+    private let includesSidechains: Bool
     private var log = ChatMessageLog()
+
+    init() { includesSidechains = false }
+
+    init(includesSidechains: Bool) { self.includesSidechains = includesSidechains }
 
     var messages: [SessionMessage] { log.messages }
 
@@ -9,7 +14,7 @@ struct ClaudeChatDecoder: ChatJournalDecoder {
 
     mutating func consume(_ line: Data, offset: UInt64) {
         guard let record = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
-              record["isSidechain"] as? Bool != true else { return }
+              includesSidechains || record["isSidechain"] as? Bool != true else { return }
         let role = record["type"] as? String
         guard role == "user" || role == "assistant", let message = record["message"] as? [String: Any] else { return }
         let origin = (record["origin"] as? [String: Any])?["kind"] as? String
@@ -49,4 +54,16 @@ struct ClaudeChatDecoder: ChatJournalDecoder {
     private static func isTerminalMarkup(_ text: String) -> Bool {
         ["<local-command-", "<command-name>", "<system-reminder>", "<task-notification>"].contains { text.hasPrefix($0) }
     }
+}
+
+struct ClaudeSubagentChatDecoder: ChatJournalDecoder {
+    private var decoder = ClaudeChatDecoder(includesSidechains: true)
+
+    var messages: [SessionMessage] { decoder.messages }
+
+    mutating func trim() { decoder.trim() }
+
+    mutating func consume(_ line: Data, offset: UInt64) { decoder.consume(line, offset: offset) }
+
+    mutating func consumeOversized(_ head: Data) { decoder.consumeOversized(head) }
 }

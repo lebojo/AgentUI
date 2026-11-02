@@ -385,6 +385,11 @@
 					UsageWindowRow.swift,
 					WorkspaceWelcomeView.swift,
 					"WorkspaceStore+OpenTerminal.swift",
+					ClaudeSubagents.swift,
+					SidebarSubagentRow.swift,
+					SubagentDetail.swift,
+					SubagentHeader.swift,
+					SubagentTranscript.swift,
 				);
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "Mobile*.swift";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -534,6 +539,11 @@
 					UsageWindowRow.swift,
 					WorkspaceWelcomeView.swift,
 					"WorkspaceStore+OpenTerminal.swift",
+					ClaudeSubagents.swift,
+					SidebarSubagentRow.swift,
+					SubagentDetail.swift,
+					SubagentHeader.swift,
+					SubagentTranscript.swift,
 				);
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "Mobile*.swift";
 				GENERATE_INFOPLIST_FILE = YES;

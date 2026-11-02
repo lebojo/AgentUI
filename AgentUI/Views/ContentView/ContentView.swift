@@ -17,7 +17,9 @@ struct ContentView: View {
                 .disabled(store.isReadOnly)
         } detail: {
             Group {
-                if let context = store.selectedContext {
+                if let context = store.selectedContext, let selected = store.selectedSubagent {
+                    SubagentDetail(store: store, context: context, subagent: selected.subagent)
+                } else if let context = store.selectedContext {
                     TerminalDetail(store: store, context: context)
                 } else {
                     WorkspaceWelcomeView(sheet: $sheet, store: store)

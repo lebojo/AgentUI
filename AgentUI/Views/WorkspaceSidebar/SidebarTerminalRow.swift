@@ -5,14 +5,18 @@ struct SidebarTerminalRow: View {
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
 
-    let store: WorkspaceStore
+    @Bindable var store: WorkspaceStore
+
     let terminal: TerminalRecord
     let worktree: Worktree
 
     private var session: TerminalSession? { store.sessions.session(terminal.id) }
     private var branch: GitBranch? { store.sessions.branch(for: terminal.id, initialPath: worktree.path) }
+    private var subagents: [Subagent] {
+        (session?.subagents ?? []).filter { $0.isVisible || $0.id == store.selection }
+    }
 
-    var body: some View {
+    private var row: some View {
         HStack(spacing: Spacing.s) {
             TerminalIcon(agent: session?.agentKind)
             VStack(alignment: .leading, spacing: Spacing.xxs) {
@@ -27,7 +31,7 @@ struct SidebarTerminalRow: View {
             }
             Spacer(minLength: Spacing.xs)
             if let status = session?.agentStatus {
-                AgentStatusBadge(status: status)
+                AgentStatusBadge(title: status.title, color: status.color)
             } else if let session {
                 Image(systemName: session.hasExited ? "circle" : "circle.fill")
                     .font(Typography.statusDot).foregroundStyle(session.hasExited ? Palette.textSecondary : Palette.success)
@@ -50,6 +54,20 @@ struct SidebarTerminalRow: View {
         }
         .swipeActions(edge: .trailing) {
             RemovalButton(pending: $removal, removal: .terminal(terminal.id), placement: .swipe)
+        }
+    }
+
+    var body: some View {
+        if subagents.isEmpty {
+            row
+        } else {
+            DisclosureGroup(isExpanded: $store[expanded: terminal.id]) {
+                ForEach(subagents) { subagent in
+                    SidebarSubagentRow(subagent: subagent)
+                }
+            } label: {
+                row
+            }
         }
     }
 }

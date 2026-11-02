@@ -93,6 +93,15 @@ import Foundation
         try require(decoder.messages.count == 3, "Background task notifications are not shown as user messages")
         print("PASS Claude roles, stable IDs, tool results, meta filtering and remote metadata deltas")
 
+        let sidechain = try line(["type": "user", "uuid": "s1", "isSidechain": true, "agentId": "a1", "message": ["content": "Audit the release workflow"]])
+        var session = ClaudeChatDecoder()
+        session.consume(sidechain, offset: 0)
+        var subagent = ClaudeSubagentChatDecoder()
+        subagent.consume(sidechain, offset: 0)
+        try require(session.messages.isEmpty && subagent.messages.map(\.text) == ["Audit the release workflow"],
+                    "Sidechain records stay out of the session but form the subagent conversation")
+        print("PASS Claude subagent journals")
+
         var codex = CodexChatDecoder()
         for (offset, line) in try codexRollout().enumerated() { codex.consume(line, offset: UInt64(offset)) }
         try require(codex.messages.map(\.kind) == [.input, .tool, .tool, .assistant], "Codex user, tool calls and reply, without injected context or events")

@@ -9,6 +9,7 @@ import Observation
     func isRunning(_ id: UUID) -> Bool { true }
     var onAgentsRefreshed: (() -> Void)?
     func agentResumes() -> [UUID: AgentResume?] { [:] }
+    func subagent(_ id: UUID?) -> SubagentSelection? { nil }
 }
 
 private final class ChangeFlag: @unchecked Sendable {

@@ -3,9 +3,11 @@ import Foundation
 struct AgentJournal: Equatable, Sendable {
     let source: SessionChatSource
     let url: URL
+    var isSubagent = false
 
     func makeReader() -> @Sendable (URL) async -> [SessionMessage] {
         switch source {
+        case .claude where isSubagent: Self.reader(decoding: ClaudeSubagentChatDecoder.self)
         case .claude: Self.reader(decoding: ClaudeChatDecoder.self)
         case .codex: Self.reader(decoding: CodexChatDecoder.self)
         case .copilot: Self.reader(decoding: CopilotChatDecoder.self)
