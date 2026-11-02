@@ -28,12 +28,15 @@ import AppKit
     }
 
     @objc func close(_ sender: Any?) {
-        if canCloseTerminal, let id = store.selection { store.closeTerminal(id) }
+        if canCloseTerminal, store.selectedSubagent != nil { store.leaveSubagent() }
+        else if canCloseTerminal, let id = store.selectedContext?.terminal.id { store.closeTerminal(id) }
         else { NSApp.keyWindow?.performClose(sender) }
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        menuItem.title = canCloseTerminal ? String(localized: "Close Terminal") : String(localized: "Close Window")
+        menuItem.title = if !canCloseTerminal { String(localized: "Close Window") }
+            else if store.selectedSubagent != nil { String(localized: "Close Subagent") }
+            else { String(localized: "Close Terminal") }
         return NSApp.keyWindow != nil
     }
 
