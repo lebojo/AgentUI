@@ -14,7 +14,16 @@ import AppKit
     func remote(_ snapshot: LocalGitSnapshot) async throws -> RemoteSnapshot {
         try await InspectorService.remote(for: snapshot)
     }
-    func diff(_ change: GitChange, at root: String) async throws -> GitDiff { try await InspectorService.diff(change, at: root) }
+    func diff(_ change: GitChange, in scope: GitChangeScope, at root: String) async throws -> GitDiff {
+        switch scope {
+        case .workingTree: try await InspectorService.diff(change, at: root)
+        case .branch(let base): try await InspectorService.comparisonDiff(change, base: base, at: root)
+        }
+    }
+    func branches(at root: String) async throws -> GitBranchList { try await InspectorService.branches(at: root) }
+    func comparison(with base: ComparisonBranch, at root: String) async throws -> BranchComparison {
+        try await InspectorService.comparison(with: base, at: root)
+    }
     func conversations(at path: String, fresh: Bool) async throws -> [AgentConversation] {
         await ConversationIndex.load(at: path, runningMaximumAge: fresh ? .zero : .seconds(10))
     }

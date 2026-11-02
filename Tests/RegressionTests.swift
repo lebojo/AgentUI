@@ -30,7 +30,7 @@ import Foundation
         let previewFile = root.appendingPathComponent("preview.txt")
         try "hello\n".write(to: previewFile, atomically: true, encoding: .utf8)
         let previews = InspectorPreviews()
-        func loadPreview() async { await previews.load(readFile: { try await InspectorService.textFile($0) }, readDiff: { try await InspectorService.diff($0, at: $1) }) }
+        func loadPreview() async { await previews.load(readFile: { try await InspectorService.textFile($0) }, readDiff: { change, _, root in try await InspectorService.diff(change, at: root) }) }
         previews.open(previewFile)
         previews.diff(change, at: repo.path)
         try CoreTests.require(previews.isLoading && previews.request == .file(previewFile), "A second preview request is ignored while one is loading")

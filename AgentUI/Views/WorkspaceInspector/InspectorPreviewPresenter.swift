@@ -8,7 +8,7 @@ struct InspectorPreviewPresenter: ViewModifier {
     func body(content: Content) -> some View {
         content
             .task(id: previews.request) {
-                await previews.load(readFile: { try await source.textFile($0) }, readDiff: { try await source.diff($0, at: $1) })
+                await previews.load(readFile: { try await source.textFile($0) }, readDiff: { try await source.diff($0, in: $1, at: $2) })
             }
             .sheet(item: $previews.current) { preview in
                 switch preview {

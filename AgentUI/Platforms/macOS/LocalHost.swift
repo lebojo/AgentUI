@@ -411,6 +411,23 @@ import Observation
             guard let actual = local.changes.first(where: { $0.path == change.path }) else { throw RemoteError(message: String(localized: "The file no longer has changes.")) }
             _ = try validatedURL(URL(fileURLWithPath: local.root).appendingPathComponent(actual.path).path, within: local.root)
             return try await .success(RemoteDiff(InspectorService.diff(actual, at: local.root)))
+        case .branches(let id):
+            return try await .success(InspectorService.branches(at: InspectorService.root(at: context(id).worktree.path)))
+        case .comparison(let id, let base):
+            let root = try await comparableRoot(terminal: id, base: base)
+            let comparison = try await InspectorService.comparison(with: base, at: root)
+            return try .fitting(comparison.changes) {
+                BranchComparison(base: base, commits: comparison.commits, changes: $0, omittedChanges: $1)
+            }
+        case .comparisonDiff(let id, let base, let change):
+            let root = try await comparableRoot(terminal: id, base: base)
+            let changes = try await InspectorService.comparedChanges(with: base, at: root,
+                                                                     paths: [change.path] + (change.originalPath.map { [$0] } ?? []))
+            guard let actual = changes.first(where: { $0.path == change.path }) else {
+                throw RemoteError(message: String(localized: "The file no longer differs from this branch."))
+            }
+            _ = try validatedURL(URL(fileURLWithPath: root).appendingPathComponent(actual.path).path, within: root)
+            return try await .success(RemoteDiff(InspectorService.comparisonDiff(actual, base: base, at: root)))
         case .conversations(let id, let fresh):
             return try await .success(ConversationIndex.load(at: context(id).worktree.path, runningMaximumAge: fresh ? .zero : .seconds(10)))
         case .launchAgent(let id, let agent):
@@ -444,6 +461,15 @@ import Observation
         _ = try context(id)
         guard let context = store.startableContext(for: id) else { throw RemoteError(message: String(localized: "This worktree is being deleted.")) }
         return store.sessions.start(context)
+    }
+
+    private func comparableRoot(terminal: UUID, base: ComparisonBranch) async throws -> String {
+        let root = try await InspectorService.root(at: context(terminal).worktree.path)
+        guard base.isBranchReference,
+              (try? await ReadCommand.run(URL(fileURLWithPath: "/usr/bin/git"), ["show-ref", "--verify", "--quiet", base.reference], at: root)) != nil else {
+            throw RemoteError(message: String(localized: "This branch is no longer available."))
+        }
+        return root
     }
 
     private func validatedURL(_ path: String, terminal: UUID) throws -> URL {

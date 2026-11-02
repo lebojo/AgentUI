@@ -34,9 +34,10 @@ struct GitDiff: Identifiable, Sendable {
 
 struct GitDiffSection: Identifiable, Sendable {
     enum Kind: String, Codable, Sendable {
-        case staged, unstaged, untracked
+        case staged, unstaged, untracked, committed
         var title: String {
             switch self {
+            case .committed: String(localized: "Branch Changes")
             case .staged: String(localized: "Staged Changes")
             case .unstaged: String(localized: "Unstaged Changes")
             case .untracked: String(localized: "New Untracked File")
