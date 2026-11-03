@@ -19,12 +19,15 @@ enum WorkspaceDisk {
     }
 
     static var testWorktreesDirectory: URL? {
+        usesTestState ? applicationDirectory.appendingPathComponent("Worktrees", isDirectory: true) : nil
+    }
+
+    static var usesTestState: Bool {
         #if DEBUG
-        if ProcessInfo.processInfo.environment["HEKA_STATE_DIRECTORY"] != nil {
-            return applicationDirectory.appendingPathComponent("Worktrees", isDirectory: true)
-        }
+        ProcessInfo.processInfo.environment["HEKA_STATE_DIRECTORY"] != nil
+        #else
+        false
         #endif
-        return nil
     }
 
     static let worktreesDirectoryKey = "settings.worktreesDirectory"
@@ -42,15 +45,29 @@ enum WorkspaceDisk {
         (defaults.stringArray(forKey: scannedWorktreesDirectoriesKey) ?? []).compactMap(directory)
     }
 
-    static let legacyWorktreesDirectoryCheckedKey = "settings.legacyWorktreesDirectoryChecked"
+    static let legacyWorktreesDirectories = [
+        (name: "agentui", checkedKey: "settings.legacyWorktreesDirectoryChecked"),
+        (name: ".agentui", checkedKey: "settings.hiddenLegacyWorktreesDirectoryChecked"),
+    ]
 
-    static var legacyWorktreesDirectory: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("agentui", isDirectory: true)
+    static func scanLegacyWorktreesDirectories(in defaults: UserDefaults) {
+        for legacy in legacyWorktreesDirectories {
+            scanLegacyWorktreesDirectory(legacyWorktreesDirectory(named: legacy.name), checkedKey: legacy.checkedKey, in: defaults)
+        }
     }
 
-    static func scanLegacyWorktreesDirectory(in defaults: UserDefaults, legacy: URL = legacyWorktreesDirectory) {
-        guard !defaults.bool(forKey: legacyWorktreesDirectoryCheckedKey) else { return }
-        defaults.set(true, forKey: legacyWorktreesDirectoryCheckedKey)
+    static func isLegacyWorktreesDirectory(_ path: String) -> Bool {
+        guard let url = directory(path) else { return false }
+        return legacyWorktreesDirectories.contains { legacyWorktreesDirectory(named: $0.name).standardizedFileURL == url }
+    }
+
+    private static func legacyWorktreesDirectory(named name: String) -> URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(name, isDirectory: true)
+    }
+
+    static func scanLegacyWorktreesDirectory(_ legacy: URL, checkedKey: String, in defaults: UserDefaults) {
+        guard !defaults.bool(forKey: checkedKey) else { return }
+        defaults.set(true, forKey: checkedKey)
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: legacy.path, isDirectory: &isDirectory), isDirectory.boolValue else { return }
         let scanned = defaults.stringArray(forKey: scannedWorktreesDirectoriesKey) ?? []
@@ -65,9 +82,12 @@ enum WorkspaceDisk {
         return URL(fileURLWithPath: expanded, isDirectory: true).standardizedFileURL
     }
 
-    private static var defaultApplicationDirectory: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Heka", isDirectory: true)
+    static var legacyApplicationDirectory: URL { applicationSupport(named: "AgentUI") }
+
+    private static var defaultApplicationDirectory: URL { applicationSupport(named: "Heka") }
+
+    private static func applicationSupport(named name: String) -> URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent(name, isDirectory: true)
     }
 
     static func load(from url: URL) throws -> Workspace {

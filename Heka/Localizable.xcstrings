@@ -224,12 +224,42 @@
         }
       }
     },
+    "AgentUI is still open. If it asks to confirm quitting, answer it, then try again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AgentUI est toujours ouvert. S’il demande de confirmer la fermeture, réponds-lui, puis réessaie."
+          }
+        }
+      }
+    },
+    "Heka already had its own copy of these items or couldn’t move them. They stay in %@: %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heka avait déjà ces éléments ou n’a pas pu les déplacer. Ils restent dans %1$@ : %2$@."
+          }
+        }
+      }
+    },
     "Heka didn’t respond within %lld seconds. The operation may still be running; check heka list before trying again." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Heka n’a pas répondu sous %lld secondes. L’opération peut continuer ; vérifie heka list avant de réessayer."
+          }
+        }
+      }
+    },
+    "Heka takes over the projects, terminals and settings of AgentUI, which must be closed while they move." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heka reprend les projets, terminaux et réglages d’AgentUI, qui doit être fermé pendant le transfert."
           }
         }
       }
@@ -854,6 +884,36 @@
         }
       }
     },
+    "Quit AgentUI" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter AgentUI"
+          }
+        }
+      }
+    },
+    "Quit AgentUI to move it into Heka?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter AgentUI pour le transférer dans Heka ?"
+          }
+        }
+      }
+    },
+    "Quit Heka" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter Heka"
+          }
+        }
+      }
+    },
     "Recreate the deleted %@/%@ branch from this branch and track it" : {
       "localizations" : {
         "fr" : {
@@ -890,6 +950,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Envoyé à l’agent par défaut par « Générer les commits avec l’IA » dans l’inspecteur Git."
+          }
+        }
+      }
+    },
+    "Some AgentUI data stayed behind" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Des données d’AgentUI sont restées en place"
           }
         }
       }

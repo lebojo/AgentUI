@@ -202,6 +202,8 @@ Communication uses a request mailbox private to the app instance, with no networ
 | Organization (projects, folders, terminals) | `~/Library/Application Support/Heka/workspace.json` |
 | Worktrees created by the app | `~/.heka/<project>-<branch>/` (configurable in Settings › General) |
 
+The app was called AgentUI before. On first launch, Heka asks to quit AgentUI if it is open, takes over its settings without replacing Heka's own, and moves the content of `~/Library/Application Support/AgentUI` into its own folder; an item Heka already has stays in the AgentUI folder and is listed in a message. Worktrees in `~/.agentui` stay where they are and appear under **Other Worktree Folders**. The former `agentui` command and skill are not migrated: install `heka` and its skill from **Settings → Agents**, and pair companion devices again.
+
 Saves are coalesced during interactions, then written off the UI thread. A banner reports unsaved changes and offers a retry. Quitting waits for the last write; a save failure cancels the quit to keep changes in memory. Removing a project from the UI deletes no files, branches or worktrees.
 
 Sessions stay alive when switching terminals; their content stays in memory. Quitting the app stops the processes, after confirmation. On relaunch, names and the hierarchy come back; shells restart on selection, without automatically replaying previous agent commands.

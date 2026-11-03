@@ -16,7 +16,7 @@ xcrun swiftc "${swift_flags[@]}" \
   Heka/Models/InspectorStore.swift Heka/Models/GitActionQueue.swift Heka/Models/GitActionQueues.swift Heka/Models/InspectorPreviews.swift Heka/Services/WorkspaceWriter.swift \
   Heka/Models/UsageModels.swift Heka/Models/UsageStore.swift Heka/Services/UsageService.swift \
   Heka/Models/AgentConversation.swift Heka/Models/AgentLaunch.swift Heka/Models/TerminalTheme.swift Heka/Models/Removal.swift Heka/Models/RemovalConfirmations.swift Heka/Models/TerminalAppearance.swift \
-  Heka/Models/InstallationStatus.swift Heka/Platforms/macOS/TerminalKeyRoute.swift Heka/Services/AgentSkillInstaller.swift Heka/Services/CommandLineInstaller.swift Heka/Services/LoginShell.swift \
+  Heka/Models/InstallationStatus.swift Heka/Platforms/macOS/TerminalKeyRoute.swift Heka/Services/AgentSkillInstaller.swift Heka/Services/CommandLineInstaller.swift Heka/Services/AgentUIMigration.swift Heka/Services/LoginShell.swift \
   Heka/Services/AgentProcess.swift Heka/Services/ConversationTranscripts.swift Heka/Models/AgentStatus.swift \
   Heka/Services/ClaudeSubagents.swift Heka/Models/Subagent.swift "Heka/Extensions/String+HomeAbbreviation.swift" \
   Tests/RegressionTests.swift Tests/RefreshTests.swift Tests/InspectorTests.swift Tests/UsageTests.swift Tests/SettingsTests.swift Tests/CoreTests.swift -o "$test_binary"

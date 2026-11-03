@@ -41,17 +41,18 @@ enum SettingsTests {
         let legacySuite = "Heka.SettingsTests.Legacy.\(UUID().uuidString)"
         let legacyDefaults = UserDefaults(suiteName: legacySuite)!
         defer { legacyDefaults.removePersistentDomain(forName: legacySuite) }
+        let legacyCheckedKey = "settings.legacyWorktreesDirectoryChecked"
         let legacy = FileManager.default.temporaryDirectory.appendingPathComponent("heka-legacy-\(UUID().uuidString)")
-        WorkspaceDisk.scanLegacyWorktreesDirectory(in: legacyDefaults, legacy: legacy)
+        WorkspaceDisk.scanLegacyWorktreesDirectory(legacy, checkedKey: legacyCheckedKey, in: legacyDefaults)
         try CoreTests.require(WorkspaceDisk.storedScannedWorktreesDirectories(in: legacyDefaults).isEmpty, "A missing legacy folder is not scanned")
-        legacyDefaults.removeObject(forKey: WorkspaceDisk.legacyWorktreesDirectoryCheckedKey)
+        legacyDefaults.removeObject(forKey: legacyCheckedKey)
         try FileManager.default.createDirectory(at: legacy, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: legacy) }
-        WorkspaceDisk.scanLegacyWorktreesDirectory(in: legacyDefaults, legacy: legacy)
+        WorkspaceDisk.scanLegacyWorktreesDirectory(legacy, checkedKey: legacyCheckedKey, in: legacyDefaults)
         try CoreTests.require(WorkspaceDisk.storedScannedWorktreesDirectories(in: legacyDefaults).map(\.path) == [legacy.standardizedFileURL.path],
                               "Worktrees left in the former ~/agentui folder keep being found")
         legacyDefaults.removeObject(forKey: WorkspaceDisk.scannedWorktreesDirectoriesKey)
-        WorkspaceDisk.scanLegacyWorktreesDirectory(in: legacyDefaults, legacy: legacy)
+        WorkspaceDisk.scanLegacyWorktreesDirectory(legacy, checkedKey: legacyCheckedKey, in: legacyDefaults)
         try CoreTests.require(WorkspaceDisk.storedScannedWorktreesDirectories(in: legacyDefaults).isEmpty, "A removed legacy folder doesn’t come back")
         print("PASS worktree folder settings")
 
@@ -225,5 +226,39 @@ enum SettingsTests {
         catch let error as WorkspaceError { try CoreTests.require(error.message.contains("Applications"), "A translocated app is never linked") }
         try CoreTests.require(translocated.status == .notInstalled, "A refused installation leaves nothing behind")
         print("PASS agent command installer")
+
+        let migrationSuite = "Heka.SettingsTests.Migration.\(UUID().uuidString)"
+        let migrationDefaults = UserDefaults(suiteName: migrationSuite)!
+        defer { migrationDefaults.removePersistentDomain(forName: migrationSuite) }
+        let scannedKey = WorkspaceDisk.scannedWorktreesDirectoriesKey
+        migrationDefaults.set("kept", forKey: "existing")
+        migrationDefaults.set(["/heka", "/both"], forKey: scannedKey)
+        AgentUIMigration.importSettings(from: ["existing": "legacy", "imported": 3, scannedKey: ["/both", "/agentui"], WorkspaceDisk.worktreesDirectoryKey: "~/.agentui/"],
+                                        into: migrationDefaults)
+        try CoreTests.require(migrationDefaults.string(forKey: "existing") == "kept" && migrationDefaults.integer(forKey: "imported") == 3,
+                              "AgentUI settings fill in missing Heka settings only")
+        try CoreTests.require(migrationDefaults.stringArray(forKey: scannedKey) == ["/heka", "/both", "/agentui"], "Other worktree folders of both apps are kept")
+        try CoreTests.require(migrationDefaults.object(forKey: WorkspaceDisk.worktreesDirectoryKey) == nil, "New worktrees no longer go to the former ~/.agentui folder")
+        AgentUIMigration.importSettings(from: [WorkspaceDisk.worktreesDirectoryKey: "~/Worktrees"], into: migrationDefaults)
+        try CoreTests.require(migrationDefaults.string(forKey: WorkspaceDisk.worktreesDirectoryKey) == "~/Worktrees", "A worktree folder of the user's own is kept")
+        let legacyState = home.appending(path: "Application Support/AgentUI")
+        let state = home.appending(path: "Application Support/Heka")
+        try CoreTests.require(AgentUIMigration.moveContents(of: legacyState, to: state).isEmpty, "Nothing to move leaves nothing behind")
+        try FileManager.default.createDirectory(at: legacyState.appending(path: "Instances"), withIntermediateDirectories: true)
+        try Data("{}".utf8).write(to: legacyState.appending(path: "workspace.json"))
+        try FileManager.default.createDirectory(at: state.appending(path: "Instances"), withIntermediateDirectories: true)
+        try CoreTests.require(AgentUIMigration.moveContents(of: legacyState, to: state).isEmpty, "The migration moves everything")
+        try CoreTests.require(FileManager.default.fileExists(atPath: state.appending(path: "workspace.json").path),
+                              "The AgentUI organization moves into an existing Heka folder")
+        try CoreTests.require(FileManager.default.fileExists(atPath: legacyState.appending(path: "Instances").path), "Instance registrations of AgentUI stay behind")
+        try Data("[]".utf8).write(to: legacyState.appending(path: "workspace.json"))
+        try Data("x".utf8).write(to: legacyState.appending(path: "floating.json"))
+        try CoreTests.require(AgentUIMigration.moveContents(of: legacyState, to: state) == ["workspace.json"], "An item Heka already has is reported as left behind")
+        try CoreTests.require((try? String(contentsOf: state.appending(path: "workspace.json"), encoding: .utf8)) == "{}", "An existing Heka organization is never replaced")
+        try CoreTests.require(FileManager.default.fileExists(atPath: state.appending(path: "floating.json").path), "The other items still move")
+        try FileManager.default.removeItem(at: state)
+        try Data().write(to: state)
+        try CoreTests.require(AgentUIMigration.moveContents(of: legacyState, to: state) == ["workspace.json"], "A failed move is reported as left behind")
+        print("PASS AgentUI migration")
     }
 }

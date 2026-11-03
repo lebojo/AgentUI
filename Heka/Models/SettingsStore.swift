@@ -42,7 +42,7 @@ import Observation
         agentLaunch = Self.load(AgentLaunch.self, forKey: Key.agentLaunch, from: defaults) ?? AgentLaunch()
         confirmations = Self.load(RemovalConfirmations.self, forKey: Key.confirmations, from: defaults) ?? RemovalConfirmations()
         prompts = Self.load(AgentPrompts.self, forKey: Key.prompts, from: defaults) ?? AgentPrompts()
-        WorkspaceDisk.scanLegacyWorktreesDirectory(in: defaults)
+        WorkspaceDisk.scanLegacyWorktreesDirectories(in: defaults)
         worktreesDirectory = WorkspaceDisk.storedWorktreesDirectory(in: defaults)
         scannedWorktreesDirectories = WorkspaceDisk.storedScannedWorktreesDirectories(in: defaults)
     }
