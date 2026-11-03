@@ -23,12 +23,12 @@ enum SettingsTests {
                               "An option prompt stays the option's value")
         print("PASS agent launch settings")
 
-        let suite = "AgentUI.SettingsTests.\(UUID().uuidString)"
+        let suite = "Heka.SettingsTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let home = FileManager.default.homeDirectoryForCurrentUser
-        try CoreTests.require(WorkspaceDisk.storedWorktreesDirectory(in: defaults).path == home.appendingPathComponent(".agentui").path,
-                              "Worktrees go to the hidden ~/.agentui folder by default")
+        try CoreTests.require(WorkspaceDisk.storedWorktreesDirectory(in: defaults).path == home.appendingPathComponent(".heka").path,
+                              "Worktrees go to the hidden ~/.heka folder by default")
         defaults.set("", forKey: WorkspaceDisk.worktreesDirectoryKey)
         try CoreTests.require(WorkspaceDisk.storedWorktreesDirectory(in: defaults) == WorkspaceDisk.defaultWorktreesDirectory,
                               "An empty folder falls back to the default")
@@ -38,10 +38,10 @@ enum SettingsTests {
         defaults.set(["~/agentui", "", "relative", "/tmp/worktrees"], forKey: WorkspaceDisk.scannedWorktreesDirectoriesKey)
         try CoreTests.require(WorkspaceDisk.storedScannedWorktreesDirectories(in: defaults).map(\.path) == [home.appendingPathComponent("agentui").path, "/tmp/worktrees"],
                               "Scanned folders keep only absolute paths")
-        let legacySuite = "AgentUI.SettingsTests.Legacy.\(UUID().uuidString)"
+        let legacySuite = "Heka.SettingsTests.Legacy.\(UUID().uuidString)"
         let legacyDefaults = UserDefaults(suiteName: legacySuite)!
         defer { legacyDefaults.removePersistentDomain(forName: legacySuite) }
-        let legacy = FileManager.default.temporaryDirectory.appendingPathComponent("agentui-legacy-\(UUID().uuidString)")
+        let legacy = FileManager.default.temporaryDirectory.appendingPathComponent("heka-legacy-\(UUID().uuidString)")
         WorkspaceDisk.scanLegacyWorktreesDirectory(in: legacyDefaults, legacy: legacy)
         try CoreTests.require(WorkspaceDisk.storedScannedWorktreesDirectories(in: legacyDefaults).isEmpty, "A missing legacy folder is not scanned")
         legacyDefaults.removeObject(forKey: WorkspaceDisk.legacyWorktreesDirectoryCheckedKey)
@@ -121,11 +121,11 @@ enum SettingsTests {
     }
 
     private static func runAgentSkill() throws {
-        let home = FileManager.default.temporaryDirectory.appending(path: "agentui-skill-\(UUID().uuidString)")
+        let home = FileManager.default.temporaryDirectory.appending(path: "heka-skill-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: home) }
-        let skill = { (version: Int) in "---\nname: agentui\nmetadata:\n  version: \"\(version)\"\n---\nv\(version)\n" }
+        let skill = { (version: Int) in "---\nname: heka\nmetadata:\n  version: \"\(version)\"\n---\nv\(version)\n" }
         let read = { (directory: URL) in try? String(contentsOf: directory.appending(path: "SKILL.md"), encoding: .utf8) }
-        let repository = try String(contentsOf: URL(fileURLWithPath: "skills/agentui/SKILL.md"), encoding: .utf8)
+        let repository = try String(contentsOf: URL(fileURLWithPath: "skills/heka/SKILL.md"), encoding: .utf8)
         try CoreTests.require(AgentSkillInstaller.version(of: repository) > 0, "The repository skill declares a readable version")
         try CoreTests.require(AgentSkillInstaller.version(of: "---\r\nmetadata:\r\n  version: 4 # bump\r\n---\r\n") == 4, "Versions tolerate CRLF and comments")
         try CoreTests.require(AgentSkillInstaller.version(of: "no frontmatter") == 0, "A file without frontmatter has no version")
@@ -180,7 +180,7 @@ enum SettingsTests {
 
         let configuration = home.appending(path: "claude-config")
         let configured = AgentSkillInstaller(content: skill(2), home: home.appending(path: "configured"), claudeConfiguration: configuration)
-        try CoreTests.require(configured.claudeDirectory.path == configuration.appending(path: "skills/agentui").path, "CLAUDE_CONFIG_DIR moves the Claude skills folder")
+        try CoreTests.require(configured.claudeDirectory.path == configuration.appending(path: "skills/heka").path, "CLAUDE_CONFIG_DIR moves the Claude skills folder")
 
         let sharedHome = home.appending(path: "shared")
         try FileManager.default.createDirectory(at: sharedHome.appending(path: ".agents/skills"), withIntermediateDirectories: true)
@@ -198,14 +198,14 @@ enum SettingsTests {
         print("PASS agent skill installer")
 
         let bin = home.appending(path: "bin")
-        let app = home.appending(path: "AgentUI.app/Contents/MacOS/AgentUI")
+        let app = home.appending(path: "Heka.app/Contents/MacOS/Heka")
         let command = CommandLineInstaller(executable: app, directory: bin)
         try CoreTests.require(command.status == .notInstalled, "The command starts outside PATH")
         try command.install()
         try CoreTests.require(command.status == .installed, "Installing links the command")
         try CoreTests.require((try? FileManager.default.destinationOfSymbolicLink(atPath: command.link.path)) == app.path, "The command links to the app executable")
-        let moved = CommandLineInstaller(executable: home.appending(path: "Moved/AgentUI.app/Contents/MacOS/AgentUI"), directory: bin)
-        try CoreTests.require(moved.status == .outdated, "A link to another AgentUI copy is outdated")
+        let moved = CommandLineInstaller(executable: home.appending(path: "Moved/Heka.app/Contents/MacOS/Heka"), directory: bin)
+        try CoreTests.require(moved.status == .outdated, "A link to another Heka copy is outdated")
         try moved.install()
         try CoreTests.require(moved.status == .installed && command.status == .outdated, "Updating relinks to the running copy")
         try moved.uninstall()
@@ -220,7 +220,7 @@ enum SettingsTests {
         try FileManager.default.createSymbolicLink(atPath: command.link.path, withDestinationPath: "/usr/bin/true")
         try CoreTests.require(command.status == .conflict, "A link to another program is a conflict")
         try FileManager.default.removeItem(at: command.link)
-        let translocated = CommandLineInstaller(executable: URL(fileURLWithPath: "/private/var/folders/x/AppTranslocation/1/d/AgentUI.app/Contents/MacOS/AgentUI"), directory: bin)
+        let translocated = CommandLineInstaller(executable: URL(fileURLWithPath: "/private/var/folders/x/AppTranslocation/1/d/Heka.app/Contents/MacOS/Heka"), directory: bin)
         do { try translocated.install(); throw WorkspaceError(message: "FAIL: translocated app linked") }
         catch let error as WorkspaceError { try CoreTests.require(error.message.contains("Applications"), "A translocated app is never linked") }
         try CoreTests.require(translocated.status == .notInstalled, "A refused installation leaves nothing behind")

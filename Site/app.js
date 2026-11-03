@@ -6,5 +6,13 @@ fetch("https://api.github.com/repos/lebojo/AgentUI/releases/latest")
     document.querySelectorAll("[data-version]").forEach((el) => {
       el.textContent = `v${tag}`;
     });
+    const archive = (release.assets || []).find((asset) => asset.name.endsWith(".zip"));
+    if (!archive) return;
+    document.querySelectorAll("[data-download]").forEach((el) => {
+      el.href = archive.browser_download_url;
+    });
+    document.querySelectorAll("[data-download-name]").forEach((el) => {
+      el.textContent = archive.name;
+    });
   })
   .catch(() => {});

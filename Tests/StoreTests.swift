@@ -39,7 +39,7 @@ private final class ChangeFlag: @unchecked Sendable {
     }
     @MainActor static func main() async throws {
         let fm = FileManager.default
-        let root = fm.temporaryDirectory.appendingPathComponent("agentui-store-tests-\(UUID())")
+        let root = fm.temporaryDirectory.appendingPathComponent("heka-store-tests-\(UUID())")
         try fm.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: root.path); try? fm.removeItem(at: root) }
         let file = root.appendingPathComponent("workspace.json")
@@ -373,7 +373,7 @@ private final class ChangeFlag: @unchecked Sendable {
         let gitRoot = root.appendingPathComponent("grouped")
         try fm.createDirectory(at: gitRoot, withIntermediateDirectories: true)
         _ = try await GitService.run(["init", "-q", "-b", "main"], at: gitRoot.path)
-        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Initial"], at: gitRoot.path)
+        _ = try await GitService.run(["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Initial"], at: gitRoot.path)
         let grouped = try split.addProject(gitRoot)
         let worktreesRoot = root.appendingPathComponent("worktrees")
         let review = try await GitService.createWorktree(project: grouped, branch: "review/one", root: worktreesRoot)
@@ -406,7 +406,7 @@ private final class ChangeFlag: @unchecked Sendable {
         let lonelyRoot = root.appendingPathComponent("lonely")
         try fm.createDirectory(at: lonelyRoot, withIntermediateDirectories: true)
         _ = try await GitService.run(["init", "-q", "-b", "main"], at: lonelyRoot.path)
-        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Initial"], at: lonelyRoot.path)
+        _ = try await GitService.run(["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Initial"], at: lonelyRoot.path)
         let lonely = try await GitService.createWorktree(project: Project(url: lonelyRoot), branch: "solo", root: worktreesRoot)
         let broken = worktreesRoot.appendingPathComponent("broken")
         try fm.createDirectory(at: broken, withIntermediateDirectories: true)
@@ -438,7 +438,7 @@ private final class ChangeFlag: @unchecked Sendable {
                     "A linked worktree knows its own registration in the repository")
         try require(WorktreeFolder.registration(of: lonelyRoot) == nil && WorktreeFolder.registration(of: broken) == nil,
                     "A main folder or a broken worktree has no registration to remove")
-        let linkedRoot = fm.temporaryDirectory.appendingPathComponent("agentui-store-link-\(UUID())")
+        let linkedRoot = fm.temporaryDirectory.appendingPathComponent("heka-store-link-\(UUID())")
         try fm.createSymbolicLink(at: linkedRoot, withDestinationURL: URL(fileURLWithPath: WorkspacePath.canonical(root)))
         defer { try? fm.removeItem(at: linkedRoot) }
         let lonelyGitFile = URL(fileURLWithPath: lonely.path).appendingPathComponent(".git")
@@ -470,7 +470,7 @@ private final class ChangeFlag: @unchecked Sendable {
         let hiddenCheckout = await GitBranchProtection.report(at: review.path, in: gitRoot.path).branch
         let hiddenCheckoutOffer = await groups.deletableBranch(for: reviewRemoval)
         try require(hiddenCheckout == .protected("review/one", .checkedOutElsewhere) && hiddenCheckoutOffer == nil,
-                    "The removal dialog never offers to delete a branch checked out in a worktree AgentUI doesn't know")
+                    "The removal dialog never offers to delete a branch checked out in a worktree Heka doesn't know")
         _ = try await GitService.run(["worktree", "remove", "--force", hidden.path], at: gitRoot.path)
         groups.sessions.readBranches(of: groups.projects)
         let ownBranch = await GitBranchProtection.report(at: review.path, in: gitRoot.path).branch
@@ -483,7 +483,7 @@ private final class ChangeFlag: @unchecked Sendable {
         let reviewLeft = try await GitService.run(["branch", "--list", "review/one"], at: gitRoot.path)
         try require(reviewCleanup == .deleted("review/one") && reviewLeft.isEmpty && !groupedProject().worktrees.contains { $0.id == review.id },
                     "Deleting a worktree with its merged branch removes both")
-        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Work"], at: other.path)
+        _ = try await GitService.run(["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Work"], at: other.path)
         do {
             try await groups.deleteWorktree(projectID: grouped.id, worktreeID: other.id, branch: .merged(confirmed: nil))
             throw WorkspaceError(message: "FAIL: unmerged worktree deleted")

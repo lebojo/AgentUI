@@ -139,7 +139,7 @@ import Foundation
         try require(copilot.messages[2].text == "Un test échoue.", "Copilot assistant reply")
         print("PASS Copilot events, tool executions and replies")
 
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("agentui-claude-\(UUID())")
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("heka-claude-\(UUID())")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let file = root.appendingPathComponent("reader.jsonl")

@@ -11,13 +11,13 @@ Never create a new version without asking the user first and getting an explicit
 Approval for one version does not carry over to the next one. When the user approves, the release is made with:
 
 ```sh
-git tag -a <version> -m "AgentUI <version>"
+git tag -a <version> -m "Heka <version>"
 git push origin <version>
 ```
 
 ## Agent skill
 
-`skills/agentui/SKILL.md` documents the `agentui` CLI for agents and is bundled in the app. Update it with any change to the CLI (`AgentUI/Services/AgentCLI.swift`, `AgentUI/Services/AgentBridge.swift`), and increase `metadata.version` with every change to the file: the app relies on it to offer the new version in Settings (`npx skills update` detects changes on its own).
+`skills/heka/SKILL.md` documents the `heka` CLI for agents and is bundled in the app. Update it with any change to the CLI (`Heka/Services/AgentCLI.swift`, `Heka/Services/AgentBridge.swift`), and increase `metadata.version` with every change to the file: the app relies on it to offer the new version in Settings (`npx skills update` detects changes on its own).
 
 ## Lint
 

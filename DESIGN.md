@@ -1,9 +1,9 @@
 ---
-name: AgentUI
+name: Heka
 description: Un espace de travail natif macOS pour organiser projets, worktrees et terminaux.
 ---
 
-# Design System: AgentUI
+# Design System: Heka
 
 ## Overview
 
@@ -17,9 +17,9 @@ Une interface compacte inspirée de la hiérarchie Orca, avec les conventions de
 - Contrôles SwiftUI, SF Symbols et couleurs sémantiques du système.
 - Libellés français directs, chemins et états accessibles sans surcharge.
 
-Les valeurs sont centralisées dans `AgentUI/Design/` : `Spacing` (2, 4, 6, 8, 12, 16, 24), `Radius`, `Typography`, `Palette`, `IconSize`, `Stroke`, `Motion` et `Dimension`. Les vues n’emploient aucune valeur en dur ; les opacités restent locales.
+Les valeurs sont centralisées dans `Heka/Design/` : `Spacing` (2, 4, 6, 8, 12, 16, 24), `Radius`, `Typography`, `Palette`, `IconSize`, `Stroke`, `Motion` et `Dimension`. Les vues n’emploient aucune valeur en dur ; les opacités restent locales.
 
-Documentation extraite de `AgentUI/ContentView.swift`, `AgentUI/Views/`, `AgentUI/Services/TerminalSessions.swift` et `AgentUI/MyApp.swift`. Les captures ont été écartées : Stage Manager et la capture AppKit ont altéré la composition ou la vibrance et les couleurs (voir `.impeccable/review/REVIEW.md`). Ce document décrit le code ; il ne constitue pas une validation visuelle.
+Documentation extraite de `Heka/ContentView.swift`, `Heka/Views/`, `Heka/Services/TerminalSessions.swift` et `Heka/MyApp.swift`. Les captures ont été écartées : Stage Manager et la capture AppKit ont altéré la composition ou la vibrance et les couleurs (voir `.impeccable/review/REVIEW.md`). Ce document décrit le code ; il ne constitue pas une validation visuelle.
 
 ## Colors
 
@@ -95,4 +95,4 @@ Contrôles et feuilles conservent leurs formes macOS. Le filtre utilise un recta
 
 La barre latérale, ses lignes de projet, les lignes de terminal et le pied de liste sont des vues séparées. La sélection et l’expansion sont observées indépendamment des tableaux de projets/dossiers. Le filtre est recalculé uniquement lorsque ses entrées changent. Les modifications Git utilisent un conteneur paresseux ; leurs snapshots équatables évitent des notifications identiques à chaque lecture.
 
-Les écritures JSON sont regroupées sur 250 ms et sérialisées hors MainActor avec un numéro de révision. Un bandeau persistant affiche les erreurs d’écriture et propose Réessayer la sauvegarde. La CLI et la fermeture attendent une sauvegarde effective. L’icône de l’application est le document Icon Composer `AgentUI/AgentUI.icon` fourni par l’utilisateur.
+Les écritures JSON sont regroupées sur 250 ms et sérialisées hors MainActor avec un numéro de révision. Un bandeau persistant affiche les erreurs d’écriture et propose Réessayer la sauvegarde. La CLI et la fermeture attendent une sauvegarde effective. L’icône de l’application est le document Icon Composer `Heka/Heka.icon` fourni par l’utilisateur.

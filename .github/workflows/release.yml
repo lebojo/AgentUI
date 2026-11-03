@@ -38,7 +38,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: DerivedData/SourcePackages
-          key: spm-${{ runner.os }}-${{ hashFiles('AgentUI.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: spm-${{ runner.os }}-${{ hashFiles('Heka.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: spm-${{ runner.os }}-
 
       - name: Unit tests
@@ -75,8 +75,8 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild \
-            -project AgentUI.xcodeproj \
-            -scheme AgentUI \
+            -project Heka.xcodeproj \
+            -scheme Heka \
             -configuration Release \
             -destination 'generic/platform=macOS' \
             -derivedDataPath "$DERIVED_DATA" \
@@ -97,12 +97,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          ditto "$DERIVED_DATA/Build/Products/Release/AgentUI.app" dist/AgentUI.app
+          ditto "$DERIVED_DATA/Build/Products/Release/Heka.app" dist/Heka.app
           cd dist
-          codesign --verify --deep --strict --verbose=2 AgentUI.app
-          codesign -dv --verbose=4 AgentUI.app 2>&1 | grep -E 'Identifier|Authority|flags|TeamIdentifier'
-          lipo -info AgentUI.app/Contents/MacOS/AgentUI
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' AgentUI.app/Contents/Info.plist
+          codesign --verify --deep --strict --verbose=2 Heka.app
+          codesign -dv --verbose=4 Heka.app 2>&1 | grep -E 'Identifier|Authority|flags|TeamIdentifier'
+          lipo -info Heka.app/Contents/MacOS/Heka
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Heka.app/Contents/Info.plist
 
       - name: Notarize
         env:
@@ -117,7 +117,7 @@ jobs:
             *) printf '%s' "$NOTARY_KEY_P8" | base64 --decode > "$KEY" ;;
           esac
           cd dist
-          ditto -c -k --sequesterRsrc --keepParent AgentUI.app notarize.zip
+          ditto -c -k --sequesterRsrc --keepParent Heka.app notarize.zip
           xcrun notarytool submit notarize.zip \
             --key "$KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" \
             --wait --timeout 30m --output-format json > notary.json || true
@@ -132,17 +132,17 @@ jobs:
             exit 1
           fi
           rm notarize.zip "$KEY"
-          xcrun stapler staple AgentUI.app
-          xcrun stapler validate AgentUI.app
-          spctl --assess --type execute --verbose=4 AgentUI.app
+          xcrun stapler staple Heka.app
+          xcrun stapler validate Heka.app
+          spctl --assess --type execute --verbose=4 Heka.app
 
       - name: Package
         run: |
           set -euo pipefail
           cd dist
-          ditto -c -k --sequesterRsrc --keepParent AgentUI.app AgentUI.zip
-          shasum -a 256 AgentUI.zip > AgentUI.zip.sha256
-          cat AgentUI.zip.sha256
+          ditto -c -k --sequesterRsrc --keepParent Heka.app Heka.zip
+          shasum -a 256 Heka.zip > Heka.zip.sha256
+          cat Heka.zip.sha256
 
       - name: Write release notes
         run: |
@@ -155,12 +155,12 @@ jobs:
 
           ## Install
 
-          1. Download and unzip `AgentUI.zip`.
-          2. Move `AgentUI.app` to `/Applications` and open it.
+          1. Download and unzip `Heka.zip`.
+          2. Move `Heka.app` to `/Applications` and open it.
 
           The app is signed with a Developer ID and notarized by Apple, so it opens like any other Mac app.
 
-          `AgentUI.zip.sha256` contains the SHA-256 checksum of the archive (`shasum -a 256 -c AgentUI.zip.sha256`).
+          `Heka.zip.sha256` contains the SHA-256 checksum of the archive (`shasum -a 256 -c Heka.zip.sha256`).
           EOF
 
       - name: Publish release
@@ -170,10 +170,10 @@ jobs:
           set -euo pipefail
           cd dist
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" AgentUI.zip AgentUI.zip.sha256 --clobber
+            gh release upload "$TAG" Heka.zip Heka.zip.sha256 --clobber
           else
-            gh release create "$TAG" AgentUI.zip AgentUI.zip.sha256 \
-              --title "AgentUI $VERSION" \
+            gh release create "$TAG" Heka.zip Heka.zip.sha256 \
+              --title "Heka $VERSION" \
               --notes-file notes.md \
               --generate-notes \
               --latest

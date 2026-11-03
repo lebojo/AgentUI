@@ -8,8 +8,8 @@ import termios
 import tty
 import uuid
 
-root = Path(os.environ['AGENTUI_CODEX_FIXTURE_DIR'])
-assert 'agentui-remote-tests-' in str(root), 'Fixture must run in the isolated test configuration'
+root = Path(os.environ['HEKA_CODEX_FIXTURE_DIR'])
+assert 'heka-remote-tests-' in str(root), 'Fixture must run in the isolated test configuration'
 session = str(uuid.uuid4())
 rollout = root / f'rollout-2026-10-30T10-00-00-{session}.jsonl'
 journal = rollout.open('a', encoding='utf-8')

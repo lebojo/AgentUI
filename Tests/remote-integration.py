@@ -16,7 +16,7 @@ import time
 import uuid
 
 binary = Path(sys.argv[1])
-root = Path(tempfile.mkdtemp(prefix="agentui-remote-tests-"))
+root = Path(tempfile.mkdtemp(prefix="heka-remote-tests-"))
 state = root / "state"
 repo = root / "Mobile fixture"
 repo.mkdir()
@@ -62,7 +62,7 @@ def bridge(action, **kwargs):
 
 @functools.cache
 def pairing_key(code):
-    return hashlib.pbkdf2_hmac("sha256", code.replace("-", "").encode(), b"AgentUI pairing", 100_000)
+    return hashlib.pbkdf2_hmac("sha256", code.replace("-", "").encode(), b"Heka pairing", 100_000)
 
 
 def connect(code=PAIRING_CODE, timeout=15):
@@ -72,7 +72,7 @@ def connect(code=PAIRING_CODE, timeout=15):
     context.verify_mode = ssl.CERT_NONE
     context.maximum_version = ssl.TLSVersion.TLSv1_2
     context.set_ciphers("ECDHE-PSK-CHACHA20-POLY1305")
-    context.set_psk_client_callback(lambda hint: ("AgentUI", key))
+    context.set_psk_client_callback(lambda hint: ("Heka", key))
     return context.wrap_socket(socket.create_connection(("127.0.0.1", port), timeout=timeout))
 
 
@@ -128,7 +128,7 @@ try:
     print("Fixture:", root, flush=True)
     log = open(root / "app.log", "w")
     app = subprocess.Popen([str(binary), "-AppleLanguages", "(en)", "-localHost.enabled", "YES", "-localHost.pairingCode", PAIRING_CODE, "-sessionDisplayMode", "chat"],
-                           env=os.environ | {"AGENTUI_STATE_DIRECTORY": str(state), "AGENTUI_TEST_HOST_PORT": str(port), "CLAUDE_CONFIG_DIR": str(root / "claude")}, stdout=log, stderr=subprocess.STDOUT)
+                           env=os.environ | {"HEKA_STATE_DIRECTORY": str(state), "HEKA_TEST_HOST_PORT": str(port), "CLAUDE_CONFIG_DIR": str(root / "claude")}, stdout=log, stderr=subprocess.STDOUT)
     wait_for(lambda: (state / "instance-path").exists())
     instance = Path((state / "instance-path").read_text())
     bridge("debug.addLocation", path=str(repo))
@@ -203,7 +203,7 @@ try:
         first = read(sock)["terminal"]["_0"]
         assert not first["isChat"] and not first["transcript"], "A shell without an agent stays a terminal in chat mode"
         request_id = str(uuid.uuid4()).upper()
-        command = "printf '\\101\\107\\105\\116\\124\\125\\111_REMOTE_OK\\n'\r"
+        command = "printf '\\110\\105\\113\\101_REMOTE_OK\\n'\r"
         send(sock, {"streamInput": dict(request=request_id, terminal=terminal,
                                        data=base64.b64encode(command.encode()).decode(), message=None)})
         ack = False
@@ -217,7 +217,7 @@ try:
             if "terminal" in event:
                 snapshot = event["terminal"]["_0"]
                 assert not snapshot["isChat"]
-                found = found or b"AGENTUI_REMOTE_OK" in base64.b64decode(snapshot["output"])
+                found = found or b"HEKA_REMOTE_OK" in base64.b64decode(snapshot["output"])
         assert ack and found
     try:
         rpc("input", id=terminal, data=base64.b64encode(b"echo CHAT_TEXT_IN_SHELL\r").decode(), message="echo CHAT_TEXT_IN_SHELL")
@@ -228,7 +228,7 @@ try:
 
     with watch(terminal, chat=False) as sock:
         snapshot = read(sock)["terminal"]["_0"]
-        assert b"AGENTUI_REMOTE_OK" in base64.b64decode(snapshot["output"])
+        assert b"HEKA_REMOTE_OK" in base64.b64decode(snapshot["output"])
         assert not snapshot["transcript"]
     print("PASS reconnect / terminal replay / no duplicate chat payload", flush=True)
 
@@ -395,20 +395,20 @@ try:
                     break
     print("PASS Claude structured journal over TCP, multiline paste, no duplicate input or TUI scraping", flush=True)
 
-    def agentui(*args):
-        result = subprocess.run([str(instance / "bin" / "agentui"), *args], env=os.environ | {"AGENTUI_INSTANCE": str(instance)},
+    def heka(*args):
+        result = subprocess.run([str(instance / "bin" / "heka"), *args], env=os.environ | {"HEKA_INSTANCE": str(instance)},
                                 capture_output=True, text=True, timeout=30)
         data = json.loads(result.stdout)
         assert data["ok"] and result.returncode == 0, (args, data, result.stderr)
         return data
-    first = agentui("terminal", "read", "--terminal", agent, "--reply")
+    first = heka("terminal", "read", "--terminal", agent, "--reply")
     assert first["agent"] == "claude" and "STRUCTURED_REPLY" in first["output"], first
     assert all(text not in first["output"] for text in ["Bonjour du Mac", "First line", "CLAUDE_FIXTURE_READY", "TUI_NOISE"]), first
-    agentui("terminal", "send", "--terminal", agent, "--enter", "--", "Deuxième\nquestion")
-    inputs = lambda: [m["text"] for m in agentui("terminal", "read", "--terminal", agent, "--messages", "200")["messages"] if m["kind"] == "input"]
+    heka("terminal", "send", "--terminal", agent, "--enter", "--", "Deuxième\nquestion")
+    inputs = lambda: [m["text"] for m in heka("terminal", "read", "--terminal", agent, "--messages", "200")["messages"] if m["kind"] == "input"]
     wait_for(lambda: inputs() == [prompt, "Deuxième\nquestion"])
-    wait_for(lambda: [m["kind"] for m in agentui("terminal", "read", "--terminal", agent, "--messages", "3")["messages"]] == ["input", "tool", "assistant"])
-    print("PASS agentui terminal read --reply and --messages return the agent's conversation, not its screen", flush=True)
+    wait_for(lambda: [m["kind"] for m in heka("terminal", "read", "--terminal", agent, "--messages", "3")["messages"]] == ["input", "tool", "assistant"])
+    print("PASS heka terminal read --reply and --messages return the agent's conversation, not its screen", flush=True)
 
     codex_launcher = root / "bin" / "codex"
     codex_launcher.write_bytes((Path(__file__).resolve().parent / "fixtures/codex-terminal.py").read_bytes())
@@ -416,7 +416,7 @@ try:
     rollouts = root / "codex"
     rollouts.mkdir()
     codex = bridge("terminal.create", projectID=project["id"], worktreeID=worktree["id"], name="Codex fixture",
-                   command=["/usr/bin/env", f"AGENTUI_CODEX_FIXTURE_DIR={rollouts}", str(codex_launcher)])["terminalID"]
+                   command=["/usr/bin/env", f"HEKA_CODEX_FIXTURE_DIR={rollouts}", str(codex_launcher)])["terminalID"]
     with watch(codex) as sock:
         messages = []
         def apply(event):

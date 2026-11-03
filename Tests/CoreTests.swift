@@ -9,7 +9,7 @@ import Foundation
     static func main() async throws {
         setbuf(stdout, nil)
         let fm = FileManager.default
-        let root = fm.temporaryDirectory.appendingPathComponent("agentui-tests-\(UUID().uuidString)")
+        let root = fm.temporaryDirectory.appendingPathComponent("heka-tests-\(UUID().uuidString)")
         try fm.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: root) }
 
@@ -94,8 +94,8 @@ import Foundation
         print("PASS floating terminal tabs, splits and focus")
 
         let projectID = UUID(), worktreeID = UUID()
-        let env = ["AGENTUI_PROJECT_ID": projectID.uuidString, "AGENTUI_WORKTREE_ID": worktreeID.uuidString]
-        let prompt = "Don't interpolate $(touch /tmp/agentui-unsafe); `echo secret`"
+        let env = ["HEKA_PROJECT_ID": projectID.uuidString, "HEKA_WORKTREE_ID": worktreeID.uuidString]
+        let prompt = "Don't interpolate $(touch /tmp/heka-unsafe); `echo secret`"
         let request = try AgentCLI.parse(["terminal", "create", "--name", "Review", "--", "claude", prompt], environment: env)
         try require(request.projectID == projectID && request.worktreeID == worktreeID, "Inherited agent context")
         try require(request.command == ["claude", prompt], "Exact command arguments")
@@ -139,19 +139,19 @@ import Foundation
         catch let error as WorkspaceError { try require(error.message.contains("--worktree UUID"), "Deletion never targets the current worktree implicitly") }
         let terminalID = UUID()
         let selfDeletion = try AgentCLI.parse(["worktree", "delete", "--worktree", worktreeID.uuidString],
-                                              environment: env.merging(["AGENTUI_TERMINAL_ID": terminalID.uuidString]) { $1 })
+                                              environment: env.merging(["HEKA_TERMINAL_ID": terminalID.uuidString]) { $1 })
         try require(selfDeletion.worktreeID == worktreeID && selfDeletion.callerTerminalID == terminalID,
                     "A terminal may delete its own worktree: the app replies before closing it")
         let inherited = try AgentCLI.parse(["terminal", "create"], environment: env, currentDirectory: "/tmp")
-        try require(inherited.projectID == projectID && inherited.directory == "/tmp", "An AgentUI terminal keeps its context and sends its directory")
+        try require(inherited.projectID == projectID && inherited.directory == "/tmp", "A Heka terminal keeps its context and sends its directory")
         let worktreeOnly = try AgentCLI.parse(["terminal", "create", "--worktree", explicitID.uuidString], environment: env)
         try require(worktreeOnly.projectID == nil && worktreeOnly.worktreeID == explicitID, "--worktree alone lets the app find its project")
         let foreignDeletion = try AgentCLI.parse(["worktree", "delete", "--worktree", explicitID.uuidString], environment: env)
         try require(foreignDeletion.projectID == nil, "Deleting another project's worktree ignores the terminal's project")
         let outside = try AgentCLI.parse(["terminal", "create"], environment: [:], currentDirectory: "/work/app/Sources")
-        try require(outside.projectID == nil && outside.directory == "/work/app/Sources", "Outside AgentUI, the current directory is sent")
+        try require(outside.projectID == nil && outside.directory == "/work/app/Sources", "Outside Heka, the current directory is sent")
         let callerID = UUID(), childID = UUID()
-        let callerEnv = env.merging(["AGENTUI_TERMINAL_ID": callerID.uuidString]) { $1 }
+        let callerEnv = env.merging(["HEKA_TERMINAL_ID": callerID.uuidString]) { $1 }
         let sent = try AgentCLI.parse(["terminal", "send", "--terminal", childID.uuidString, "--enter", "--", "Fix", prompt], environment: callerEnv)
         try require(sent.action == "terminal.send" && sent.terminalID == childID && sent.text == "Fix " + prompt && sent.pressesEnter == true
                     && sent.projectID == nil && sent.worktreeID == nil, "terminal send keeps the text verbatim and ignores the caller's context")
@@ -226,7 +226,7 @@ import Foundation
         let liveInstance = root.appendingPathComponent("live-instance"), deadInstance = root.appendingPathComponent("dead-instance")
         try FileManager.default.createDirectory(at: liveInstance, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: deadInstance, withIntermediateDirectories: true)
-        try require(AgentCLI.runningInstance(in: registry) == nil, "No registered instance means AgentUI is closed")
+        try require(AgentCLI.runningInstance(in: registry) == nil, "No registered instance means Heka is closed")
         try Data().write(to: registry.appendingPathComponent("1.sb-pending"))
         try require(AgentCLI.runningInstance(in: registry) == nil, "An atomic write in progress is not an instance")
         try require(FileManager.default.fileExists(atPath: registry.appendingPathComponent("1.sb-pending").path), "An atomic write in progress is left alone")
@@ -262,7 +262,7 @@ import Foundation
 
         let repository = importRoot.appendingPathComponent("API")
         _ = try await GitService.run(["init", "-b", "main"], at: repository.path)
-        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "--allow-empty", "-m", "Fixture"], at: repository.path)
+        _ = try await GitService.run(["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "--allow-empty", "-m", "Fixture"], at: repository.path)
         let gitProject = Project(url: repository)
         let worktree = try await GitService.createWorktree(project: gitProject, branch: "feature/agent-tests", root: root)
         let branch = try await GitService.run(["branch", "--show-current"], at: worktree.path)
@@ -327,7 +327,7 @@ import Foundation
         let upstream = root.appendingPathComponent("Upstream")
         try fm.createDirectory(at: upstream, withIntermediateDirectories: true)
         _ = try await GitService.run(["init", "-b", "main"], at: upstream.path)
-        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "--allow-empty", "-m", "Upstream"], at: upstream.path)
+        _ = try await GitService.run(["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "--allow-empty", "-m", "Upstream"], at: upstream.path)
         _ = try await GitService.run(["branch", "shared/topic"], at: upstream.path)
         for remote in ["mirror", "gh/team"] {
             _ = try await GitService.run(["remote", "add", remote, upstream.path], at: repository.path)
@@ -586,7 +586,7 @@ import Foundation
                     "A worktree of a repository with a separate Git folder finds its main folder from Git's own reading of core.worktree")
 
         let unmerged = try await GitService.createWorktree(project: project, branch: "cleanup/unmerged", root: root)
-        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "--allow-empty", "-m", "Work"], at: unmerged.path)
+        _ = try await GitService.run(["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "--allow-empty", "-m", "Work"], at: unmerged.path)
         try await GitService.removeWorktree(project: project, path: unmerged.path)
         do {
             try await deleteBranch("cleanup/unmerged", .merged(confirmed: nil), project: project)
@@ -620,7 +620,7 @@ import Foundation
         let local = root.appendingPathComponent("cleanup-local-only")
         try FileManager.default.createDirectory(at: local, withIntermediateDirectories: true)
         _ = try await GitService.run(["init", "-q", "-b", "main"], at: local.path)
-        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Initial"], at: local.path)
+        _ = try await GitService.run(["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Initial"], at: local.path)
         _ = try await GitService.run(["checkout", "-q", "-b", "feature"], at: local.path)
         _ = try await GitService.run(["pack-refs", "--all"], at: local.path)
         let localProject = Project(url: local)
@@ -638,7 +638,7 @@ import Foundation
         _ = try await GitService.run(["checkout", "-q", "--detach"], at: topic.path)
         let detachedTopic = await GitBranchProtection.report(at: topic.path, in: local.path).branch
         try require(detachedTopic == WorktreeBranch.none, "Git reports no branch for a detached worktree")
-        let identity = ["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid"]
+        let identity = ["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid"]
         let rebasing = root.appendingPathComponent("cleanup-rebasing")
         _ = try await GitService.run(["worktree", "add", "-q", "-b", "rebasing", rebasing.path, "main"], at: local.path)
         _ = try await GitService.run(identity + ["commit", "-q", "--allow-empty", "-m", "Rebased"], at: rebasing.path)
@@ -805,7 +805,7 @@ import Foundation
     }
 
     private static func commit(_ message: String, at path: String) async throws {
-        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", message], at: path)
+        _ = try await GitService.run(["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", message], at: path)
     }
 
     static func agentProcessTests(root: URL) async throws {

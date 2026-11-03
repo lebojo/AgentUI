@@ -373,7 +373,7 @@ func swiftFiles(in paths: [String]) -> [String] {
 let arguments = Array(CommandLine.arguments.dropFirst())
 let shouldFix = arguments.contains("--fix")
 let roots = arguments.filter { $0 != "--fix" }
-let paths = roots.isEmpty ? ["AgentUI"] : roots
+let paths = roots.isEmpty ? ["Heka"] : roots
 let missing = paths.filter { !FileManager.default.fileExists(atPath: $0) }
 guard missing.isEmpty else {
     missing.forEach { print("error: \($0) n’existe pas") }

@@ -11,7 +11,7 @@ import tty
 import uuid
 
 config = Path(os.environ['CLAUDE_CONFIG_DIR'])
-assert 'agentui-remote-tests-' in str(config), 'Fixture must run in the isolated test configuration'
+assert 'heka-remote-tests-' in str(config), 'Fixture must run in the isolated test configuration'
 cwd = str(Path.cwd())
 session = str(uuid.uuid4())
 registry = config / 'sessions' / f'{os.getpid()}.json'

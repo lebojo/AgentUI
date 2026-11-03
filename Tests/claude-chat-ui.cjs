@@ -2,8 +2,8 @@
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const root = process.env.SERVE_SIM_ROOT, device = process.env.AGENTUI_SIM;
-assert(root && device, 'Set SERVE_SIM_ROOT and AGENTUI_SIM');
+const root = process.env.SERVE_SIM_ROOT, device = process.env.HEKA_SIM;
+assert(root && device, 'Set SERVE_SIM_ROOT and HEKA_SIM');
 const native = require(path.join(root, 'native/serve-sim-native.node'));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function nodes() {
@@ -29,14 +29,14 @@ async function nodes() {
     }
     try {
         let current = await nodes();
-        if (current.some(n => n.type === 'Button' && n.AXLabel === 'AgentUI')) await tap('AgentUI');
+        if (current.some(n => n.type === 'Button' && n.AXLabel === 'Heka')) await tap('Heka');
         await tap('Claude fixture');
         current = await nodes();
         assert(current.some(n => n.AXValue === 'Message à Claude'), 'Structured composer is not present');
         assert(current.some(n => n.AXLabel?.includes('STRUCTURED_REPLY')), 'Assistant transcript is not visible');
         assert(!current.some(n => n.AXLabel?.includes('TUI_NOISE')), 'Chat scraped the terminal TUI');
         assert(!current.some(n => n.type === 'RadioButton' && ['Chat', 'Terminal'].includes(n.AXLabel)), 'Mode picker leaked into the session toolbar');
-        execFileSync('xcrun', ['simctl', 'io', device, 'screenshot', '/tmp/agentui-claude-chat.png']);
+        execFileSync('xcrun', ['simctl', 'io', device, 'screenshot', '/tmp/heka-claude-chat.png']);
         await tap('Réglages');
         current = await nodes();
         assert(current.some(n => n.AXLabel === 'Affichage des sessions'), 'Display preference is missing from Settings');
@@ -44,7 +44,7 @@ async function nodes() {
         await tap('Terminé');
         current = await nodes();
         assert(!current.some(n => n.AXValue === 'Message à Claude'), 'Chat renderer stayed mounted in Terminal mode');
-        execFileSync('xcrun', ['simctl', 'io', device, 'screenshot', '/tmp/agentui-claude-terminal.png']);
+        execFileSync('xcrun', ['simctl', 'io', device, 'screenshot', '/tmp/heka-claude-terminal.png']);
         await tap('Réglages');
         await tap('Chat', 'RadioButton');
         await tap('Terminé');

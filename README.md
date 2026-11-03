@@ -1,4 +1,4 @@
-# AgentUI
+# Heka
 
 [![CI](https://github.com/lebojo/AgentUI/actions/workflows/ci.yml/badge.svg)](https://github.com/lebojo/AgentUI/actions/workflows/ci.yml)
 [![Swift](https://img.shields.io/badge/Swift-6.4-F05138?logo=swift&logoColor=white)](https://swift.org)
@@ -18,7 +18,7 @@ A native macOS app to organize your projects, Git worktrees and coding agents (C
 - **Split terminals**: split the current terminal to the right or below, as many times as needed, or drag a terminal from the sidebar (or a pane by its title) onto an edge of another pane of the same worktree.
 - **Worktree groups**: gather a project's worktrees under a named group in the sidebar.
 - **Inspector**: files, agents, Git changes, diffs, pull/merge request and GitHub Actions or GitLab pipeline checks.
-- **`agentui` CLI**: agents can create terminals and worktrees from inside their own terminal.
+- **`heka` CLI**: agents can create terminals and worktrees from inside their own terminal.
 - **Agent usage**: remaining Claude and Codex plan limits, with reset countdowns, below the project list.
 - **Persistence**: your organization is restored on relaunch.
 
@@ -31,19 +31,19 @@ A native macOS app to organize your projects, Git worktrees and coding agents (C
 
 ## Download
 
-Download `AgentUI.zip` from the [latest release](https://github.com/lebojo/AgentUI/releases/latest), unzip it and move `AgentUI.app` to `/Applications`. The app is a universal build (Apple silicon and Intel), signed with a Developer ID and notarized by Apple.
+Download `Heka.zip` from the [latest release](https://github.com/lebojo/AgentUI/releases/latest), unzip it and move `Heka.app` to `/Applications`. The app is a universal build (Apple silicon and Intel), signed with a Developer ID and notarized by Apple.
 
 To build from source instead, see below.
 
 ## Installation
 
 ```sh
-git clone git@github.com:lebojo/AgentUI.git
-cd AgentUI
-open AgentUI.xcodeproj
+git clone git@github.com:lebojo/AgentUI.git Heka
+cd Heka
+open Heka.xcodeproj
 ```
 
-Select the **AgentUI / My Mac** scheme, then **Run** (⌘R).
+Select the **Heka / My Mac** scheme, then **Run** (⌘R).
 
 Xcode resolves the Swift Package Manager dependencies on first launch:
 
@@ -57,34 +57,34 @@ Xcode may ask you to enable the `SwiftTermBuildInfoPlugin` plugin, which generat
 Command-line build:
 
 ```sh
-xcodebuild -project AgentUI.xcodeproj -scheme AgentUI -configuration Debug \
-  -derivedDataPath /tmp/agentui-build -skipPackagePluginValidation build CODE_SIGNING_ALLOWED=NO
+xcodebuild -project Heka.xcodeproj -scheme Heka -configuration Debug \
+  -derivedDataPath /tmp/heka-build -skipPackagePluginValidation build CODE_SIGNING_ALLOWED=NO
 ```
 
 ## Usage
 
 ### iPhone and iPad companion
 
-Select an iPhone or iPad destination with the same **AgentUI** scheme to build the companion (iOS/iPadOS 17+).
-On the Mac, enable **Settings → Accès local**. On the mobile device, open **Réglages**, tap **Scanner un QR code** and point the camera at the code shown on the Mac. You can also enter the Mac's local IP address and pairing code by hand. The mobile app saves every paired Mac: tap one in **Réglages** to switch to it, swipe to forget it. If a Mac has several local addresses, the app tries each one and remembers the address that works. Keep the Mac awake with AgentUI running. Both apps must be built from compatible sources.
+Select an iPhone or iPad destination with the same **Heka** scheme to build the companion (iOS/iPadOS 17+).
+On the Mac, enable **Settings → Accès local**. On the mobile device, open **Réglages**, tap **Scanner un QR code** and point the camera at the code shown on the Mac. You can also enter the Mac's local IP address and pairing code by hand. The mobile app saves every paired Mac: tap one in **Réglages** to switch to it, swipe to forget it. If a Mac has several local addresses, the app tries each one and remembers the address that works. Keep the Mac awake with Heka running. Both apps must be built from compatible sources.
 
 The companion shares the Mac's projects and running sessions. **Settings → Affichage des sessions** chooses Chat or Terminal for every session on that device; the same preference is available on macOS under **Settings → Affichage**. Changing it preserves the process and mounts only the chosen renderer. The inspector button stays in the detail toolbar: SwiftUI presents a sheet on iPhone and a trailing inspector when the iPad has room. Files, conversations, Git diffs and checks use the shared inspector views.
 
 The local transport uses TCP port **52741** with TLS 1.2 (`TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256`). The pre-shared key is derived from the pairing code with PBKDF2-SHA256, and the ephemeral key exchange keeps recorded sessions private even if the code leaks later. Devices without the code cannot connect, and traffic is encrypted. Both devices keep the code in the Keychain. **Générer un nouveau code** on the Mac revokes every paired device. Sharing is off by default. Do not forward the port to the internet.
 
-For Claude Code, Chat follows the native JSONL transcript of the exact process running in the terminal. User messages, Markdown replies and collapsible tool results are distinct; terminal menus, spinners and shell echoes are not assistant messages. Association uses Claude's live session registry and process ancestry rather than choosing the latest conversation in the worktree. This requires a Claude version publishing the `sessions/<pid>.json` registry (the installed CLI supports it). Chat reads a custom `CLAUDE_CONFIG_DIR` from the running Claude process. The conversation list and usage only honour it when AgentUI itself sees it (for example through `launchctl setenv`), because macOS does not expose a value exported only in a shell profile. Codex and Copilot follow their own session journals; ordinary shells and OpenCode retain the explicitly labelled terminal-output fallback. Authentication, approvals and interactive agent menus remain available in Terminal; this is not a full structured-agent RPC adapter.
+For Claude Code, Chat follows the native JSONL transcript of the exact process running in the terminal. User messages, Markdown replies and collapsible tool results are distinct; terminal menus, spinners and shell echoes are not assistant messages. Association uses Claude's live session registry and process ancestry rather than choosing the latest conversation in the worktree. This requires a Claude version publishing the `sessions/<pid>.json` registry (the installed CLI supports it). Chat reads a custom `CLAUDE_CONFIG_DIR` from the running Claude process. The conversation list and usage only honour it when Heka itself sees it (for example through `launchctl setenv`), because macOS does not expose a value exported only in a shell profile. Codex and Copilot follow their own session journals; ordinary shells and OpenCode retain the explicitly labelled terminal-output fallback. Authentication, approvals and interactive agent menus remain available in Terminal; this is not a full structured-agent RPC adapter.
 
 Transcript reads are incremental and file-event driven, shared between local and remote Chat viewers and released when unused. The first read is bounded to 2 MiB; displayed history to 200 rows / 256 KiB. Multiline prompts use bracketed paste followed by a separate submit key. While the companion shows a terminal, it asks the Mac to resize the PTY to the grid that fits its screen at the text size chosen in its settings (20–400 columns, 5–200 rows); the emulator itself only follows the grid the Mac reports, and pinch zoom remains available. The Mac hosts its terminal view at the frame that holds exactly that grid, clipped by the pane, so SwiftTerm sizes the emulator and the PTY (cells and pixels) itself: resizing the Mac pane meanwhile neither reflows the buffer nor signals the foreground process. The pane shows a “Sized for Mobile” badge, in Terminal and Chat display modes, since a taller or wider grid than the pane is clipped there. The Mac returns to its own grid when the companion leaves the terminal, switches to Chat or disconnects, when Use Mac Size is chosen, or as soon as any input from the Mac reaches the PTY (typing, pasting, mouse reporting, dictation, a Chat message or an agent launch; terminal replies, focus reports and the companion's own input don't count). From then on the companion's new sizes (rotation, keyboard, text size, reconnection) are remembered but not applied until someone types on the phone again. A read-only Mac ignores resize requests. The phone keeps its grid while a keyboard-dismiss drag is in progress and requests a new one when the drag ends.
 
 The workspace and session use a persistent, bidirectional connection. Changes are coalesced at most ten times per second, unchanged workspaces aren't transmitted, Chat doesn't transfer raw terminal bytes, and Terminal doesn't transfer chat messages. The Mac interprets terminal output once: the companion receives changed screen rows and keyboard modes, with a complete checkpoint on reconnect. Scrollback checkpoints retain at most 200 lines / 16,384 cells; Chat history is capped at 256 KiB. Only an explicit grid request from a watching companion changes the Mac’s terminal grid. The terminal mirror carries styled text and input modes; inline terminal images and OSC hyperlink metadata are not transported. Backgrounding the mobile app cancels its connection and inspector queries; the Mac's processes continue running.
 
-The navigation shell, inspector, diff views and Chat UI are shared. Platform adapters live under `AgentUI/Platforms`; SDK-specific source exclusions in the Xcode target keep AppKit and UIKit out of shared views.
+The navigation shell, inspector, diff views and Chat UI are shared. Platform adapters live under `Heka/Platforms`; SDK-specific source exclusions in the Xcode target keep AppKit and UIKit out of shared views.
 
 To validate the local protocol against an isolated Debug Mac app (the fixture binds only to loopback):
 
 ```sh
 bash Tests/run.sh
-python3 Tests/remote-integration.py /path/to/AgentUI.app/Contents/MacOS/AgentUI
+python3 Tests/remote-integration.py /path/to/Heka.app/Contents/MacOS/Heka
 ```
 
 ### Organization
@@ -96,17 +96,17 @@ python3 Tests/remote-integration.py /path/to/AgentUI.app/Contents/MacOS/AgentUI
 - **+ next to a project**: create a new Git branch from its HEAD in a separate worktree, then open a terminal in it. The repository must have at least one commit and the branch must not already exist. While creating, **Stop** interrupts Git and its hooks. Creation has a 90-second limit; a partial creation stays on disk and is reconciled in the list without opening a terminal. The message shows the branch and path to check before retrying.
 - **Right-click a worktree → Group**, or drag it onto a group: gather worktrees of the same project under a named group. Right-click a project → **New Worktree Group…** creates an empty one. Renaming or dissolving a group never touches the worktrees, their folders or their branches.
 - Terminals of the main folder appear directly under the project. Additional worktrees hold their own terminals. Existing worktrees are discovered when a project is added, then via **Refresh Worktrees**.
-- Every worktree in the creation folder (`~/.agentui` by default) and in the **Other Worktree Folders** listed in Settings › General is shown: a worktree whose main repository is a project joins it automatically, the others appear under **Orphans**. Right-click an orphan to add its repository as a project, show it in Finder or move it to the Trash (after confirmation). Regular clones in these folders are ignored.
+- Every worktree in the creation folder (`~/.heka` by default) and in the **Other Worktree Folders** listed in Settings › General is shown: a worktree whose main repository is a project joins it automatically, the others appear under **Orphans**. Right-click an orphan to add its repository as a project, show it in Finder or move it to the Trash (after confirmation). Regular clones in these folders are ignored.
 - A **green badge** shows the current branch next to each Git terminal and in its header. A branch change is picked up as soon as Git writes it (FSEvents on the repository metadata), and the shell directory is read every two seconds, without spawning any Git process. Outside a repository it disappears; on a detached HEAD, a neutral badge shows the abbreviated commit.
 - Each terminal row shows two lines: the terminal name, then its current branch (or worktree). When an agent runs in it, the row shows the agent's logo and a status chip: yellow **Working**, green **Ready** or orange **Waiting input**; plain terminals show no chip. Claude's status comes from its session file (`~/.claude/sessions`); for Codex, Copilot and OpenCode, an approval prompt on screen means waiting for input, output in the last two seconds means working, otherwise ready. Statuses refresh every second.
-- A terminal is named after the agent conversation running in it (Claude, Codex, Copilot or OpenCode, the same titles as the **Agents** tab), otherwise **Terminal**. AgentUI finds the agent among the terminal's processes and its session (`~/.claude/sessions`, the Codex rollout or Copilot session it has open), and falls back to the conversation of that agent updated in the same folder since it started. The name follows the conversation every five seconds and is kept after the agent exits.
+- A terminal is named after the agent conversation running in it (Claude, Codex, Copilot or OpenCode, the same titles as the **Agents** tab), otherwise **Terminal**. Heka finds the agent among the terminal's processes and its session (`~/.claude/sessions`, the Codex rollout or Copilot session it has open), and falls back to the conversation of that agent updated in the same folder since it started. The name follows the conversation every five seconds and is kept after the agent exits.
 - The context menu lets you rename and close a terminal, rename or remove a project, and dissolve a virtual folder. A renamed terminal keeps its name; **Use the conversation name** gives it back its automatic name.
 
 ### Agent usage
 
 The bottom of the project list shows, for each signed-in agent, the 5-hour and weekly windows with a countdown to the next reset. The chevron collapses it to each agent's logo and session percentage (remembered across launches). Click it for a sheet with every window (including per-model weekly limits), extra usage credits and a Refresh button.
 
-Usage comes from the agents' own sign-in, like Orca: Claude reads the `Claude Code-credentials` Keychain item (or `~/.claude/.credentials.json`) and queries `api.anthropic.com/api/oauth/usage`; Codex reads `~/.codex/auth.json` (or `$CODEX_HOME`) and queries `chatgpt.com/backend-api/wham/usage`. Tokens are only sent to their own provider and never stored or refreshed by AgentUI. Data refreshes every five minutes while the window is visible. In the sheet, **Sign In** next to a signed-out agent opens an AgentUI terminal running `claude` or `codex login` in the selected worktree (or the first project), then checks every five seconds for up to ten minutes until the usage appears. When no agent is signed in, the bar shows a single sign-in link; otherwise signed-out agents stay out of the bar. An expired session is reported until the agent runs again and renews it.
+Usage comes from the agents' own sign-in, like Orca: Claude reads the `Claude Code-credentials` Keychain item (or `~/.claude/.credentials.json`) and queries `api.anthropic.com/api/oauth/usage`; Codex reads `~/.codex/auth.json` (or `$CODEX_HOME`) and queries `chatgpt.com/backend-api/wham/usage`. Tokens are only sent to their own provider and never stored or refreshed by Heka. Data refreshes every five minutes while the window is visible. In the sheet, **Sign In** next to a signed-out agent opens a Heka terminal running `claude` or `codex login` in the selected worktree (or the first project), then checks every five seconds for up to ten minutes until the usage appears. When no agent is signed in, the bar shows a single sign-in link; otherwise signed-out agents stay out of the bar. An expired session is reported until the agent runs again and renews it.
 
 ### Shortcuts
 
@@ -138,56 +138,56 @@ Git/Checks reread local state when a file of the worktree or its Git metadata ch
 
 ### Agent commands
 
-Every terminal gets the native `agentui` command in its PATH, along with `AGENTUI_PROJECT_ID` and `AGENTUI_WORKTREE_ID`. If a shell configuration replaces PATH entirely, use `"$AGENTUI_CLI"`.
+Every terminal gets the native `heka` command in its PATH, along with `HEKA_PROJECT_ID` and `HEKA_WORKTREE_ID`. If a shell configuration replaces PATH entirely, use `"$HEKA_CLI"`.
 
 ```sh
-agentui --help
-agentui list
+heka --help
+heka list
 
 # New terminal in the same worktree, with a child agent
-agentui terminal create --name "Review" -- claude "Review the changes"
+heka terminal create --name "Review" -- claude "Review the changes"
 
 # New worktree and child agent on a new branch
-agentui worktree create --branch feature/tests --name "Tests" -- codex "Add the tests"
+heka worktree create --branch feature/tests --name "Tests" -- codex "Add the tests"
 
 # Plain terminal, without starting an agent
-agentui terminal create --name "Shell"
+heka terminal create --name "Shell"
 
-# Explicitly target another context (IDs returned by agentui list)
-agentui terminal create --project UUID --worktree UUID --name "Review"
+# Explicitly target another context (IDs returned by heka list)
+heka terminal create --project UUID --worktree UUID --name "Review"
 
-# Delete a worktree (IDs returned by agentui list); --force also erases uncommitted changes
-agentui worktree delete --worktree UUID
+# Delete a worktree (IDs returned by heka list); --force also erases uncommitted changes
+heka worktree delete --worktree UUID
 
 # Delete a worktree and its branch if it is merged into the main branch (with --force-branch, even if it is not)
-agentui worktree delete --worktree UUID --delete-branch
+heka worktree delete --worktree UUID --delete-branch
 
-# Talk to another terminal (terminalID returned at creation or by agentui list)
-agentui terminal send --terminal UUID --enter -- "Fix the findings of your review"
-agentui terminal wait --terminal UUID --idle 10
-agentui terminal read --terminal UUID --reply
-agentui terminal send --terminal UUID --key escape
-agentui terminal close --terminal UUID
+# Talk to another terminal (terminalID returned at creation or by heka list)
+heka terminal send --terminal UUID --enter -- "Fix the findings of your review"
+heka terminal wait --terminal UUID --idle 10
+heka terminal read --terminal UUID --reply
+heka terminal send --terminal UUID --key escape
+heka terminal close --terminal UUID
 ```
 
 Commands return JSON with `ok`, `projectID`, `worktreeID`, `terminalID` and `path`. A failure returns a non-zero exit code. Programs after `--` receive their arguments verbatim, without shell interpolation. Creations requested by an agent do not change the terminal selected on screen.
 
 `terminal send` types text into another terminal, as if on its keyboard, from the arguments after `--` or with `--stdin`; with `--enter` it is submitted as one message, multi-line text included (bracketed paste when the program supports it), and `--enter` alone presses Return. `--key` presses keys in order instead (`enter`, `escape`, `tab`, `shift-tab`, `backspace`, `delete`, `space`, arrows, `home`, `end`, `page-up`, `page-down`, `ctrl-a` … `ctrl-z`), following the terminal's cursor mode. `terminal read` returns the last `--lines` lines (50 by default, 10,000 at most) in `output`; for Claude, Codex and Copilot, `--reply` returns instead the agent's answer to the last message, read from its conversation on disk like the chat view, and `--messages N` its last N messages. `terminal close` stops a terminal's processes and removes it, and refuses while its agent is working unless `--force` is given. `terminal wait` returns once the terminal has printed nothing for `--idle` seconds (5 by default) or, with `--exit`, once its command has exited, and gives up after `--timeout` seconds (120 by default, 3,600 at most) with `ok: false`. Their replies add `running`, `exitCode` and, for a recognized agent, `agent` and `status` (`working`, `ready` or `waitingForInput`). A terminal can't send to or wait for itself. A message submitted to an agent this way appears in its chat view like one typed in the app.
 
-`worktree delete` closes the worktree's terminals and removes its folder, like **Delete Worktree…** in the sidebar; by default, the branch and its commits stay in the repository. It always needs an explicit `--worktree`, refuses the project's main folder, and keeps a worktree with uncommitted changes or untracked files unless `--force` is given. Run from a terminal of the worktree itself (`--worktree "$AGENTUI_WORKTREE_ID"`), for example by an agent asked to merge its work and delete its worktree, it checks everything first, replies `ok: true` with `closesCaller: true`, waits for the CLI to read the reply, then closes the terminal and deletes the worktree; a refusal leaves the terminal running. From another folder inside the worktree, outside its terminals, it's refused. `terminal close` on the calling terminal works the same way.
+`worktree delete` closes the worktree's terminals and removes its folder, like **Delete Worktree…** in the sidebar; by default, the branch and its commits stay in the repository. It always needs an explicit `--worktree`, refuses the project's main folder, and keeps a worktree with uncommitted changes or untracked files unless `--force` is given. Run from a terminal of the worktree itself (`--worktree "$HEKA_WORKTREE_ID"`), for example by an agent asked to merge its work and delete its worktree, it checks everything first, replies `ok: true` with `closesCaller: true`, waits for the CLI to read the reply, then closes the terminal and deletes the worktree; a refusal leaves the terminal running. From another folder inside the worktree, outside its terminals, it's refused. `terminal close` on the calling terminal works the same way.
 
 With `--delete-branch`, the branch is deleted too, but only if it is merged into the repository's main branch, locally or in its fetched remote-tracking branch, regardless of what the project's folder has checked out. A branch that was only pushed, with its pull request still open, isn't merged, and a branch can't be checked when no main branch can be found: in both cases the command returns `ok: false` before removing anything, and suggests adding `--force-branch` or leaving out `--delete-branch`. Adding `--force-branch` uses `git branch -D` and deletes it even if it is not merged; `--force` only discards the worktree's uncommitted changes and never deletes an unmerged branch. The repository's main branch (`main`, `master` or the branch a remote's `HEAD` points to) and a branch checked out in another worktree or in the project's folder are never deleted, nor is a branch whose state can't be checked: the command fails before removing anything. Once the worktree's folder is erased, the reply is `ok: true` with `removed: true`, `branch` and `branchDeleted`; `ok: false` always means nothing was removed. The merge check runs before the worktree's terminals are closed, so a refusal leaves running agents untouched, and the branch is deleted only if it still points to the commit that was checked (`git update-ref -d` with the checked commit): if a commit landed on it in between, the branch is kept, `branchDeleted` is `false` and `message` says why. The worktree leaves the sidebar as soon as its folder is erased, then the branch is deleted. In the sidebar, the **Delete Worktree…** confirmation appears once the branch has been checked, after 300 ms at most, and offers **Delete Worktree and Branch** when the branch shown in the sidebar could be deleted (if the check takes longer, the dialog only offers to delete the worktree); the same rules are then checked again, without `--force`, before anything is removed. Only the branch shown in the dialog is deleted: if the worktree has since switched to another branch, the worktree is deleted and its branches are kept. If the branch isn't merged, nothing is removed and an alert offers **Delete Worktree Only**, which keeps the branch.
 
 The CLI waits for the save before reporting success. If the write fails after creation, it returns `ok: false` with the identifiers already created: retry the save in the app, without recreating the terminal. Claude, Codex, Copilot, OpenCode and other tools must already be installed and authenticated on the Mac. Commands run through your interactive login shell, so a tool installed via npm, nvm, bun or any PATH set in `~/.zshrc` is found like in a regular terminal.
 
-To use `agentui` from any terminal, click **Install** next to **Command in PATH** in **Settings → Agents**: it links `~/.local/bin/agentui` to the app, so add that folder to your PATH if needed. Outside AgentUI terminals, the CLI reaches the most recently launched AgentUI that is still running, registered in `~/Library/Application Support/AgentUI/Instances`, and the project and worktree come from the current directory when it belongs to a project open in AgentUI (otherwise pass `--project`).
+To use `heka` from any terminal, click **Install** next to **Command in PATH** in **Settings → Agents**: it links `~/.local/bin/heka` to the app, so add that folder to your PATH if needed. Outside Heka terminals, the CLI reaches the most recently launched Heka that is still running, registered in `~/Library/Application Support/Heka/Instances`, and the project and worktree come from the current directory when it belongs to a project open in Heka (otherwise pass `--project`).
 
-To teach agents when and how to use these commands, install the `agentui` skill from **Settings → Agents → agentui command**. It is written to `~/.agents/skills/agentui` (read by Codex) and linked from `~/.claude/skills/agentui` (read by Claude Code, and by Copilot and OpenCode). Agents use it in AgentUI terminals (`AGENTUI_INSTANCE` set), and elsewhere only when you ask them to drive AgentUI.
+To teach agents when and how to use these commands, install the `heka` skill from **Settings → Agents → heka command**. It is written to `~/.agents/skills/heka` (read by Codex) and linked from `~/.claude/skills/heka` (read by Claude Code, and by Copilot and OpenCode). Agents use it in Heka terminals (`HEKA_INSTANCE` set), and elsewhere only when you ask them to drive Heka.
 
-The skill lives in [`skills/agentui`](skills/agentui/SKILL.md), so it can also be installed and updated without a new app release:
+The skill lives in [`skills/heka`](skills/heka/SKILL.md), so it can also be installed and updated without a new app release:
 
 ```sh
-npx skills add LeBojo/AgentUI --skill agentui --global
+npx skills add LeBojo/AgentUI --skill heka --global
 npx skills update
 ```
 
@@ -199,8 +199,8 @@ Communication uses a request mailbox private to the app instance, with no networ
 
 | Data | Location |
 | --- | --- |
-| Organization (projects, folders, terminals) | `~/Library/Application Support/AgentUI/workspace.json` |
-| Worktrees created by the app | `~/.agentui/<project>-<branch>/` (configurable in Settings › General) |
+| Organization (projects, folders, terminals) | `~/Library/Application Support/Heka/workspace.json` |
+| Worktrees created by the app | `~/.heka/<project>-<branch>/` (configurable in Settings › General) |
 
 Saves are coalesced during interactions, then written off the UI thread. A banner reports unsaved changes and offers a retry. Quitting waits for the last write; a save failure cancels the quit to keep changes in memory. Removing a project from the UI deletes no files, branches or worktrees.
 
@@ -211,18 +211,18 @@ The macOS sandbox is disabled so the real shell can reach developer tools and re
 ## Project structure
 
 ```
-AgentUI/
-├── AgentUI/
+Heka/
+├── Heka/
 │   ├── MyApp.swift
 │   ├── Core/         # Remote channel, security, chat journals and terminal mirror
 │   ├── Models/       # Workspace, stores, bridge protocol, inspector models
-│   ├── Services/     # Git, agentui CLI, bridge, command execution, persistence
+│   ├── Services/     # Git, heka CLI, bridge, command execution, persistence
 │   ├── Platforms/    # macOS and iOS adapters
 │   ├── Views/        # One folder per screen (ContentView, WorkspaceSidebar, TerminalDetail, …), one view per file
 │   │   └── Components/  # Views shared between screens
-│   └── AgentUI.icon  # Icon Composer icon
+│   └── Heka.icon  # Icon Composer icon
 ├── Tests/            # Unit tests (run.sh) and integration tests (integration.py)
-└── AgentUI.xcodeproj
+└── Heka.xcodeproj
 ```
 
 ## Tests
@@ -231,20 +231,20 @@ AgentUI/
 # Unit tests (compiled with swiftc, no Xcode needed)
 ./Tests/run.sh
 
-# Integration tests against a Debug app built in /tmp/agentui-build
+# Integration tests against a Debug app built in /tmp/heka-build
 python3 Tests/integration.py
 
 # Companion integration (isolated Mac host, real TCP + PTY)
-python3 Tests/remote-integration.py /tmp/agentui-mobile-build/Build/Products/Debug/AgentUI.app/Contents/MacOS/AgentUI
+python3 Tests/remote-integration.py /tmp/heka-mobile-build/Build/Products/Debug/Heka.app/Contents/MacOS/Heka
 
 # Terminal checkpoints + UIKit regression app in a disposable simulator.
 # First build macOS and iOS Simulator Debug into these derived-data directories.
-bash Tests/run-terminal-mirror.sh /tmp/agentui-mobile-build /tmp/agentui-ios-build
+bash Tests/run-terminal-mirror.sh /tmp/heka-mobile-build /tmp/heka-ios-build
 ```
 
-Integration tests launch a Debug instance with temporary state and repositories, never the user's data. Companion integration tests use a dynamically allocated loopback port and verify the fixture path before sending input, so an already-running Mac host is never used. With `Tests/remote-integration.py --hold` (app path before `--hold`), launch a disposable iPhone simulator with `SIMCTL_CHILD_AGENTUI_TEST_HOST_PORT` set to the printed port, and pass `-remoteHost 127.0.0.1 -remotePairingCode <printed code>` as launch arguments. `AGENTUI_SIM=<UDID> SERVE_SIM_ROOT=<serve-sim/dist> node Tests/mobile-navigation.cjs` checks project/worktree expansion, terminal navigation and back navigation through real UI taps. They check the real PTY, delegation from a terminal, paths, Git and persistence. Regression tests also cover write failures, save ordering, Observation isolation, stopping a stuck Git hook, partial worktree recovery and local reads during a slow GitHub request.
+Integration tests launch a Debug instance with temporary state and repositories, never the user's data. Companion integration tests use a dynamically allocated loopback port and verify the fixture path before sending input, so an already-running Mac host is never used. With `Tests/remote-integration.py --hold` (app path before `--hold`), launch a disposable iPhone simulator with `SIMCTL_CHILD_HEKA_TEST_HOST_PORT` set to the printed port, and pass `-remoteHost 127.0.0.1 -remotePairingCode <printed code>` as launch arguments. `HEKA_SIM=<UDID> SERVE_SIM_ROOT=<serve-sim/dist> node Tests/mobile-navigation.cjs` checks project/worktree expansion, terminal navigation and back navigation through real UI taps. They check the real PTY, delegation from a terminal, paths, Git and persistence. Regression tests also cover write failures, save ordering, Observation isolation, stopping a stuck Git hook, partial worktree recovery and local reads during a slow GitHub request.
 
-If the macOS session cannot focus the test window, `AGENTUI_SKIP_WINDOW_TESTS=1 python3 Tests/integration.py` runs the other scenarios and explicitly reports the skipped keyboard/window tests. Automated captures do not validate the native appearance under Stage Manager; visual inspection still has to be done in a normal window.
+If the macOS session cannot focus the test window, `HEKA_SKIP_WINDOW_TESTS=1 python3 Tests/integration.py` runs the other scenarios and explicitly reports the skipped keyboard/window tests. Automated captures do not validate the native appearance under Stage Manager; visual inspection still has to be done in a normal window.
 
 ## Continuous integration
 
@@ -262,10 +262,10 @@ No scrollback restoration after quitting the app, semantic agent state tracking,
 
 ## License
 
-AgentUI is dual-licensed:
+Heka is dual-licensed:
 
 - **Open source**: [GNU General Public License v3.0](LICENSE). You are free to use, modify and redistribute it, provided that any distributed derivative work is also released under the GPL-3.0 with its source code.
-- **Commercial**: if you want to integrate AgentUI into a proprietary product or distribute it without the GPL obligations, a paid commercial license is available. Contact [contact@jordan-chap.com](mailto:contact@jordan-chap.com).
+- **Commercial**: if you want to integrate Heka into a proprietary product or distribute it without the GPL obligations, a paid commercial license is available. Contact [contact@jordan-chap.com](mailto:contact@jordan-chap.com).
 
 ## Acknowledgements
 

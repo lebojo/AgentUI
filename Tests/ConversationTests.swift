@@ -12,7 +12,7 @@ enum ConversationTests {
 
     static func main() async throws {
         let home = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
-            .appendingPathComponent("agentui-conversations-\(UUID())", isDirectory: true)
+            .appendingPathComponent("heka-conversations-\(UUID())", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: home) }
         let project = home.appendingPathComponent("My Project.v2", isDirectory: true)
         let other = home.appendingPathComponent("Other", isDirectory: true)

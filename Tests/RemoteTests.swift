@@ -28,7 +28,7 @@ import Foundation
         try require(padded.addresses == invitation.addresses, "QR link tolerates surrounding whitespace")
         let mixed = try PairingInvitation(scanned: invitation.link.replacingOccurrences(of: "10.0.0.5", with: "8.8.8.8"))
         try require(mixed.addresses == ["192.168.1.42"], "QR link drops public addresses")
-        let rejected = ["https://example.com", "agentui://other?id=\(invitation.hostID)",
+        let rejected = ["https://example.com", "heka://other?id=\(invitation.hostID)",
                         invitation.link.replacingOccurrences(of: invitation.code, with: "NOPE"),
                         invitation.link.replacingOccurrences(of: "192.168.1.42,10.0.0.5", with: "8.8.8.8"),
                         invitation.link.replacingOccurrences(of: invitation.hostID.uuidString, with: "mac")]

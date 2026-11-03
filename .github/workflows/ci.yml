@@ -27,21 +27,21 @@ jobs:
           swift --version
 
       - name: Lint views
-        run: swift Scripts/lint-views.swift AgentUI
+        run: swift Scripts/lint-views.swift Heka
 
       - name: Cache Swift packages
         uses: actions/cache@v5
         with:
           path: DerivedData/SourcePackages
-          key: spm-${{ runner.os }}-${{ hashFiles('AgentUI.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: spm-${{ runner.os }}-${{ hashFiles('Heka.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: spm-${{ runner.os }}-
 
       - name: Build
         run: |
           set -o pipefail
           xcodebuild \
-            -project AgentUI.xcodeproj \
-            -scheme AgentUI \
+            -project Heka.xcodeproj \
+            -scheme Heka \
             -configuration Debug \
             -destination 'platform=macOS' \
             -derivedDataPath "$DERIVED_DATA" \

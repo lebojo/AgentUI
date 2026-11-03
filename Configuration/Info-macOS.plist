@@ -6,9 +6,9 @@
 	<array>
 		<dict>
 			<key>UTTypeIdentifier</key>
-			<string>ch.jordanchap.agentui.terminal</string>
+			<string>ch.jordanchap.heka.terminal</string>
 			<key>UTTypeDescription</key>
-			<string>AgentUI Terminal</string>
+			<string>Heka Terminal</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>

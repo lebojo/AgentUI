@@ -11,12 +11,12 @@ import tempfile
 import time
 import uuid
 
-binary = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else '/tmp/agentui-build/Build/Products/Debug/AgentUI.app/Contents/MacOS/AgentUI')
+binary = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else '/tmp/heka-build/Build/Products/Debug/Heka.app/Contents/MacOS/Heka')
 screenshots = pathlib.Path(__file__).resolve().parents[1] / '.impeccable/review'
 screenshots.mkdir(parents=True, exist_ok=True)
-for name in [name for name in os.environ if name.startswith('AGENTUI_')]:
+for name in [name for name in os.environ if name.startswith('HEKA_')]:
     del os.environ[name]
-root = pathlib.Path(tempfile.mkdtemp(prefix='agentui-integration-')).resolve()
+root = pathlib.Path(tempfile.mkdtemp(prefix='heka-integration-')).resolve()
 state = root / 'state'
 repo = root / 'Studio' / 'App macOS'
 repo.mkdir(parents=True)
@@ -35,7 +35,7 @@ def start():
     global app, instance
     instances = state / 'Instances'
     shutil.rmtree(instances, ignore_errors=True)
-    app = subprocess.Popen([str(binary), '-AppleLanguages', '(en)'], env=os.environ | {'AGENTUI_STATE_DIRECTORY': str(state)},
+    app = subprocess.Popen([str(binary), '-AppleLanguages', '(en)'], env=os.environ | {'HEKA_STATE_DIRECTORY': str(state)},
                            stdout=open(root / 'app.log', 'a'), stderr=subprocess.STDOUT)
     registered = lambda: [entry for entry in instances.iterdir() if entry.name.isdigit()] if instances.is_dir() else []
     wait_for(registered, 'app bridge')
@@ -63,8 +63,8 @@ def stop():
         app.wait(timeout=10)
 
 def cli(*args, ok=True, extra_env=None):
-    env = os.environ | {'AGENTUI_INSTANCE': str(instance)} | (extra_env or {})
-    result = subprocess.run([str(instance/'bin/agentui'), *args], env=env, capture_output=True, text=True, timeout=30)
+    env = os.environ | {'HEKA_INSTANCE': str(instance)} | (extra_env or {})
+    result = subprocess.run([str(instance/'bin/heka'), *args], env=env, capture_output=True, text=True, timeout=30)
     data = json.loads(result.stdout)
     assert data['ok'] == ok and (result.returncode == 0) == ok, (args, data, result.stderr)
     return data
@@ -74,7 +74,7 @@ def git(*args):
 
 try:
     git('init', '-b', 'main')
-    git('-c','user.name=AgentUI Tests','-c','user.email=tests@example.invalid','commit','--allow-empty','-m','Fixture')
+    git('-c','user.name=Heka Tests','-c','user.email=tests@example.invalid','commit','--allow-empty','-m','Fixture')
     start()
     # The normal Add action recognizes a parent folder of repositories.
     plain = repo.parent / 'Documents'
@@ -117,7 +117,7 @@ try:
     marker = root / 'terminal-result.json' 
     literal = "quotes ' spaces $(literal) `literal`"
     child = ['/usr/bin/python3','-c',
-             'import os,json,sys;json.dump({"cwd":os.getcwd(),"arg":sys.argv[2],"project":os.environ.get("AGENTUI_PROJECT_ID"),"worktree":os.environ.get("AGENTUI_WORKTREE_ID"),"tty":os.isatty(0)},open(sys.argv[1],"w"))',str(marker),literal]
+             'import os,json,sys;json.dump({"cwd":os.getcwd(),"arg":sys.argv[2],"project":os.environ.get("HEKA_PROJECT_ID"),"worktree":os.environ.get("HEKA_WORKTREE_ID"),"tty":os.isatty(0)},open(sys.argv[1],"w"))',str(marker),literal]
     terminal = cli('terminal','create','--project',pid,'--worktree',wid,'--name','Contrôle des arguments','--',*child)
     wait_for(marker.exists, 'child process')
     data = json.loads(marker.read_text())
@@ -127,7 +127,7 @@ try:
     # Parent agent launches a child through the CLI from its own PTY context.
     nested = root / 'nested.json'
     parent = cli('terminal','create','--project',pid,'--worktree',wid,'--name','Délégation', '--',
-                 '/bin/zsh','-c','"$AGENTUI_CLI" terminal create --name "Agent enfant" > "$1"', 'agentui-test', str(nested))
+                 '/bin/zsh','-c','"$HEKA_CLI" terminal create --name "Agent enfant" > "$1"', 'heka-test', str(nested))
     wait_for(lambda: nested.exists() and nested.stat().st_size > 0, 'nested agent request')
     spawned = json.loads(nested.read_text())
     assert spawned['ok'] and spawned['worktreeID'] == wid
@@ -141,8 +141,8 @@ try:
     assert sent['running'] and sent['terminalID'] == echo_id and sent['worktreeID'] == wid, sent
     cli('terminal','wait','--terminal',echo_id,'--idle','0.5','--timeout','10')
     assert 'got: hello $(literal) world' in cli('terminal','read','--terminal',echo_id)['output']
-    piped = subprocess.run([str(instance/'bin/agentui'),'terminal','send','--terminal',echo_id,'--enter','--stdin'], input='from stdin\n',
-                           env=os.environ | {'AGENTUI_INSTANCE': str(instance)}, capture_output=True, text=True, timeout=30)
+    piped = subprocess.run([str(instance/'bin/heka'),'terminal','send','--terminal',echo_id,'--enter','--stdin'], input='from stdin\n',
+                           env=os.environ | {'HEKA_INSTANCE': str(instance)}, capture_output=True, text=True, timeout=30)
     assert json.loads(piped.stdout)['ok'], piped
     wait_for(lambda: cli('terminal','read','--terminal',echo_id,'--lines','1')['output'] == '> ', 'stdin message answered')
     assert 'got: from stdin' in cli('terminal','read','--terminal',echo_id,'--lines','3')['output']
@@ -153,7 +153,7 @@ try:
     still = cli('terminal','wait','--terminal',echo_id,'--exit','--timeout','1',ok=False)
     assert still['running'] and 'still running' in still['message'], still
     cli('terminal','send','--terminal',echo_id,'--',ok=False)
-    cli('terminal','send','--terminal',echo_id,'--','x',ok=False,extra_env={'AGENTUI_TERMINAL_ID': echo_id})
+    cli('terminal','send','--terminal',echo_id,'--','x',ok=False,extra_env={'HEKA_TERMINAL_ID': echo_id})
     cli('terminal','send','--terminal',echo_id,'--','quit')
     cli('terminal','send','--terminal',echo_id,'--enter')
     exited = cli('terminal','wait','--terminal',echo_id,'--exit','--timeout','10')
@@ -169,19 +169,19 @@ try:
 
     def from_terminal(script, output, branch=None):
         create = ('worktree','create','--project',pid,'--branch',branch) if branch else ('terminal','create','--project',pid,'--worktree',wid)
-        created = cli(*create,'--','/bin/zsh','-c',script + ' > "$1"; sleep 30','agentui-test',str(output))
+        created = cli(*create,'--','/bin/zsh','-c',script + ' > "$1"; sleep 30','heka-test',str(output))
         wait_for(lambda: output.exists() and output.stat().st_size > 0, 'reply in the closing terminal')
         return created, json.loads(output.read_text())
     terminals = lambda: [t['id'] for p in cli('list')['workspace']['projects'] for w in p['worktrees'] for t in w['terminals']]
     worktrees = lambda: [w['id'] for p in cli('list')['workspace']['projects'] for w in p['worktrees']]
-    itself, reply = from_terminal('"$AGENTUI_CLI" terminal close --terminal "$AGENTUI_TERMINAL_ID"', root / 'close-self.json')
+    itself, reply = from_terminal('"$HEKA_CLI" terminal close --terminal "$HEKA_TERMINAL_ID"', root / 'close-self.json')
     assert reply['ok'] and reply['closesCaller'] and reply['removed'], reply
     wait_for(lambda: itself['terminalID'] not in terminals(), 'terminal closed after its reply')
-    dirty, refusal = from_terminal('touch draft.txt; "$AGENTUI_CLI" worktree delete --worktree "$AGENTUI_WORKTREE_ID"', root / 'dirty-self.json',
+    dirty, refusal = from_terminal('touch draft.txt; "$HEKA_CLI" worktree delete --worktree "$HEKA_WORKTREE_ID"', root / 'dirty-self.json',
                                    branch='feature/self-dirty')
     assert not refusal['ok'] and 'force' in refusal['message'] and dirty['worktreeID'] in worktrees(), refusal
     assert dirty['terminalID'] in terminals() and pathlib.Path(dirty['path']).is_dir()
-    merged, reply = from_terminal('"$AGENTUI_CLI" worktree delete --worktree "$AGENTUI_WORKTREE_ID" --delete-branch', root / 'delete-self.json',
+    merged, reply = from_terminal('"$HEKA_CLI" worktree delete --worktree "$HEKA_WORKTREE_ID" --delete-branch', root / 'delete-self.json',
                                   branch='feature/self-merged')
     assert reply['ok'] and reply['closesCaller'] and reply['worktreeID'] == merged['worktreeID'], reply
     wait_for(lambda: merged['worktreeID'] not in worktrees() and not pathlib.Path(merged['path']).exists(), 'own worktree deleted after the reply')
@@ -199,8 +199,8 @@ try:
     hook = repo / '.git/hooks/post-checkout'
     hook.write_text('#!/bin/sh\nsleep 1\n')
     hook.chmod(0o755)
-    pending = subprocess.Popen([str(instance/'bin/agentui'),'worktree','create','--project',pid,'--branch','feature/concurrent-refresh'],
-                               env=os.environ | {'AGENTUI_INSTANCE':str(instance)}, stdout=subprocess.PIPE, text=True)
+    pending = subprocess.Popen([str(instance/'bin/heka'),'worktree','create','--project',pid,'--branch','feature/concurrent-refresh'],
+                               env=os.environ | {'HEKA_INSTANCE':str(instance)}, stdout=subprocess.PIPE, text=True)
     wait_for(lambda: 'feature/concurrent-refresh' in git('worktree','list'), 'worktree registered before hook finishes')
     request('debug.refresh',projectID=pid)
     result = json.loads(pending.communicate(timeout=15)[0])
@@ -208,23 +208,23 @@ try:
     hook.unlink()
     print('PASS concurrent refresh/create does not duplicate a worktree', flush=True)
 
-    outside_env = os.environ | {'AGENTUI_STATE_DIRECTORY': str(state)}
+    outside_env = os.environ | {'HEKA_STATE_DIRECTORY': str(state)}
     subfolder = repo / 'Sources'
     subfolder.mkdir(exist_ok=True)
-    outside = subprocess.run([str(instance/'bin/agentui'),'terminal','create','--name','Outside'], cwd=subfolder,
+    outside = subprocess.run([str(instance/'bin/heka'),'terminal','create','--name','Outside'], cwd=subfolder,
                              env=outside_env, capture_output=True, text=True, timeout=30)
     data = json.loads(outside.stdout)
     assert data['ok'] and data['projectID'] == pid and data['worktreeID'] == wid, data
-    elsewhere = subprocess.run([str(instance/'bin/agentui'),'terminal','create'], cwd=root,
+    elsewhere = subprocess.run([str(instance/'bin/heka'),'terminal','create'], cwd=root,
                                env=outside_env, capture_output=True, text=True, timeout=30)
     assert elsewhere.returncode != 0 and '--project' in json.loads(elsewhere.stdout)['message']
-    print('PASS outside AgentUI, the CLI finds the running app and the project of the current directory', flush=True)
-    linked = root / 'linked-bin' / 'agentui'
+    print('PASS outside Heka, the CLI finds the running app and the project of the current directory', flush=True)
+    linked = root / 'linked-bin' / 'heka'
     linked.parent.mkdir(exist_ok=True)
     linked.symlink_to(binary)
     through_link = subprocess.run([str(linked),'list'], cwd=subfolder, env=outside_env, capture_output=True, text=True, timeout=30)
     assert through_link.returncode == 0 and json.loads(through_link.stdout)['ok'], through_link
-    print('PASS the agentui link installed in PATH runs the CLI, not a second app', flush=True)
+    print('PASS the heka link installed in PATH runs the CLI, not a second app', flush=True)
 
     disposable = cli('worktree','create','--project',pid,'--branch','feature/disposable')
     (pathlib.Path(disposable['path']) / 'draft.txt').write_text('work in progress')
@@ -251,18 +251,18 @@ try:
     print('PASS nested grouping, no duplicate primary worktree, terminal selection', flush=True)
 
     # Optional diagnostic captures; cacheDisplay does not validate native vibrancy/colors.
-    for name, width, appearance in ([('desktop',1180,'dark'),('compact',780,'dark'),('light',1180,'light')] if os.environ.get('AGENTUI_CAPTURE_TOOL') else []):
+    for name, width, appearance in ([('desktop',1180,'dark'),('compact',780,'dark'),('light',1180,'light')] if os.environ.get('HEKA_CAPTURE_TOOL') else []):
         # First layout, then capture after SwiftUI has rendered the changed size/appearance.
         target = str(screenshots / (name+'.png'))
         request('debug.capture',path=target,name=appearance,command=[str(width)])
         time.sleep(.4)
         capture = request('debug.capture',path=target,name=appearance,command=[str(width)])
-        if os.environ.get('AGENTUI_CAPTURE_TOOL'):
-            subprocess.run([os.environ['AGENTUI_CAPTURE_TOOL'],target],check=True)
-    if os.environ.get('AGENTUI_CAPTURE_TOOL'):
+        if os.environ.get('HEKA_CAPTURE_TOOL'):
+            subprocess.run([os.environ['HEKA_CAPTURE_TOOL'],target],check=True)
+    if os.environ.get('HEKA_CAPTURE_TOOL'):
         print('Captured diagnostic images; inspect before treating them as visual evidence.', flush=True)
 
-    if not os.environ.get('AGENTUI_SKIP_WINDOW_TESTS'):
+    if not os.environ.get('HEKA_SKIP_WINDOW_TESTS'):
         # Exercise both the actual Command-W event route and the native Close menu.
         sleeper = next(p for p in cli('list')['workspace']['projects'] if p['id'] != pid)
         sleeper_id = sleeper['worktrees'][0]['terminals'][0]['id']
@@ -329,7 +329,7 @@ try:
     time.sleep(.5)
     assert not marker.exists(), 'Restart must not replay the old agent command'
     print('PASS persisted organization and no automatic command replay after relaunch', flush=True)
-    if not os.environ.get('AGENTUI_SKIP_WINDOW_TESTS'):
+    if not os.environ.get('HEKA_SKIP_WINDOW_TESTS'):
         request('debug.select')
         activate()
         time.sleep(.2)

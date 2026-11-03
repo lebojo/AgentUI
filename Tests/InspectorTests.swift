@@ -30,7 +30,7 @@ enum InspectorTests {
         let file = repository.appendingPathComponent("tracked file.txt")
         try "before\n".write(to: file, atomically: true, encoding: .utf8)
         _ = try await GitService.run(["add", "--", "tracked file.txt"], at: repository.path)
-        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-m", "Tracked fixture"], at: repository.path)
+        _ = try await GitService.run(["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "-m", "Tracked fixture"], at: repository.path)
         try "staged\n".write(to: file, atomically: true, encoding: .utf8)
         _ = try await GitService.run(["add", "--", "tracked file.txt"], at: repository.path)
         try "unstaged\n".write(to: file, atomically: true, encoding: .utf8)
@@ -458,7 +458,7 @@ enum InspectorTests {
         let repository = root.appendingPathComponent("actions repository")
         try FileManager.default.createDirectory(at: repository.appendingPathComponent("src/app"), withIntermediateDirectories: true)
         _ = try await GitService.run(["init", "-q", "-b", "main"], at: repository.path)
-        _ = try await GitService.run(["config", "user.name", "AgentUI Tests"], at: repository.path)
+        _ = try await GitService.run(["config", "user.name", "Heka Tests"], at: repository.path)
         _ = try await GitService.run(["config", "user.email", "tests@example.invalid"], at: repository.path)
         try "one\n".write(to: repository.appendingPathComponent("src/app/one.txt"), atomically: true, encoding: .utf8)
         try "two\n".write(to: repository.appendingPathComponent("two.txt"), atomically: true, encoding: .utf8)
@@ -522,7 +522,7 @@ enum InspectorTests {
         try FileManager.default.createDirectory(at: repository, withIntermediateDirectories: true)
         _ = try await GitService.run(["init", "-q", "--bare", "-b", "main", remote.path], at: root.path)
         _ = try await GitService.run(["init", "-q", "-b", "main"], at: repository.path)
-        _ = try await GitService.run(["config", "user.name", "AgentUI Tests"], at: repository.path)
+        _ = try await GitService.run(["config", "user.name", "Heka Tests"], at: repository.path)
         _ = try await GitService.run(["config", "user.email", "tests@example.invalid"], at: repository.path)
         _ = try await GitService.run(["config", "push.default", "upstream"], at: repository.path)
         _ = try await GitService.run(["remote", "add", "origin", remote.path], at: repository.path)
@@ -633,7 +633,7 @@ enum InspectorTests {
         let repository = root.appendingPathComponent("porcelain repository")
         try FileManager.default.createDirectory(at: repository, withIntermediateDirectories: true)
         _ = try await GitService.run(["init", "-q", "-b", "main"], at: repository.path)
-        _ = try await GitService.run(["config", "user.name", "AgentUI Tests"], at: repository.path)
+        _ = try await GitService.run(["config", "user.name", "Heka Tests"], at: repository.path)
         _ = try await GitService.run(["config", "user.email", "tests@example.invalid"], at: repository.path)
         _ = try await GitService.run(["config", "status.renames", "copies"], at: repository.path)
         let lines = (1...20).map { "line \($0)\n" }.joined()
@@ -715,10 +715,10 @@ enum InspectorTests {
         let repository = root.appendingPathComponent("merge cache repository")
         try FileManager.default.createDirectory(at: repository, withIntermediateDirectories: true)
         _ = try await GitService.run(["init", "-q", "-b", "main"], at: repository.path)
-        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Base"],
+        _ = try await GitService.run(["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Base"],
                                      at: repository.path)
         _ = try await GitService.run(["checkout", "-q", "-b", "topic"], at: repository.path)
-        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Work"],
+        _ = try await GitService.run(["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Work"],
                                      at: repository.path)
         let head = try await GitService.run(["rev-parse", "HEAD"], at: repository.path)
         let checks = ResolutionCount()
@@ -761,7 +761,7 @@ enum InspectorTests {
 
         let repository = root.appendingPathComponent("comparison repository")
         try FileManager.default.createDirectory(at: repository, withIntermediateDirectories: true)
-        let commit = ["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "-m"]
+        let commit = ["-c", "user.name=Heka Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "-m"]
         _ = try await GitService.run(["init", "-b", "main"], at: repository.path)
         try "shared\n".write(to: repository.appendingPathComponent("shared.txt"), atomically: true, encoding: .utf8)
         try "doomed\n".write(to: repository.appendingPathComponent("doomed.txt"), atomically: true, encoding: .utf8)
@@ -795,7 +795,7 @@ enum InspectorTests {
         let diff = try await InspectorService.comparisonDiff(shared, base: main, at: repository.path)
         try require(diff.sections.map(\.kind) == [.committed] && diff.onlySection?.additions == 1 && diff.onlySection?.deletions == 0,
                     "Comparison diff shows the branch changes for one file")
-        for reference in ["--output=/tmp/agentui", "refs/heads/main..HEAD", "refs/heads/", "refs/tags/v1"] {
+        for reference in ["--output=/tmp/heka", "refs/heads/main..HEAD", "refs/heads/", "refs/tags/v1"] {
             do {
                 _ = try await InspectorService.comparison(with: ComparisonBranch(reference: reference), at: repository.path)
                 throw WorkspaceError(message: "FAIL: comparison base \(reference) accepted")

@@ -1,4 +1,4 @@
-# AgentUI
+# Heka
 
 <!-- impeccable:product-schema 1 -->
 

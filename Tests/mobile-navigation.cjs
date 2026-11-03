@@ -1,10 +1,10 @@
 // Run against the disposable iPhone + host fixture from remote-integration.py --hold.
-// SERVE_SIM_ROOT is the serve-sim/dist directory; AGENTUI_SIM is the simulator UDID.
+// SERVE_SIM_ROOT is the serve-sim/dist directory; HEKA_SIM is the simulator UDID.
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const root = process.env.SERVE_SIM_ROOT;
-const device = process.env.AGENTUI_SIM;
-assert(root && device, 'Set SERVE_SIM_ROOT and AGENTUI_SIM to the test runtime and disposable simulator');
+const device = process.env.HEKA_SIM;
+assert(root && device, 'Set SERVE_SIM_ROOT and HEKA_SIM to the test runtime and disposable simulator');
 const native = require(path.join(root, 'native/serve-sim-native.node'));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function nodes() {
@@ -41,7 +41,7 @@ const button = (items, name) => items.find(n => n.type === 'Button' && n.AXLabel
     }
     try {
         let current = await nodes();
-        if (button(current, 'AgentUI')) await tap('AgentUI');
+        if (button(current, 'Heka')) await tap('Heka');
         current = await nodes();
         assert(button(current, 'Mobile fixture'), 'This must be the isolated Mobile fixture workspace');
         for (let repeat = 0; repeat < 3; repeat++) {
@@ -56,7 +56,7 @@ const button = (items, name) => items.find(n => n.type === 'Button' && n.AXLabel
         await sleep(1000);
         current = await nodes();
         assert(current.some(n => n.AXLabel === 'Écran du terminal'), 'A plain shell is not mirrored as a terminal');
-        await tap('AgentUI');
+        await tap('Heka');
         await tap('Mobile fixture', true);
         await tap('Mobile fixture', true);
         await tap('Terminal');
