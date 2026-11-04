@@ -3,12 +3,17 @@ import Darwin
 import os
 
 enum CommandRunner {
+    enum OutputOverflow: Sendable {
+        case stop, discard
+    }
+
     private static let registry = Registry()
+    private static let diagnosticLimit = 65_536
 
     static func cancelAll() { registry.cancelAll() }
 
     static func run(_ executable: URL, _ arguments: [String], at path: String,
-                    timeout: TimeInterval, limit: Int, readOnly: Bool,
+                    timeout: TimeInterval, limit: Int, readOnly: Bool, overflow: OutputOverflow = .stop,
                     gitConfiguration: [String: String] = [:]) async throws -> Data {
         let job = Job()
         let id = UUID()
@@ -17,7 +22,7 @@ enum CommandRunner {
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
             return try await execute(job, executable: executable, arguments: arguments, at: path, timeout: timeout, limit: limit,
-                                     readOnly: readOnly, gitConfiguration: gitConfiguration)
+                                     readOnly: readOnly, overflow: overflow, gitConfiguration: gitConfiguration)
         } onCancel: { job.stop(.cancelled) }
     }
 
@@ -34,7 +39,7 @@ enum CommandRunner {
     }
 
     @concurrent private static func execute(_ job: Job, executable: URL, arguments: [String], at path: String,
-                                            timeout: TimeInterval, limit: Int, readOnly: Bool,
+                                            timeout: TimeInterval, limit: Int, readOnly: Bool, overflow: OutputOverflow,
                                             gitConfiguration: [String: String]) async throws -> Data {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("agentui-command-\(UUID())")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
@@ -44,19 +49,27 @@ enum CommandRunner {
         FileManager.default.createFile(atPath: errURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
         let output = try FileHandle(forWritingTo: outURL), error = try FileHandle(forWritingTo: errURL)
         defer { try? output.close(); try? error.close() }
+        _ = fcntl(output.fileDescriptor, F_SETFL, O_APPEND)
+        _ = fcntl(error.fileDescriptor, F_SETFL, O_APPEND)
         let pid = try job.start(executable: executable.path, arguments: arguments,
                                 environment: environment(readOnly: readOnly, gitConfiguration: gitConfiguration),
                                 directory: path, output: output.fileDescriptor, error: error.fileDescriptor)
         let queue = DispatchQueue(label: "AgentUI.command", qos: .utility)
         let timer = DispatchSource.makeTimerSource(queue: queue)
         let deadline = DispatchTime.now() + timeout
-        let outFD = output.fileDescriptor, errFD = error.fileDescriptor
+        let outFD = output.fileDescriptor, errFD = error.fileDescriptor, diagnosticLimit = Self.diagnosticLimit
         timer.schedule(deadline: .now() + .milliseconds(50), repeating: .milliseconds(50))
         timer.setEventHandler {
             var outStat = stat(), errStat = stat()
-            if fstat(outFD, &outStat) == 0, fstat(errFD, &errStat) == 0,
-               outStat.st_size > limit || errStat.st_size > 65_536 { job.stop(.outputLimit) }
-            else if DispatchTime.now() >= deadline { job.stop(.timeout) }
+            let outOverflows = fstat(outFD, &outStat) == 0 && outStat.st_size > limit
+            let errOverflows = fstat(errFD, &errStat) == 0 && errStat.st_size > diagnosticLimit
+            if overflow == .discard {
+                if outOverflows { _ = ftruncate(outFD, 0) }
+                if errOverflows { _ = ftruncate(errFD, 0) }
+            } else if outOverflows || errOverflows {
+                return job.stop(.outputLimit)
+            }
+            if DispatchTime.now() >= deadline { job.stop(.timeout) }
         }
         timer.resume()
         defer { timer.cancel(); queue.sync {} }
@@ -66,14 +79,16 @@ enum CommandRunner {
         let reader = try FileHandle(forReadingFrom: outURL)
         defer { try? reader.close() }
         let data = try reader.read(upToCount: limit + 1) ?? Data()
-        guard data.count <= limit else { throw ReadCommandError(message: String(localized: "The output exceeds the display limit. Open this content in your editor.")) }
+        guard data.count <= limit || overflow == .discard else { throw ReadCommandError(message: String(localized: "The output exceeds the display limit. Open this content in your editor.")) }
         guard status == 0 else {
             let reader = try FileHandle(forReadingFrom: errURL)
             defer { try? reader.close() }
+            if overflow == .discard, let end = try? reader.seekToEnd(), end > 4096 { try reader.seek(toOffset: end - 4096) }
+            else { try reader.seek(toOffset: 0) }
             let diagnostic = String(decoding: try reader.read(upToCount: 4096) ?? Data(), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
             throw ReadCommandError(message: diagnostic.isEmpty ? String(localized: "The command failed (status \(status)).") : diagnostic)
         }
-        return data
+        return data.count > limit ? Data(data.prefix(limit)) : data
     }
 
     private static func waitForExit(of pid: pid_t, on queue: DispatchQueue) async -> Bool {

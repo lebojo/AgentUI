@@ -51,6 +51,15 @@ import Foundation
         _ = try await GitService.run(["-c", "user.name=Tests", "-c", "user.email=tests@example.invalid", "commit", "-qam", "second"], at: repository.path)
         try await wait(until: { model.local?.headSHA != firstHead }, "A commit refreshes HEAD")
         try CoreTests.require(model.lacksChangeRequest, "A new commit on the same branch keeps the comparison in place")
+        try await Task.sleep(for: .seconds(1.5))
+        let beforeAction = await reads.value
+        let failed = await model.perform(.stageAll, at: repository.path) { _, _ in throw ReadCommandError(message: "boom") }
+        try CoreTests.require(!failed && model.actionError == "boom" && model.pendingAction == nil, "A failed Git action is reported inline")
+        try await wait(until: { await reads.value > beforeAction }, "A Git action reloads the status without waiting for file events")
+        try "three\n".write(to: repository.appendingPathComponent("tracked.txt"), atomically: true, encoding: .utf8)
+        let staged = await model.perform(.stageAll, at: repository.path) { try await InspectorService.perform($0, at: $1) }
+        try CoreTests.require(staged && model.actionError == nil, "A successful Git action clears the previous error")
+        try await wait(until: { model.local?.stagedChanges.map(\.path) == ["tracked.txt"] }, "Staging refreshes the sections")
         monitoring.cancel()
         await monitoring.value
         print("PASS event-driven inspector refresh without self-triggering")

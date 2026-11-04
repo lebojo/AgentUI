@@ -5,6 +5,7 @@ struct ContentView: View {
     @AppStorage("inspectorVisible") private var inspectorVisible = true
 
     @Environment(AppVisibility.self) private var visibility
+    @Environment(SettingsStore.self) private var settings
     @Environment(FloatingTerminalStore.self) private var floating
 
     @State private var sheet: WorkspaceSheet?
@@ -28,7 +29,7 @@ struct ContentView: View {
             }
             .disabled(store.isReadOnly)
         } inspector: {
-            WorkspaceInspector(context: store.selectedContext, source: LocalInspectorSource(store: store))
+            WorkspaceInspector(context: store.selectedContext, source: LocalInspectorSource(store: store, settings: settings))
                 .disabled(store.isReadOnly)
         }
         .environment(\.workspaceVisible, visibility.isVisible)

@@ -24,10 +24,11 @@ struct InspectorContents: View {
                     ExplorerDirectory(url: URL(fileURLWithPath: context.worktree.path), source: source)
                 }.listStyle(.plain).id(refresh)
             case .agents: AgentConversationList(context: context, refresh: refresh, source: source)
-            case .git, .checks: InspectorRepositoryContent(model: model, tab: tab, refresh: refresh, source: source)
+            case .git, .checks: InspectorRepositoryContent(model: model, tab: tab, refresh: refresh, context: context, source: source)
             }
         }
         .environment(previews)
+        .environment(model)
         .modifier(InspectorPreviewPresenter(previews: previews, source: source))
         .task(id: "\(tab.rawValue)-\(refresh)-\(workspaceVisible)-\(scenePhase == .background)", priority: .utility) {
             guard workspaceVisible, scenePhase != .background, tab == .git || tab == .checks else { return }

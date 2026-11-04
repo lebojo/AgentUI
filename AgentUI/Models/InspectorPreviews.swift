@@ -4,7 +4,7 @@ import Observation
 @MainActor @Observable final class InspectorPreviews {
     enum Request: Equatable, Sendable {
         case file(URL)
-        case diff(GitChange, scope: GitChangeScope = .workingTree, root: String)
+        case diff(GitChange, scope: GitChangeScope = .unstaged, root: String)
     }
 
     var current: InspectorPreview?
@@ -15,7 +15,7 @@ import Observation
 
     func open(_ url: URL) { submit(.file(url)) }
 
-    func diff(_ change: GitChange, in scope: GitChangeScope = .workingTree, at root: String) {
+    func diff(_ change: GitChange, in scope: GitChangeScope = .unstaged, at root: String) {
         submit(.diff(change, scope: scope, root: root))
     }
 

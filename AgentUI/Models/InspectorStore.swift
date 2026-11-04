@@ -8,6 +8,7 @@ import Observation
 
     var comparisonBase: ComparisonBranch?
     private(set) var local: LocalGitSnapshot?
+    private(set) var changeTrees = GitChangeTrees()
     private(set) var remote: RemoteSnapshot?
     private(set) var localLoading = false
     private(set) var remoteLoading = false
@@ -15,7 +16,10 @@ import Observation
     private(set) var lacksChangeRequest = false
     private(set) var localError: String?
     private(set) var remoteError: String?
+    private(set) var pendingAction: GitAction?
+    var actionError: String?
     @ObservationIgnored private var path: String?
+    @ObservationIgnored private var reloadTrigger: AsyncStream<Void>.Continuation?
     @ObservationIgnored private var generation = UUID()
     @ObservationIgnored private var remoteKey: String?
     @ObservationIgnored private var remoteDate: ContinuousClock.Instant?
@@ -23,6 +27,7 @@ import Observation
 
     typealias LocalQuery = @Sendable (String) async throws -> LocalGitSnapshot
     typealias RemoteQuery = @Sendable (LocalGitSnapshot) async throws -> RemoteSnapshot
+    typealias GitCommand = (GitAction, String) async throws -> Void
 
     private var currentKey: String? {
         branchKey.map { $0 + "|" + (local?.headSHA ?? "") }
@@ -44,14 +49,21 @@ import Observation
         if self.path != path {
             self.path = path
             local = nil; remote = nil; localError = nil; remoteError = nil
+            changeTrees = GitChangeTrees()
             remoteKey = nil; remoteDate = nil
             lacksChangeRequest = false; comparisonBase = nil
         }
         localLoading = false; remoteLoading = false
         if forceRemote { remoteKey = nil }
         let (triggers, trigger) = AsyncStream.makeStream(of: RemoteTrigger.self, bufferingPolicy: .bufferingNewest(1))
+        let (reloads, reload) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
+        reloadTrigger = reload
         await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.localLoop(path: path, token: token, changes: changes, trigger: trigger, readLocal: readLocal) }
+            group.addTask {
+                for await _ in changes { reload.yield() }
+                reload.finish()
+            }
+            group.addTask { await self.localLoop(path: path, token: token, changes: reloads, trigger: trigger, readLocal: readLocal) }
             group.addTask { await self.remoteLoop(token: token, triggers: triggers, readRemote: readRemote) }
             group.addTask {
                 while !Task.isCancelled {
@@ -61,7 +73,32 @@ import Observation
             }
         }
         trigger.finish()
-        if generation == token { localLoading = false; remoteLoading = false }
+        reload.finish()
+        if generation == token { localLoading = false; remoteLoading = false; reloadTrigger = nil }
+    }
+
+    func reload(remote: Bool = false) {
+        if remote { remoteKey = nil }
+        reloadTrigger?.yield()
+    }
+
+    @discardableResult func perform(_ action: GitAction, at root: String, run: GitCommand) async -> Bool {
+        guard pendingAction == nil else { return false }
+        pendingAction = action
+        actionError = nil
+        defer {
+            pendingAction = nil
+            reload(remote: action.updatesRemote)
+        }
+        do {
+            try await run(action, root)
+            return true
+        } catch is CancellationError {
+            return false
+        } catch {
+            actionError = error.localizedDescription
+            return false
+        }
     }
 
     private func localLoop(path: String, token: UUID, changes: AsyncStream<Void>,
@@ -71,9 +108,11 @@ import Observation
             localLoading = true
             do {
                 let snapshot = try await readLocal(path)
+                let trees = snapshot.changes == local?.changes ? changeTrees : await GitChangeTrees.build(snapshot)
                 guard !Task.isCancelled, generation == token else { break }
                 let oldKey = currentKey, oldBranchKey = branchKey
                 local = snapshot
+                changeTrees = trees
                 localError = nil
                 if currentKey != oldKey { remote = nil; remoteError = nil; remoteDate = nil }
                 if branchKey != oldBranchKey { lacksChangeRequest = false }
@@ -82,6 +121,7 @@ import Observation
             catch {
                 guard generation == token, !Task.isCancelled else { break }
                 local = nil; remote = nil; remoteError = nil
+                changeTrees = GitChangeTrees()
                 remoteKey = nil; remoteDate = nil
                 lacksChangeRequest = false
                 localError = error.localizedDescription

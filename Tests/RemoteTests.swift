@@ -135,7 +135,15 @@ import Foundation
         let restored = try reply.decode(RemoteDiff.self).diff
         try require(restored.sections.first?.patch == diff.sections.first?.patch, "Diff patches survive transport")
         try require(restored.sections.first?.additions == 1, "Derived diff rows are reconstructed locally")
-        print("PASS remote diff round trip")
+        let terminal = UUID()
+        let legacy = Data(#"{"diff":{"terminal":"\#(terminal.uuidString)","change":{"path":"a","indexStatus":"M","worktreeStatus":"M"}}}"#.utf8)
+        let scoped = try JSONEncoder().encode(RemoteRequest.diff(terminal: terminal, change: GitChange(path: "a", originalPath: nil, indexStatus: "M", worktreeStatus: "M"),
+                                                                 including: [.staged]))
+        guard case .diff(terminal, let legacyChange, nil) = try JSONDecoder().decode(RemoteRequest.self, from: legacy),
+              case .diff(terminal, legacyChange, [.staged]) = try JSONDecoder().decode(RemoteRequest.self, from: scoped) else {
+            throw RemoteError(message: "FAIL: diff requests lost their scope or legacy compatibility")
+        }
+        print("PASS remote diff round trip and scoped diff requests")
 
         for hosting in [GitHosting.github, .gitlab] {
             let snapshot = RemoteSnapshot(hosting: hosting,

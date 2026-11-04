@@ -96,7 +96,7 @@ enum RemoteRequest: Codable, Sendable {
     case text(terminal: UUID, path: String)
     case git(terminal: UUID)
     case github(terminal: UUID)
-    case diff(terminal: UUID, change: GitChange)
+    case diff(terminal: UUID, change: GitChange, including: [GitDiffSection.Kind]?)
     case branches(terminal: UUID)
     case comparison(terminal: UUID, base: ComparisonBranch)
     case comparisonDiff(terminal: UUID, base: ComparisonBranch, change: GitChange)

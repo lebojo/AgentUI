@@ -10,12 +10,7 @@ struct RemoteWebAddress: Equatable, Sendable {
     let port: Int?
     let path: String
 
-    var hosting: GitHosting? {
-        let host = host.lowercased()
-        if host.contains("gitlab") { return .gitlab }
-        if host.contains("github") { return .github }
-        return nil
-    }
+    var hosting: GitHosting? { GitHosting(host: host) }
 
     init?(remoteURL: String) {
         let value = remoteURL.trimmingCharacters(in: .whitespacesAndNewlines)

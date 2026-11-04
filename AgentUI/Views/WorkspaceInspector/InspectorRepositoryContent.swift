@@ -4,6 +4,7 @@ struct InspectorRepositoryContent: View {
     let model: InspectorStore
     let tab: InspectorTab
     let refresh: Int
+    let context: TerminalContext
     let source: any InspectorSource
 
     var body: some View {
@@ -12,12 +13,12 @@ struct InspectorRepositoryContent: View {
                 if let local = model.local {
                     if tab == .git {
                         if let branch = local.branch { BranchBadge(branch: branch) }
-                        GitChangeList(root: local.root, scope: .workingTree, changes: local.changes, omitted: local.omittedChanges)
+                        WorkingTreeChanges(local: local, trees: model.changeTrees, context: context, source: source)
                         Divider()
                         RemoteSummary(model: model)
                         if model.lacksChangeRequest, let headSHA = local.headSHA {
                             Divider()
-                            BranchComparisonSection(base: Bindable(model).comparisonBase, root: local.root, headSHA: headSHA, refresh: refresh, source: source)
+                            BranchComparisonSection(base: Bindable(model).comparisonBase, root: local.root, headSHA: headSHA, refresh: refresh, context: context, source: source)
                         }
                     } else {
                         RemoteChecks(model: model, headSHA: local.headSHA)

@@ -46,16 +46,28 @@ enum InspectorService {
         let root = try await root(at: path)
         async let head = try? ReadCommand.run(git, ["rev-parse", "--verify", "HEAD"], at: root)
         let safety = try await GitFilterGuard.shared.configuration(at: root)
-        let status = ["--literal-pathspecs", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=dirty"]
+        let status = ["--literal-pathspecs", "status", "--porcelain=v1", "-z", "--branch", "--untracked-files=all", "--ignore-submodules=dirty"]
             + (paths.map { ["--"] + $0 } ?? [])
-        async let changes = paths?.isEmpty == true ? Data() : ReadCommand.run(git, status, at: root, gitConfiguration: safety)
+        async let changes = paths?.isEmpty == true ? Data() : ReadCommand.run(git, status, at: root, limit: 8_388_608, gitConfiguration: safety)
         let branch = GitRepository.containing(root)?.branch
+        let output = try await changes
+        var tracking = GitTracking.parse(output)
+        if paths == nil, let branch, !branch.isDetached, tracking != nil, tracking?.upstream == nil {
+            tracking?.remote = await remoteConfiguration(at: root).pushRemote(for: branch.name)
+        }
+        let all = GitChange.parsePorcelain(output)
+        let shown = Array(all.prefix(LocalGitSnapshot.changeLimit))
         return LocalGitSnapshot(root: root, branch: branch,
                                 headSHA: await head.map { String(decoding: $0, as: UTF8.self).trimmingCharacters(in: .newlines) },
-                                changes: GitChange.parsePorcelain(try await changes))
+                                changes: shown, omittedChanges: all.count - shown.count, tracking: tracking)
     }
 
-    @concurrent static func diff(_ change: GitChange, at root: String) async throws -> GitDiff {
+    @concurrent static func perform(_ action: GitAction, at root: String) async throws {
+        _ = try await GitService.run(action.arguments, at: root, timeout: action.timeout, overflow: .discard)
+    }
+
+    @concurrent static func diff(_ change: GitChange, at root: String,
+                                 including kinds: Set<GitDiffSection.Kind> = [.staged, .unstaged]) async throws -> GitDiff {
         if change.isUntracked {
             let url = URL(fileURLWithPath: root).appendingPathComponent(change.path)
             let content = try await textContent(url)
@@ -65,8 +77,8 @@ enum InspectorService {
         let git = URL(fileURLWithPath: "/usr/bin/git")
         let paths = [change.path] + (change.originalPath.map { [$0] } ?? [])
         let safety = try await GitFilterGuard.shared.configuration(at: root)
-        async let staged = section(git, diffFlags + ["--cached", "--"] + paths, at: root, kind: .staged, safety: safety)
-        async let unstaged = section(git, diffFlags + ["--"] + paths, at: root, kind: .unstaged, safety: safety)
+        async let staged = kinds.contains(.staged) ? section(git, diffFlags + ["--cached", "--"] + paths, at: root, kind: .staged, safety: safety) : nil
+        async let unstaged = kinds.contains(.unstaged) ? section(git, diffFlags + ["--"] + paths, at: root, kind: .unstaged, safety: safety) : nil
         return GitDiff(path: change.path, sections: try await [staged, unstaged].compactMap { $0 })
     }
 
@@ -99,7 +111,9 @@ enum InspectorService {
         try validate(base)
         async let changes = comparedChanges(with: base, at: root)
         async let commits = ReadCommand.run(git, ["rev-list", "--count", base.reference + "..HEAD", "--"], at: root)
-        return BranchComparison(base: base, commits: Int(trimmed(try await commits)) ?? 0, changes: try await changes)
+        let all = try await changes
+        let shown = Array(all.prefix(LocalGitSnapshot.changeLimit))
+        return BranchComparison(base: base, commits: Int(trimmed(try await commits)) ?? 0, changes: shown, omittedChanges: all.count - shown.count)
     }
 
     @concurrent static func comparedChanges(with base: ComparisonBranch, at root: String, paths: [String]? = nil) async throws -> [GitChange] {
@@ -148,13 +162,13 @@ enum InspectorService {
     }
 
     @concurrent static func remoteURL(at root: String) async -> String? {
+        await remoteConfiguration(at: root).primaryURL
+    }
+
+    @concurrent static func remoteConfiguration(at root: String) async -> GitRemoteConfiguration {
         let git = URL(fileURLWithPath: "/usr/bin/git")
-        guard let data = try? await ReadCommand.run(git, ["config", "--get-regexp", "^remote\\..*\\.url$"], at: root) else { return nil }
-        let remotes = String(decoding: data, as: UTF8.self).split(separator: "\n").compactMap { line -> (key: String, url: String)? in
-            let parts = line.split(separator: " ", maxSplits: 1).map(String.init)
-            return parts.count == 2 ? (key: parts[0], url: parts[1]) : nil
-        }
-        return (remotes.first { $0.key == "remote.origin.url" } ?? remotes.first)?.url
+        let data = try? await ReadCommand.run(git, ["config", "--null", "--get-regexp", GitRemoteConfiguration.pattern], at: root)
+        return GitRemoteConfiguration(data ?? Data())
     }
 
     @concurrent static func gitlab(at path: String, branch: GitBranch?, headSHA: String?, executable override: URL? = nil) async throws -> RemoteSnapshot {

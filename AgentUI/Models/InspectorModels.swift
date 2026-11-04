@@ -40,11 +40,17 @@ struct GitChange: Codable, Identifiable, Equatable, Sendable {
     let indexStatus: String
     let worktreeStatus: String
     var id: String { path }
+    var name: String { path.split(separator: "/").last.map(String.init) ?? path }
+    var directories: [String] { path.split(separator: "/").dropLast().map(String.init) }
+    var paths: [String] { [path] + (originalPath.map { [$0] } ?? []) }
     var isUntracked: Bool { indexStatus == "?" && worktreeStatus == "?" }
+    var isConflicted: Bool { status.contains("U") || ["AA", "DD"].contains(status) }
+    var isStaged: Bool { !isUntracked && !isConflicted && indexStatus != " " }
+    var isUnstaged: Bool { isUntracked || isConflicted || worktreeStatus != " " }
     var status: String { isUntracked ? "?" : [indexStatus, worktreeStatus].filter { $0 != " " }.joined() }
     var description: String {
         if isUntracked { return String(localized: "Untracked") }
-        if status.contains("U") || ["AA", "DD"].contains(status) { return String(localized: "Conflict") }
+        if isConflicted { return String(localized: "Conflict") }
         if status.contains("R") { return String(localized: "Renamed") }
         if status.contains("D") { return String(localized: "Deleted") }
         if status.contains("A") { return String(localized: "Added") }
@@ -58,7 +64,7 @@ struct GitChange: Codable, Identifiable, Equatable, Sendable {
         while index < fields.count {
             let entry = fields[index]
             index += 1
-            guard entry.count >= 4 else { continue }
+            guard entry.count >= 4, !entry.hasPrefix(GitTracking.headerPrefix) else { continue }
             let x = String(entry.prefix(1))
             let y = String(entry.dropFirst().prefix(1))
             let path = String(entry.dropFirst(3))
@@ -92,15 +98,164 @@ struct GitChange: Codable, Identifiable, Equatable, Sendable {
     }
 }
 
+enum GitChangeKind: Sendable {
+    case modified, added, deleted, renamed, copied, typeChanged, untracked, conflicted
+
+    init(code: String) {
+        switch code {
+        case "A": self = .added
+        case "D": self = .deleted
+        case "R": self = .renamed
+        case "C": self = .copied
+        case "T": self = .typeChanged
+        case "?": self = .untracked
+        case "U": self = .conflicted
+        default: self = .modified
+        }
+    }
+
+    var letter: String {
+        switch self {
+        case .modified: "M"
+        case .added: "A"
+        case .deleted: "D"
+        case .renamed: "R"
+        case .copied: "C"
+        case .typeChanged: "T"
+        case .untracked: "U"
+        case .conflicted: "!"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .modified, .typeChanged: String(localized: "Modified")
+        case .added: String(localized: "Added")
+        case .deleted: String(localized: "Deleted")
+        case .renamed: String(localized: "Renamed")
+        case .copied: String(localized: "Copied")
+        case .untracked: String(localized: "Untracked")
+        case .conflicted: String(localized: "Conflict")
+        }
+    }
+}
+
 enum GitChangeScope: Hashable, Sendable {
-    case workingTree
+    case staged
+    case unstaged
     case branch(ComparisonBranch)
 
     var emptyTitle: String {
         switch self {
-        case .workingTree: String(localized: "No Local Changes")
+        case .staged: String(localized: "No Staged Changes")
+        case .unstaged: String(localized: "No Local Changes")
         case .branch(let base): String(localized: "No differences with \(base.name)")
         }
+    }
+
+    var bulkAction: GitAction? {
+        switch self {
+        case .staged: .unstageAll
+        case .unstaged: .stageAll
+        case .branch: nil
+        }
+    }
+
+    func title(count: Int) -> String {
+        switch self {
+        case .staged: String(localized: "Staged Changes · \(count)")
+        case .unstaged, .branch: String(localized: "Changes · \(count)")
+        }
+    }
+
+    func includes(_ change: GitChange) -> Bool {
+        switch self {
+        case .staged: change.isStaged
+        case .unstaged: change.isUnstaged
+        case .branch: true
+        }
+    }
+
+    func kind(of change: GitChange) -> GitChangeKind {
+        switch self {
+        case .unstaged where change.isConflicted: .conflicted
+        case .unstaged: GitChangeKind(code: change.worktreeStatus)
+        case .staged, .branch: GitChangeKind(code: change.indexStatus)
+        }
+    }
+
+    func action(for change: GitChange) -> GitAction? {
+        switch self {
+        case .staged: .unstage(change.paths)
+        case .unstaged: .stage([change.path])
+        case .branch: nil
+        }
+    }
+}
+
+struct GitTracking: Codable, Equatable, Sendable {
+    static let headerPrefix = "## "
+
+    let upstream: String?
+    var ahead = 0
+    var remote: String?
+
+    var push: GitAction? {
+        guard upstream != nil else { return remote.map { .push(settingUpstreamOn: $0) } }
+        return ahead > 0 ? .push(settingUpstreamOn: nil) : nil
+    }
+
+    static func parse(_ data: Data) -> GitTracking? {
+        let header = String(decoding: data.prefix { $0 != 0 }, as: UTF8.self)
+        guard header.hasPrefix(headerPrefix) else { return nil }
+        let line = header.dropFirst(headerPrefix.count)
+        guard !line.hasPrefix("No commits yet on "), !line.hasPrefix("Initial commit on "), !line.hasPrefix("HEAD (no branch)") else { return nil }
+        let parts = line.split(separator: " ", maxSplits: 1)
+        guard let reference = parts.first else { return nil }
+        let details = parts.count > 1 ? String(parts[1]) : ""
+        let names = reference.components(separatedBy: "...")
+        guard names.count == 2, !details.contains("[gone]") else { return GitTracking(upstream: nil) }
+        let ahead = details.firstRange(of: "ahead ").flatMap { Int(details[$0.upperBound...].prefix(while: \.isNumber)) } ?? 0
+        return GitTracking(upstream: names[1], ahead: ahead)
+    }
+}
+
+struct GitRemote: Equatable, Sendable {
+    let name: String
+    let url: String
+}
+
+struct GitRemoteConfiguration: Equatable, Sendable {
+    static let pattern = "^(remote\\..+\\.url|remote\\.pushdefault|branch\\..+\\.(remote|pushremote))$"
+
+    private(set) var remotes: [GitRemote] = []
+    private var values: [String: String] = [:]
+
+    var primaryURL: String? { (remotes.first { $0.name == "origin" } ?? remotes.first)?.url }
+
+    init(_ data: Data) {
+        for entry in String(decoding: data, as: UTF8.self).split(separator: "\0") {
+            let parts = entry.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+            guard parts.count == 2 else { continue }
+            if let name = Self.remoteName(fromURLKey: parts[0]) {
+                if !remotes.contains(where: { $0.name == name }) { remotes.append(GitRemote(name: name, url: parts[1])) }
+            } else {
+                values[parts[0]] = parts[1]
+            }
+        }
+    }
+
+    func pushRemote(for branch: String) -> String? {
+        let names = remotes.map(\.name).filter { !$0.hasPrefix("-") }
+        let preferred = [values["branch.\(branch).pushremote"], values["remote.pushdefault"], values["branch.\(branch).remote"], "origin"]
+        if let name = preferred.compactMap({ $0 }).first(where: names.contains) { return name }
+        return names.count == 1 ? names.first : nil
+    }
+
+    private static func remoteName(fromURLKey key: String) -> String? {
+        let prefix = "remote.", suffix = ".url"
+        guard key.hasPrefix(prefix), key.hasSuffix(suffix), key.count > prefix.count + suffix.count else { return nil }
+        return String(key.dropFirst(prefix.count).dropLast(suffix.count))
     }
 }
 
@@ -142,18 +297,32 @@ struct BranchComparison: Codable, Equatable, Sendable {
 }
 
 struct LocalGitSnapshot: Codable, Equatable, Sendable {
+    static let changeLimit = 10_000
+
     let root: String
     let branch: GitBranch?
     let headSHA: String?
     let changes: [GitChange]
     var omittedChanges = 0
+    var tracking: GitTracking?
+
+    var stagedChanges: [GitChange] { changes.filter(\.isStaged) }
+    var unstagedChanges: [GitChange] { changes.filter(\.isUnstaged) }
+    var push: GitAction? { headSHA == nil || branch?.isDetached != false ? nil : tracking?.push }
 }
 
 enum GitHosting: String, Codable, Sendable {
     case github, gitlab
 
     init(remoteURL: String) {
-        self = Self.host(of: remoteURL).contains("gitlab") ? .gitlab : .github
+        self = Self(host: Self.host(of: remoteURL)) ?? .github
+    }
+
+    init?(host: String) {
+        let host = host.lowercased()
+        if host.contains("gitlab") { self = .gitlab }
+        else if host.contains("github") { self = .github }
+        else { return nil }
     }
 
     var title: String {

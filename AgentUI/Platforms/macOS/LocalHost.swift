@@ -415,24 +415,25 @@ import SystemConfiguration
         case .git(let id):
             let local = try await InspectorService.localGit(at: context(id).worktree.path)
             return try .fitting(local.changes) {
-                LocalGitSnapshot(root: local.root, branch: local.branch, headSHA: local.headSHA, changes: $0, omittedChanges: $1)
+                LocalGitSnapshot(root: local.root, branch: local.branch, headSHA: local.headSHA, changes: $0, omittedChanges: local.omittedChanges + $1)
             }
         case .github(let id):
             let local = try await InspectorService.localGit(at: context(id).worktree.path, changesIn: [])
             return try await .success(InspectorService.remote(for: local))
-        case .diff(let id, let change):
+        case .diff(let id, let change, let kinds):
             let local = try await InspectorService.localGit(at: context(id).worktree.path,
                                                             changesIn: [change.path] + (change.originalPath.map { [$0] } ?? []))
             guard let actual = local.changes.first(where: { $0.path == change.path }) else { throw RemoteError(message: String(localized: "The file no longer has changes.")) }
             _ = try validatedURL(URL(fileURLWithPath: local.root).appendingPathComponent(actual.path).path, within: local.root)
-            return try await .success(RemoteDiff(InspectorService.diff(actual, at: local.root)))
+            let sections = Set(kinds ?? [.staged, .unstaged]).intersection([.staged, .unstaged])
+            return try await .success(RemoteDiff(InspectorService.diff(actual, at: local.root, including: sections)))
         case .branches(let id):
             return try await .success(InspectorService.branches(at: InspectorService.root(at: context(id).worktree.path)))
         case .comparison(let id, let base):
             let root = try await comparableRoot(terminal: id, base: base)
             let comparison = try await InspectorService.comparison(with: base, at: root)
             return try .fitting(comparison.changes) {
-                BranchComparison(base: base, commits: comparison.commits, changes: $0, omittedChanges: $1)
+                BranchComparison(base: base, commits: comparison.commits, changes: $0, omittedChanges: comparison.omittedChanges + $1)
             }
         case .comparisonDiff(let id, let base, let change):
             let root = try await comparableRoot(terminal: id, base: base)

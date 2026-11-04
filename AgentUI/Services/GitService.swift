@@ -1,9 +1,10 @@
 import Foundation
 
 enum GitService {
-    @concurrent static func run(_ arguments: [String], at path: String, timeout: TimeInterval = 90) async throws -> String {
+    @concurrent static func run(_ arguments: [String], at path: String, timeout: TimeInterval = 90,
+                                overflow: CommandRunner.OutputOverflow = .stop) async throws -> String {
         let data = try await CommandRunner.run(URL(fileURLWithPath: "/usr/bin/git"), arguments, at: path,
-                                                timeout: timeout, limit: 4_194_304, readOnly: false)
+                                                timeout: timeout, limit: 4_194_304, readOnly: false, overflow: overflow)
         return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

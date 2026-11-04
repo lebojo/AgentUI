@@ -36,7 +36,26 @@ enum InspectorTests {
         try require(empty.headSHA == nil && empty.branch?.name == "develop", "Inspector supports unborn HEAD")
         print("PASS inspector status and real staged/unstaged diffs")
 
+        let shell = URL(fileURLWithPath: "/bin/sh")
+        let noisy = "yes hook output | head -c 200000 >&2; sleep 0.3"
+        let kept = try await CommandRunner.run(shell, ["-c", noisy + "; echo done"], at: root.path, timeout: 10, limit: 1024, readOnly: false, overflow: .discard)
+        try require(String(decoding: kept, as: UTF8.self) == "done\n", "Write commands keep running when a hook prints a lot")
+        do {
+            _ = try await CommandRunner.run(shell, ["-c", noisy + "; echo hook failed >&2; exit 1"], at: root.path, timeout: 10, limit: 1024,
+                                            readOnly: false, overflow: .discard)
+            throw WorkspaceError(message: "FAIL: failing hook accepted")
+        } catch let error as ReadCommandError {
+            try require(error.message.hasSuffix("hook failed"), "Discarded output still reports the latest diagnostic")
+        }
+        do {
+            _ = try await CommandRunner.run(shell, ["-c", noisy], at: root.path, timeout: 10, limit: 1024, readOnly: true)
+            throw WorkspaceError(message: "FAIL: oversized read accepted")
+        } catch is ReadCommandError {}
+        print("PASS write commands discard oversized output instead of stopping")
+
         try await branchComparison(root: root)
+        try changeTree()
+        try await workingTreeActions(root: root)
 
         let patch = "diff --git a/f b/f\nindex 1..2 100644\n--- a/f\n+++ b/f\n@@ -3,4 +3,4 @@ func\n keep\n--- old\n-gone\n++++ new\n+\tadded\n same\n\\ No newline at end of file\n"
         let lines = GitDiffLine.parse(patch)
@@ -190,6 +209,150 @@ enum InspectorTests {
         } catch let error as ReadCommandError { try require(error.message.contains("limit"), "Stop excessive output while query runs") }
         try require(Date().timeIntervalSince(start) < 2, "Output termination should precede timeout")
         print("PASS query cancellation, timeout and live output limit")
+    }
+
+    private static func changeTree() throws {
+        let require = CoreTests.require
+        func change(_ path: String, _ x: String = " ", _ y: String = "M") -> GitChange {
+            GitChange(path: path, originalPath: nil, indexStatus: x, worktreeStatus: y)
+        }
+        let tree = GitChangeFolder(changes: [change("Sources/App/Views/B.swift"), change("README.md"), change("Sources/App/Views/A.swift"),
+                                             change("Tests/unit/file10.swift"), change("Tests/unit/file2.swift"), change("Tests/z.swift"),
+                                             change("a/b/c/d.txt")])
+        try require(tree.path.isEmpty && tree.files.map(\.path) == ["README.md"] && tree.folders.map(\.name) == ["a/b/c", "Sources/App/Views", "Tests"],
+                    "Root files stay at the top and single-child folder chains are compacted")
+        let views = tree.folders[1], tests = tree.folders[2]
+        try require(views.path == "Sources/App/Views" && views.folders.isEmpty && views.files.map(\.name) == ["A.swift", "B.swift"],
+                    "Compacted folders keep their full path and sorted files")
+        try require(tests.files.map(\.name) == ["z.swift"] && tests.folders.map(\.path) == ["Tests/unit"]
+                    && tests.folders[0].files.map(\.name) == ["file2.swift", "file10.swift"],
+                    "A folder with files is not compacted and names sort naturally")
+        try require(GitChangeFolder(changes: []) == .empty && GitChangeFolder.empty.isEmpty && tree.count == 7, "No changes build an empty tree and counts include nested files")
+        let rows = tree.rows(collapsing: [])
+        try require(rows.count == 11 && rows.map(\.depth) == [0, 1, 0, 1, 1, 0, 1, 2, 2, 1, 0]
+                    && rows.first?.id == "folder:a/b/c" && rows.last?.id == "file:README.md",
+                    "Expanded folders flatten into rows with their depth, folders before files")
+        let collapsedRows = tree.rows(collapsing: ["Tests", "a/b/c"])
+        try require(collapsedRows.map(\.id) == ["folder:a/b/c", "folder:Sources/App/Views", "file:Sources/App/Views/A.swift",
+                                                "file:Sources/App/Views/B.swift", "folder:Tests", "file:README.md"],
+                    "Collapsed folders hide their rows but keep their own row")
+
+        let both = change("both", "M", "M"), staged = change("staged", "A", " "), untracked = change("new", "?", "?"),
+            conflict = change("conflict", "U", "U"), deleted = change("gone", " ", "D")
+        let snapshot = LocalGitSnapshot(root: "/r", branch: GitBranch(name: "main"), headSHA: "abc", changes: [both, staged, untracked, conflict, deleted],
+                                        tracking: GitTracking(upstream: "origin/main", ahead: 2))
+        try require(snapshot.stagedChanges == [both, staged] && snapshot.unstagedChanges == [both, untracked, conflict, deleted],
+                    "Partially staged files appear in both sections, conflicts and untracked files only in Changes")
+        try require(GitChangeScope.staged.kind(of: both) == .modified && GitChangeScope.staged.kind(of: staged) == .added
+                    && GitChangeScope.unstaged.kind(of: untracked) == .untracked && GitChangeScope.unstaged.kind(of: conflict) == .conflicted
+                    && GitChangeScope.unstaged.kind(of: deleted) == .deleted, "Each section shows its own status column")
+        let renamed = GitChange(path: "new name", originalPath: "old name", indexStatus: "R", worktreeStatus: "M")
+        try require(GitChangeScope.staged.action(for: renamed) == .unstage(["new name", "old name"])
+                    && GitChangeScope.unstaged.action(for: renamed) == .stage(["new name"])
+                    && GitChangeScope.branch(ComparisonBranch(reference: "refs/heads/main")).action(for: renamed) == nil,
+                    "Unstaging a rename restores both paths and branch rows have no action")
+
+        let header = { (line: String) in GitTracking.parse(Data((line + "\0 M file\0").utf8)) }
+        try require(header("## main...origin/main [ahead 2, behind 1]") == GitTracking(upstream: "origin/main", ahead: 2)
+                    && header("## feature/x...origin/feature/x") == GitTracking(upstream: "origin/feature/x", ahead: 0)
+                    && header("## main") == GitTracking(upstream: nil) && header("## main...origin/main [gone]") == GitTracking(upstream: nil)
+                    && header("## No commits yet on main") == nil && header("## HEAD (no branch)") == nil && header(" M file") == nil,
+                    "Parse the porcelain branch header")
+        let parsed = GitChange.parsePorcelain(Data("## main...origin/main [ahead 1]\0 M file\0".utf8))
+        try require(parsed.map(\.path) == ["file"], "The branch header is not a change")
+        try require(snapshot.push == .push(settingUpstreamOn: nil) && GitTracking(upstream: "origin/main").push == nil
+                    && GitTracking(upstream: nil).push == nil && GitTracking(upstream: nil, remote: "fork").push == .push(settingUpstreamOn: "fork")
+                    && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "abc", isDetached: true), headSHA: "abc", changes: [],
+                                        tracking: GitTracking(upstream: nil)).push == nil
+                    && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "main"), headSHA: nil, changes: [], tracking: GitTracking(upstream: nil)).push == nil,
+                    "Offer push only for commits ahead or a branch without upstream that has a remote")
+        func remotes(_ entries: [(String, String)]) -> GitRemoteConfiguration {
+            GitRemoteConfiguration(Data(entries.map { $0.0 + "\n" + $0.1 + "\0" }.joined().utf8))
+        }
+        let forkAndOrigin = remotes([("remote.fork.url", "git@github.com:me/app.git"), ("remote.origin.url", "git@gitlab.com:team/app.git")])
+        try require(remotes([]).pushRemote(for: "main") == nil && remotes([]).primaryURL == nil
+                    && remotes([("remote.fork.url", "u")]).pushRemote(for: "main") == "fork"
+                    && remotes([("remote.fork.url", "u"), ("remote.upstream.url", "v")]).pushRemote(for: "main") == nil
+                    && forkAndOrigin.pushRemote(for: "main") == "origin" && forkAndOrigin.primaryURL == "git@gitlab.com:team/app.git"
+                    && remotes([("remote.fork.url", "u"), ("remote.origin.url", "v"), ("remote.pushdefault", "fork")]).pushRemote(for: "main") == "fork"
+                    && remotes([("remote.fork.url", "u"), ("remote.origin.url", "v"), ("branch.Feature/x.remote", "fork")]).pushRemote(for: "Feature/x") == "fork"
+                    && remotes([("remote.fork.url", "u"), ("remote.origin.url", "v"), ("branch.main.remote", "fork"), ("branch.main.pushremote", "origin")]).pushRemote(for: "main") == "origin"
+                    && remotes([("remote.origin.url", "v"), ("branch.main.remote", "gone")]).pushRemote(for: "main") == "origin"
+                    && remotes([("remote.--upload-pack=x.url", "v")]).pushRemote(for: "main") == nil,
+                    "Publish to the configured push remote, else origin, else the only remote, never an option-like name")
+
+        try require(GitAction.commit(title: "  Title ", description: "\n") == .commit(title: "Title", message: "")
+                    && GitAction.commit(title: " ", description: "Body") == nil
+                    && GitAction.commit(title: "T", message: "").arguments == ["commit", "--message", "T"]
+                    && GitAction.commit(title: "T", message: "$(rm -rf /)").arguments == ["commit", "--message", "T", "--message", "$(rm -rf /)"]
+                    && GitAction.push(settingUpstreamOn: "fork").arguments == ["push", "--set-upstream", "fork", "HEAD"]
+                    && GitAction.push(settingUpstreamOn: nil).arguments == ["push"]
+                    && GitAction.unstageAll.arguments == ["reset", "--quiet", "--", "."]
+                    && GitAction.stage(["-rf"]).arguments == ["--literal-pathspecs", "add", "--", "-rf"],
+                    "Git actions pass titles and paths as plain arguments")
+        print("PASS change tree, sections, branch tracking and git actions")
+    }
+
+    private static func workingTreeActions(root: URL) async throws {
+        let require = CoreTests.require
+        let repository = root.appendingPathComponent("actions repository")
+        try FileManager.default.createDirectory(at: repository.appendingPathComponent("src/app"), withIntermediateDirectories: true)
+        _ = try await GitService.run(["init", "-q", "-b", "main"], at: repository.path)
+        _ = try await GitService.run(["config", "user.name", "AgentUI Tests"], at: repository.path)
+        _ = try await GitService.run(["config", "user.email", "tests@example.invalid"], at: repository.path)
+        try "one\n".write(to: repository.appendingPathComponent("src/app/one.txt"), atomically: true, encoding: .utf8)
+        try "two\n".write(to: repository.appendingPathComponent("two.txt"), atomically: true, encoding: .utf8)
+        try await InspectorService.perform(.stage(["src/app/one.txt"]), at: repository.path)
+        var local = try await InspectorService.localGit(at: repository.path)
+        try require(local.stagedChanges.map(\.path) == ["src/app/one.txt"] && local.unstagedChanges.map(\.path) == ["two.txt"] && local.push == nil,
+                    "Stage one file on an unborn branch")
+        guard let staged = local.stagedChanges.first else { fatalError("Missing staged change") }
+        let stagedDiff = try await InspectorService.diff(staged, at: repository.path, including: [.staged])
+        try require(stagedDiff.sections.map(\.kind) == [.staged], "Staged rows preview only the index diff")
+        try await InspectorService.perform(.unstage(["src/app/one.txt"]), at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(local.stagedChanges.isEmpty && local.unstagedChanges.count == 2, "Unstage works before the first commit")
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.unstageAll, at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(local.stagedChanges.isEmpty && local.unstagedChanges.count == 2, "Unstage All works before the first commit")
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.commit(title: "First", message: "Body"), at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        let log = try await GitService.run(["log", "-1", "--format=%B"], at: repository.path)
+        try require(local.changes.isEmpty && log == "First\n\nBody" && local.tracking == GitTracking(upstream: nil) && local.push == nil,
+                    "Commit title and description, and hide Push without a remote")
+        _ = try await GitService.run(["remote", "add", "fork", "git@github.com:me/app.git"], at: repository.path)
+        let onlyFork = try await InspectorService.localGit(at: repository.path).push
+        _ = try await GitService.run(["remote", "add", "origin", "git@github.com:team/app.git"], at: repository.path)
+        let withOrigin = try await InspectorService.localGit(at: repository.path).push
+        _ = try await GitService.run(["config", "remote.pushDefault", "fork"], at: repository.path)
+        let pushDefault = try await InspectorService.localGit(at: repository.path).push
+        try require(onlyFork == .push(settingUpstreamOn: "fork") && withOrigin == .push(settingUpstreamOn: "origin")
+                    && pushDefault == .push(settingUpstreamOn: "fork"), "Publish the branch to the remote Git would push to")
+        try "changed\n".write(to: repository.appendingPathComponent("two.txt"), atomically: true, encoding: .utf8)
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.unstageAll, at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(local.stagedChanges.isEmpty && local.unstagedChanges.map(\.path) == ["two.txt"], "Stage All and Unstage All")
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.commit(title: "Second", message: ""), at: repository.path)
+        _ = try await GitService.run(["switch", "-q", "-c", "side", "HEAD~1"], at: repository.path)
+        try "side\n".write(to: repository.appendingPathComponent("side.txt"), atomically: true, encoding: .utf8)
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.commit(title: "Side", message: ""), at: repository.path)
+        try "dirty\n".write(to: repository.appendingPathComponent("side.txt"), atomically: true, encoding: .utf8)
+        _ = try await GitService.run(["merge", "--no-ff", "--no-commit", "main"], at: repository.path)
+        let mergeHead = repository.appendingPathComponent(".git/MERGE_HEAD")
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(FileManager.default.fileExists(atPath: mergeHead.path) && local.stagedChanges.map(\.path) == ["two.txt"],
+                    "The fixture merge is in progress with staged changes")
+        try await InspectorService.perform(.unstageAll, at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(FileManager.default.fileExists(atPath: mergeHead.path) && local.stagedChanges.isEmpty
+                    && Set(local.unstagedChanges.map(\.path)) == ["side.txt", "two.txt"],
+                    "Unstage All keeps the merge in progress")
+        print("PASS stage, unstage and commit")
     }
 
     private static func branchComparison(root: URL) async throws {

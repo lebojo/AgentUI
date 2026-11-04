@@ -3,6 +3,7 @@ import SwiftUI
 struct BranchComparisonSection: View {
     @State private var branches: GitBranchList?
     @State private var comparison: BranchComparison?
+    @State private var comparisonTree = GitChangeFolder.empty
     @State private var branchesError: String?
     @State private var comparisonError: String?
 
@@ -11,6 +12,7 @@ struct BranchComparisonSection: View {
     let root: String
     let headSHA: String
     let refresh: Int
+    let context: TerminalContext
     let source: any InspectorSource
 
     private var currentComparison: BranchComparison? {
@@ -43,9 +45,9 @@ struct BranchComparisonSection: View {
                 Text("\(comparison.commits) commits ahead of \(comparison.base.name)")
                     .font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 #if os(macOS)
-                if comparison.commits > 0 { ChangeRequestMenu(root: root, base: comparison.base) }
+                if comparison.commits > 0 { ChangeRequestMenu(root: root, base: comparison.base, context: context, source: source) }
                 #endif
-                GitChangeList(root: root, scope: .branch(comparison.base), changes: comparison.changes, omitted: comparison.omittedChanges)
+                GitChangeList(root: root, scope: .branch(comparison.base), tree: comparisonTree, omitted: comparison.omittedChanges, source: source)
             } else if base != nil || (branches == nil && branchesError == nil) {
                 ProgressView().controlSize(.small)
             }
@@ -72,8 +74,10 @@ struct BranchComparisonSection: View {
         comparisonError = nil
         do {
             let found = try await source.comparison(with: base, at: root)
+            let tree = await GitChangeFolder.build(found.changes)
             guard !Task.isCancelled else { return }
             comparison = found
+            comparisonTree = tree
         } catch {
             guard !Task.isCancelled else { return }
             comparisonError = error.localizedDescription

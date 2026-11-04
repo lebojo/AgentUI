@@ -54,6 +54,46 @@
         }
       }
     },
+    "Commit" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commit"
+          }
+        }
+      }
+    },
+    "Commit Title" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titre du commit"
+          }
+        }
+      }
+    },
+    "Commits" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commits"
+          }
+        }
+      }
+    },
+    "Copied" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copié"
+          }
+        }
+      }
+    },
     "Create a Pull Request" : {
       "localizations" : {
         "fr" : {
@@ -114,12 +154,42 @@
         }
       }
     },
+    "Description" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Description"
+          }
+        }
+      }
+    },
     "Generate Commits" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Générer les commits"
+          }
+        }
+      }
+    },
+    "Generate Commits with AI" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Générer les commits avec l’IA"
+          }
+        }
+      }
+    },
+    "Git Action Failed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec de l’action Git"
           }
         }
       }
@@ -140,6 +210,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Merge request"
+          }
+        }
+      }
+    },
+    "No Staged Changes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune modification indexée"
+          }
+        }
+      }
+    },
+    "Open a terminal where the default agent commits the changes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir un terminal où l’agent par défaut crée les commits"
           }
         }
       }
@@ -170,6 +260,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pull request"
+          }
+        }
+      }
+    },
+    "Push" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Push"
+          }
+        }
+      }
+    },
+    "Push the branch first" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faites d’abord un push de la branche"
           }
         }
       }
@@ -210,6 +320,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vue scindée"
+          }
+        }
+      }
+    },
+    "Stage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indexer"
+          }
+        }
+      }
+    },
+    "Stage All" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout indexer"
+          }
+        }
+      }
+    },
+    "Staged Changes · %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifications indexées · %lld"
           }
         }
       }
@@ -280,6 +420,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ce terminal est sur une autre branche que son worktree"
+          }
+        }
+      }
+    },
+    "Unstage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désindexer"
+          }
+        }
+      }
+    },
+    "Unstage All" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout désindexer"
           }
         }
       }

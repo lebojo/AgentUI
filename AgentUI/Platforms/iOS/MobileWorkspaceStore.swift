@@ -398,7 +398,8 @@ import Observation
     }
     func diff(_ change: GitChange, in scope: GitChangeScope, at root: String) async throws -> GitDiff {
         let value: RemoteDiff = switch scope {
-        case .workingTree: try await request(.diff(terminal: terminal, change: change))
+        case .staged: try await request(.diff(terminal: terminal, change: change, including: [.staged]))
+        case .unstaged: try await request(.diff(terminal: terminal, change: change, including: [.unstaged]))
         case .branch(let base): try await request(.comparisonDiff(terminal: terminal, base: base, change: change))
         }
         return value.diff
