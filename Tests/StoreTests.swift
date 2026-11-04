@@ -261,6 +261,23 @@ private final class ChangeFlag: @unchecked Sendable {
             let worktreeBlocks = split.worktree(containing: paneA)!
             split.reorderTerminalBlocks(in: leadingWorktree, worktreeBlocks.terminalBlocks(showing: worktreeBlocks.terminals), from: [1], to: 0)
             try require(leadingBlocks() == [[paneB], [paneC, paneA]], "A terminal moves above a block whose pane order differs from the terminal order")
+            let terminals = split.worktree(containing: first)!.terminals
+            try require(blocks().reordering(terminals, moving: c, to: 0)?.map(\.id) == [b, c, d, first, e],
+                        "Inserting a split member moves its whole block")
+            try require(blocks().reordering(terminals, moving: d, to: 3)?.map(\.id) == [b, c, first, e, d],
+                        "Inserting a terminal after the last block moves it to the end")
+            try require(blocks().reordering(terminals, moving: d, to: 1) == nil && blocks().reordering(terminals, moving: paneA, to: 0) == nil,
+                        "Inserting at its own place or from another worktree changes nothing")
+            split.insertDraggedTerminal(in: worktreeID, blocks(), at: 0)
+            try require(split.worktree(containing: first)?.terminals.map(\.id) == [d, b, c, first, e], "Nothing moves without a dragged terminal")
+            split.beginDragging(paneA)
+            split.insertDraggedTerminal(in: worktreeID, blocks(), at: 0)
+            try require(split.worktree(containing: first)?.terminals.map(\.id) == [d, b, c, first, e] && split.draggedTerminal == nil,
+                        "A terminal dragged from another worktree is not inserted")
+            split.beginDragging(e)
+            split.insertDraggedTerminal(in: worktreeID, blocks(), at: 0)
+            try require(blocks().map { $0.terminals.map(\.id) } == [[first, e], [d], [b, c]] && split.draggedTerminal == nil,
+                        "Dropping a dragged terminal between rows moves its block there")
             print("PASS sidebar split blocks")
         }
 

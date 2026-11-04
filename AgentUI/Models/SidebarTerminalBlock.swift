@@ -38,4 +38,9 @@ extension [SidebarTerminalBlock] {
         var slots = order.compactMap { records[$0] }.makeIterator()
         return terminals.map { visible.contains($0.id) ? slots.next() ?? $0 : $0 }
     }
+
+    func reordering(_ terminals: [TerminalRecord], moving terminalID: UUID, to destination: Int) -> [TerminalRecord]? {
+        guard let source = firstIndex(where: { $0.contains(terminalID) }) else { return nil }
+        return reordering(terminals, from: [source], to: destination)
+    }
 }

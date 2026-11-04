@@ -698,8 +698,18 @@ import Observation
     }
 
     func reorderTerminalBlocks(in worktreeID: UUID, _ blocks: [SidebarTerminalBlock], from source: IndexSet, to destination: Int) {
+        reorderTerminals(in: worktreeID) { blocks.reordering($0, from: source, to: destination) }
+    }
+
+    func insertDraggedTerminal(in worktreeID: UUID, _ blocks: [SidebarTerminalBlock], at destination: Int) {
+        guard let dragged = draggedTerminal else { return }
+        draggedTerminal = nil
+        reorderTerminals(in: worktreeID) { blocks.reordering($0, moving: dragged, to: destination) }
+    }
+
+    private func reorderTerminals(in worktreeID: UUID, _ reordering: ([TerminalRecord]) -> [TerminalRecord]?) {
         guard !isReadOnly, let worktree = projects.lazy.flatMap(\.worktrees).first(where: { $0.id == worktreeID }),
-              let reordered = blocks.reordering(worktree.terminals, from: source, to: destination) else { return }
+              let reordered = reordering(worktree.terminals) else { return }
         updateWorktree(worktreeID) { $0.terminals = reordered }
         save()
     }

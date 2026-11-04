@@ -7,6 +7,7 @@ struct TerminalDragSource: ViewModifier {
 
     func body(content: Content) -> some View {
         content.onDrag {
+            guard !store.isReadOnly else { return NSItemProvider() }
             store.beginDragging(terminalID)
             return TerminalDragItem(terminalID: terminalID).itemProvider
         }

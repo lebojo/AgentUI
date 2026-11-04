@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SidebarTerminalList: View {
     @Binding var sheet: WorkspaceSheet?
@@ -20,5 +21,8 @@ struct SidebarTerminalList: View {
             }
         }
         .onMove(perform: store.isReadOnly ? nil : { store.reorderTerminalBlocks(in: worktree.id, blocks, from: $0, to: $1) })
+        .onInsert(of: store.isReadOnly ? [] : [.agentUITerminal]) { index, _ in
+            store.insertDraggedTerminal(in: worktree.id, blocks, at: index)
+        }
     }
 }
