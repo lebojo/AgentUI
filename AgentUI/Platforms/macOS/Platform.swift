@@ -23,7 +23,7 @@ extension View {
     }
 
     func previewSheetFrame(idealWidth: CGFloat, idealHeight: CGFloat) -> some View {
-        frame(minWidth: Dimension.PreviewSheet.minWidth, idealWidth: idealWidth,
-              minHeight: Dimension.PreviewSheet.minHeight, idealHeight: idealHeight)
+        frame(minWidth: Dimension.PreviewSheet.minWidth, idealWidth: idealWidth, maxWidth: .infinity,
+              minHeight: Dimension.PreviewSheet.minHeight, idealHeight: idealHeight, maxHeight: .infinity)
     }
 }
