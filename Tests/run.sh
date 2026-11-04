@@ -40,7 +40,7 @@ xcrun swiftc "${swift_flags[@]}" \
 xcrun swiftc "${swift_flags[@]}" \
   AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/GitBranch.swift \
   AgentUI/Models/InspectorModels.swift AgentUI/Models/GitDiff.swift AgentUI/Models/AgentConversation.swift \
-  AgentUI/Models/Data/RemoteProtocol.swift AgentUI/Models/Data/RemoteTerminalSnapshot.swift AgentUI/Models/Data/SessionMessage.swift \
+  AgentUI/Models/Data/RemoteProtocol.swift AgentUI/Models/Data/RemoteTerminalSnapshot.swift AgentUI/Models/Data/TerminalGridSize.swift AgentUI/Models/Data/SessionMessage.swift \
   AgentUI/Models/Data/PairingInvitation.swift AgentUI/Models/Data/SavedHost.swift AgentUI/Models/Data/LocalAddress.swift AgentUI/Core/Remote/QRCode.swift \
   AgentUI/Core/Session/SessionTranscript.swift \
   Tests/RemoteTests.swift -o "$remote_binary"

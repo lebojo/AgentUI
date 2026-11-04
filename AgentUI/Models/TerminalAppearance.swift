@@ -16,11 +16,13 @@ enum TerminalCursorShape: String, Codable, CaseIterable, Identifiable, Sendable 
 
 struct TerminalAppearance: Codable, Hashable, Sendable {
     static let fontSizes: ClosedRange<Double> = 9...24
+    static let defaultFontSize: Double = 13
+    static let mobileFontSizeKey = "mobileTerminalFontSize"
 
     var theme: TerminalTheme = .system
     var customPalette: TerminalPalette = .oneDark
     var fontFamily = ""
-    var fontSize: Double = 13
+    var fontSize = Self.defaultFontSize
     var cursorShape: TerminalCursorShape = .block
     var cursorBlinks = false
 

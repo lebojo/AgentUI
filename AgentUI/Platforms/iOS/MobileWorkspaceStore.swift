@@ -221,6 +221,7 @@ import Observation
                             conversationRevision += 1
                         }
                         sendQueuedInputs()
+                        if selection == selectedID { session?.reclaimGrid() }
                     }
                     switch event {
                     case .workspace(let value):
@@ -234,6 +235,9 @@ import Observation
                                 self.enqueueInput(data, terminal: selectedID, message: nil) { error in
                                     if let error, !(error is InterruptedInput), self.error == nil { self.error = error.localizedDescription }
                                 }
+                            } requestGrid: { [weak self] grid in
+                                guard let self, let selectedID else { return }
+                                self.requestGrid(grid, terminal: selectedID)
                             }
                         }
                         if session?.apply(snapshot) == false {
@@ -303,6 +307,11 @@ import Observation
             finishInput(id, error: RemoteError(message: String(localized: "Sending not confirmed. Check the session before sending again.")))
             connection.cancel()
         }
+    }
+
+    private func requestGrid(_ grid: TerminalGridSize, terminal: UUID) {
+        guard streamReady, streamTerminal == terminal, let connection = streamConnection else { return }
+        try? RemoteChannel.enqueue(RemoteRequest.resizeTerminal(terminal: terminal, size: grid), on: connection) { _ in }
     }
 
     private func sendQueuedInputs() {

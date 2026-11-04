@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MobileSessionDetail: View {
+    @AppStorage(TerminalAppearance.mobileFontSizeKey) private var fontSize = TerminalAppearance.defaultFontSize
+
     let mode: SessionDisplayMode
     let store: MobileWorkspaceStore
     let showSettings: () -> Void
@@ -21,7 +23,8 @@ struct MobileSessionDetail: View {
                             }
                             .id(context.terminal.id)
                         } else if let terminal = session.view {
-                            MobileTerminalViewport(terminal: terminal, canvasSize: session.canvasSize)
+                            MobileTerminalViewport(terminal: terminal, canvasSize: session.canvasSize, fit: session.fit)
+                            .onChange(of: fontSize, initial: true) { session.setFontSize(fontSize) }
                             .id(session.identity)
                             .disabled(!store.isConnected || session.hasExited)
                             if mode == .chat, store.isConnected, !session.hasExited, !store.installedAgents.isEmpty {

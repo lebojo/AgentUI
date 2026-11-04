@@ -7,7 +7,7 @@ struct NativeTerminalView: NSViewRepresentable {
         var appliedColorScheme: ColorScheme?
         var wasFocused = false
         var focus: () -> Void = {}
-        var mouseMonitor: Any?
+        var eventMonitor: Any?
     }
 
     let session: TerminalSession
@@ -34,8 +34,12 @@ struct NativeTerminalView: NSViewRepresentable {
         let coordinator = context.coordinator
         coordinator.focus = focus
         coordinator.wasFocused = isFocused
-        coordinator.mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak host] event in
-            if let host, event.window === host.window, host.bounds.contains(host.convert(event.locationInWindow, from: nil)) {
+        coordinator.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown]) { [weak host, weak session] event in
+            guard let host, let session, event.window === host.window else { return event }
+            if event.type == .keyDown {
+                if host.window?.firstResponder === session.view, !event.modifierFlags.contains(.command) { session.usedLocally() }
+            } else if host.bounds.contains(host.convert(event.locationInWindow, from: nil)) {
+                session.usedLocally()
                 coordinator.focus()
             }
             return event
@@ -53,8 +57,8 @@ struct NativeTerminalView: NSViewRepresentable {
         context.coordinator.wasFocused = isFocused
     }
     static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
-        if let monitor = coordinator.mouseMonitor { NSEvent.removeMonitor(monitor) }
-        coordinator.mouseMonitor = nil
+        if let monitor = coordinator.eventMonitor { NSEvent.removeMonitor(monitor) }
+        coordinator.eventMonitor = nil
     }
 
     private func applyAppearance(context: Context) {

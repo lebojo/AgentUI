@@ -11,7 +11,7 @@ enum RemoteProtocol {
         #endif
         return 52741
     }
-    static let version = 6
+    static let version = 7
     static let maximumFrame = 4 * 1024 * 1024
     static let maximumPayload = maximumFrame / 4 * 3 - 4096
 
@@ -88,6 +88,7 @@ struct RemoteError: LocalizedError, Sendable {
 enum RemoteRequest: Codable, Sendable {
     case watch(version: Int, terminal: UUID?, prefersChat: Bool)
     case streamInput(request: UUID, terminal: UUID, data: Data, message: String?)
+    case resizeTerminal(terminal: UUID, size: TerminalGridSize)
     case workspace(version: Int)
     case input(id: UUID, data: Data, message: String?)
     case newTerminal(project: UUID, worktree: UUID)

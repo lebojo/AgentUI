@@ -31,6 +31,10 @@ import Observation
     private(set) var subagents: [Subagent] = []
     @ObservationIgnored private(set) var hadAgent = false
     @ObservationIgnored var resume: AgentResume?
+    @ObservationIgnored var usedLocally: () -> Void = {}
+    var remoteGrid: TerminalGridSize? {
+        didSet { view.remoteGrid = remoteGrid }
+    }
 
     init(context: TerminalContext, command: [String], keepsShell: Bool = false, environment: [String: String]) {
         path = context.worktree.path
@@ -39,6 +43,7 @@ import Observation
         view = ActivityTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
         super.init()
         view.processDelegate = self
+        view.pasted = { [weak self] in self?.usedLocally() }
         view.received = { [weak self] data in
             guard let self else { return }
             self.mirrorModes.append(data)
@@ -193,6 +198,7 @@ import Observation
     }
 
     func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {
+        view.fitRemoteGrid()
         outputRevision += 1
         scheduleTranscriptRefresh()
     }
@@ -239,6 +245,11 @@ import Observation
 }
 
 @MainActor @Observable final class TerminalSessions {
+    private struct RemoteGrid {
+        let viewer: UUID
+        let size: TerminalGridSize
+    }
+
     private var entries: [UUID: TerminalSession] = [:]
     var environment: [String: String] = [:]
     private(set) var branchesByPath: [String: GitBranch] = [:]
@@ -247,6 +258,7 @@ import Observation
     @ObservationIgnored private var agentWatchers = 0
     @ObservationIgnored private var agentPolling: Task<Void, Never>?
     @ObservationIgnored private let subagentCatalog = ClaudeSubagents()
+    @ObservationIgnored private var remoteGrids: [UUID: [RemoteGrid]] = [:]
 
     func branch(for terminalID: UUID, initialPath: String) -> GitBranch? {
         if let session = entries[terminalID] { return session.branch }
@@ -398,13 +410,44 @@ import Observation
         let resume = command.isEmpty ? context.terminal.resume.flatMap { $0.command == nil ? nil : $0 } : nil
         let session = TerminalSession(context: context, command: resume?.command ?? command, keepsShell: resume != nil, environment: environment)
         session.resume = resume
-        entries[context.terminal.id] = session
+        let id = context.terminal.id
+        session.usedLocally = { [weak self] in self?.dropRemoteGrids(of: id) }
+        entries[id] = session
+        applyRemoteGrid(of: id)
         return session
     }
-    func close(_ id: UUID) { entries.removeValue(forKey: id)?.stop() }
+    func close(_ id: UUID) {
+        remoteGrids[id] = nil
+        entries.removeValue(forKey: id)?.stop()
+    }
     func stopAll() {
         for session in entries.values { session.stop() }
         entries.removeAll()
+        remoteGrids.removeAll()
+    }
+
+    func requestGrid(_ size: TerminalGridSize, for terminal: UUID, viewer: UUID) {
+        var grids = remoteGrids[terminal, default: []]
+        grids.removeAll { $0.viewer == viewer }
+        grids.append(RemoteGrid(viewer: viewer, size: size))
+        remoteGrids[terminal] = grids
+        applyRemoteGrid(of: terminal)
+    }
+
+    func releaseGrid(of terminal: UUID, viewer: UUID) {
+        guard var grids = remoteGrids[terminal] else { return }
+        grids.removeAll { $0.viewer == viewer }
+        remoteGrids[terminal] = grids.isEmpty ? nil : grids
+        applyRemoteGrid(of: terminal)
+    }
+
+    private func dropRemoteGrids(of terminal: UUID) {
+        guard remoteGrids.removeValue(forKey: terminal) != nil else { return }
+        applyRemoteGrid(of: terminal)
+    }
+
+    private func applyRemoteGrid(of terminal: UUID) {
+        entries[terminal]?.remoteGrid = remoteGrids[terminal]?.last?.size
     }
 }
 

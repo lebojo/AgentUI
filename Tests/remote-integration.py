@@ -111,7 +111,7 @@ def rpc(action, **kwargs):
         return json.loads(base64.b64decode(reply["payload"]))
 
 
-PROTOCOL = 6
+PROTOCOL = 7
 
 
 def watch(terminal=None, chat=True):
@@ -231,6 +231,32 @@ try:
         assert b"AGENTUI_REMOTE_OK" in base64.b64decode(snapshot["output"])
         assert not snapshot["transcript"]
     print("PASS reconnect / terminal replay / no duplicate chat payload", flush=True)
+
+    def read_grid(sock, columns, rows, text=None):
+        deadline = time.monotonic() + 10
+        while True:
+            assert time.monotonic() < deadline, f"The terminal never reached {columns}x{rows}"
+            snapshot = read(sock).get("terminal", {}).get("_0")
+            if snapshot and (snapshot["columns"], snapshot["rows"]) == (columns, rows):
+                if text is None or text in base64.b64decode(snapshot["output"]):
+                    return snapshot
+
+    with watch(terminal, chat=False) as sock:
+        first = read(sock)["terminal"]["_0"]
+        mac_grid = (first["columns"], first["rows"])
+        send(sock, {"resizeTerminal": dict(terminal=terminal, size=dict(columns=47, rows=19))})
+        read_grid(sock, 47, 19)
+        rpc("input", id=terminal, data=base64.b64encode(b"stty size\r").decode())
+        read_grid(sock, 47, 19, b"19 47")
+        send(sock, {"resizeTerminal": dict(terminal=terminal, size=dict(columns=3, rows=1))})
+        read_grid(sock, 20, 5)
+    with watch(terminal, chat=False) as sock:
+        read_grid(sock, *mac_grid)
+        for columns in range(30, 60):
+            send(sock, {"resizeTerminal": dict(terminal=terminal, size=dict(columns=columns, rows=12))})
+    with watch(terminal, chat=False) as sock:
+        read_grid(sock, *mac_grid)
+    print("PASS a phone resizes the PTY while it watches, sizes are clamped and the Mac grid returns afterwards, even right after a burst", flush=True)
 
     with watch(terminal, chat=False) as sock:
         original = read(sock)["terminal"]["_0"]["identity"]

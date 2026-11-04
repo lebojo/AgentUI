@@ -615,6 +615,16 @@
         }
       }
     },
+    "%lld pt" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld pt"
+          }
+        }
+      }
+    },
     "%lld terminals" : {
       "localizations" : {
         "en" : {
@@ -799,6 +809,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un espace pour tes projets"
+          }
+        }
+      }
+    },
+    "A phone is viewing this terminal at its own size, so part of it may be hidden here." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un téléphone affiche ce terminal à sa propre taille, une partie peut donc être masquée ici."
           }
         }
       }
@@ -4421,6 +4441,16 @@
         }
       }
     },
+    "Sized for Mobile" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taille mobile"
+          }
+        }
+      }
+    },
     "Skill for Agents" : {
       "localizations" : {
         "fr" : {
@@ -4687,6 +4717,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Texte"
+          }
+        }
+      }
+    },
+    "Text Size" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taille du texte"
           }
         }
       }
@@ -5461,6 +5501,16 @@
         }
       }
     },
+    "Use Mac Size" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprendre la taille du Mac"
+          }
+        }
+      }
+    },
     "Waiting for a response…" : {
       "localizations" : {
         "fr" : {
@@ -5507,6 +5557,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Semaine · %@"
+          }
+        }
+      }
+    },
+    "While you view a terminal, the Mac resizes it to fit this screen. It returns to its own size when you leave or use it on the Mac." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pendant que tu regardes un terminal, le Mac l’ajuste à cet écran. Il reprend sa taille quand tu le quittes ou que tu l’utilises sur le Mac."
           }
         }
       }

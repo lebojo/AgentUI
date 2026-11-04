@@ -34,7 +34,8 @@ cat > "$app/Info.plist" <<'PLIST'
 PLIST
 sdk="$(xcrun --sdk iphonesimulator --show-sdk-path)"
 SDKROOT="$sdk" xcrun swiftc -parse-as-library -target arm64-apple-ios17.0-simulator -sdk "$sdk" -I "$ios_build" \
-  AgentUI/Models/Data/SessionMessage.swift AgentUI/Models/Data/RemoteTerminalSnapshot.swift \
+  AgentUI/Models/Data/SessionMessage.swift AgentUI/Models/Data/RemoteTerminalSnapshot.swift AgentUI/Models/Data/TerminalGridSize.swift \
+  AgentUI/Models/TerminalAppearance.swift AgentUI/Models/TerminalTheme.swift \
   AgentUI/Platforms/iOS/MobileTerminalView.swift AgentUI/Views/MobileWorkspaceView/MobileTerminalViewport.swift AgentUI/Platforms/iOS/MobileTerminalScrollView.swift Tests/MobileTerminalTests.swift \
   "$ios_build/SwiftTerm.o" -o "$app/MobileTerminalTests"
 cp -R "$ios_build/SwiftTerm_SwiftTerm.bundle" "$app/"

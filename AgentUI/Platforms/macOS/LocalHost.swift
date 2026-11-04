@@ -282,6 +282,8 @@ import SystemConfiguration
         var streamed = StreamedSession()
         var watchedChat: TerminalSession?
         defer { watchedChat?.releaseChat() }
+        let viewer = UUID()
+        defer { if let terminal { store.sessions.releaseGrid(of: terminal, viewer: viewer) } }
         let streamsChat = { (session: TerminalSession?) in prefersChat && session?.agent != nil }
         let (changes, continuation) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
         let inputTask = Task {
@@ -289,14 +291,19 @@ import SystemConfiguration
             do {
                 while !Task.isCancelled {
                     let request: RemoteRequest = try await RemoteChannel.receive(on: connection)
-                    guard case .streamInput(let requestID, let terminalID, let data, let message) = request,
-                          terminalID == terminal else { return }
-                    let failure: String?
-                    do {
-                        _ = try await handle(.input(id: terminalID, data: data, message: message))
-                        failure = nil
-                    } catch { failure = error.localizedDescription }
-                    try await RemoteChannel.push(RemoteEvent.inputResult(request: requestID, error: failure), on: connection)
+                    guard !Task.isCancelled else { return }
+                    switch request {
+                    case .streamInput(let requestID, let terminalID, let data, let message) where terminalID == terminal:
+                        let failure: String?
+                        do {
+                            _ = try await handle(.input(id: terminalID, data: data, message: message))
+                            failure = nil
+                        } catch { failure = error.localizedDescription }
+                        try await RemoteChannel.push(RemoteEvent.inputResult(request: requestID, error: failure), on: connection)
+                    case .resizeTerminal(let terminalID, let size) where terminalID == terminal:
+                        store.sessions.requestGrid(size, for: terminalID, viewer: viewer)
+                    default: return
+                    }
                 }
             } catch {}
         }
@@ -386,7 +393,7 @@ import SystemConfiguration
     private func handle(_ request: RemoteRequest) async throws -> RemoteReply {
         guard let store else { throw RemoteError(message: String(localized: "The Mac isn’t ready.")) }
         switch request {
-        case .watch, .streamInput: throw RemoteError(message: String(localized: "Invalid request."))
+        case .watch, .streamInput, .resizeTerminal: throw RemoteError(message: String(localized: "Invalid request."))
         case .workspace(let version):
             guard version == RemoteProtocol.version else { throw RemoteError(message: Self.incompatibleVersions) }
             return try .success(store.state)

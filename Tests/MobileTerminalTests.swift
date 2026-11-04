@@ -6,7 +6,7 @@ private struct Viewport: View {
 
     var body: some View {
         if let view = session.view {
-            MobileTerminalViewport(terminal: view, canvasSize: session.canvasSize)
+            MobileTerminalViewport(terminal: view, canvasSize: session.canvasSize, fit: session.fit)
         }
     }
 }
@@ -37,7 +37,8 @@ private struct Viewport: View {
 
     private func run() async throws -> String {
         var sent: [Data] = []
-        let session = MobileTerminalSession(identity: UUID(), isChat: false) { sent.append($0) }
+        var requested: [TerminalGridSize] = []
+        let session = MobileTerminalSession(identity: UUID(), isChat: false) { sent.append($0) } requestGrid: { requested.append($0) }
         let view = session.view!
         let terminal = view.getTerminal()
         func apply(_ text: String, columns: Int = 90, rows: Int = 35) {
@@ -58,6 +59,7 @@ private struct Viewport: View {
         view.insertText("x")
         try await Task.sleep(for: .milliseconds(100))
         try require(sent == [Data("x".utf8)], "Real keyboard input must still reach the PTY")
+        try require(requested.isEmpty, "No grid is requested before the terminal has a viewport")
 
         let controller = UIHostingController(rootView: Viewport(session: session))
         let window = self.window!
@@ -75,9 +77,35 @@ private struct Viewport: View {
             try require(terminal.cols == 90 && terminal.rows == 35, "Attachment, rotation and keyboard viewport sizes must not change host grid")
             try require(terminal.applicationCursor && terminal.currentAttribute == attribute, "UIKit layout must preserve terminal state")
         }
-        var ancestor = view.superview
-        while ancestor != nil && !(ancestor is MobileTerminalScrollView) { ancestor = ancestor?.superview }
-        let viewport = ancestor as! MobileTerminalScrollView
+        try await Task.sleep(for: .milliseconds(300))
+        func fittingGrid() -> TerminalGridSize {
+            let cell = view.getOptimalFrameSize().size
+            let bounds = ancestorViewport()?.bounds.size ?? .zero
+            return TerminalGridSize(columns: Int(bounds.width * CGFloat(terminal.cols) / cell.width),
+                                    rows: Int(bounds.height * CGFloat(terminal.rows) / cell.height))
+        }
+        func ancestorViewport() -> MobileTerminalScrollView? {
+            var ancestor = view.superview
+            while ancestor != nil && !(ancestor is MobileTerminalScrollView) { ancestor = ancestor?.superview }
+            return ancestor as? MobileTerminalScrollView
+        }
+        let fitted = requested.count
+        try require(fitted > 0 && fitted <= 2 && requested.last == fittingGrid(),
+                    "Viewport changes are debounced into a request for the grid that fits the phone: \(requested)")
+        session.setFontSize(20)
+        try await Task.sleep(for: .milliseconds(300))
+        try require(terminal.cols == 90 && terminal.rows == 35 && terminal.applicationCursor && terminal.currentAttribute == attribute,
+                    "Changing the text size keeps the host grid and terminal modes")
+        try require(requested.count == fitted + 1 && requested.last == fittingGrid() && requested[fitted].columns < requested[fitted - 1].columns,
+                    "A larger text size requests fewer columns: \(requested)")
+        let phoneGrid = requested[fitted]
+        view.insertText("y")
+        try require(requested.count == fitted + 2 && requested.last == phoneGrid, "Typing on the phone reclaims its grid when the host uses another one")
+        view.insertText("y")
+        try require(requested.count == fitted + 2, "Further typing waits for the host instead of re-sending the grid on every key: \(requested)")
+        session.reclaimGrid()
+        try require(requested.count == fitted + 3 && requested.last == phoneGrid, "A new stream re-sends the last requested grid")
+        let viewport = ancestorViewport()!
         try require(abs(viewport.zoomScale - min(1, viewport.bounds.width / session.canvasSize.width)) < 0.01, "Terminal initially fits the phone width")
         viewport.setZoomScale(1.5, animated: false)
         view.layoutIfNeeded()
@@ -87,6 +115,17 @@ private struct Viewport: View {
         controller.view.layoutIfNeeded()
         view.layoutIfNeeded()
         try require(terminal.cols == 43 && terminal.rows == 13 && terminal.applicationCursor, "Only a host resize changes the grid, preserving modes")
-        return "PASS iOS emulator mode preservation\nPASS suppress mirrored replies and forward real keyboard input\nPASS host grid survives UIKit attachment, rotation and keyboard-sized viewports\nPASS host resize preserves modes\nPASS fit-to-width and zoom preserve the host grid"
+        view.insertText("w")
+        view.insertText("w")
+        try require(requested.count == fitted + 4 && requested.last == phoneGrid, "Typing reclaims the grid once each time the host moves to another one: \(requested)")
+        apply("", columns: phoneGrid.columns, rows: phoneGrid.rows)
+        try await Task.sleep(for: .milliseconds(300))
+        controller.view.layoutIfNeeded()
+        view.insertText("z")
+        try require(requested.count == fitted + 4, "Typing never re-sends a grid the host already uses: \(requested)")
+        apply("", columns: 43, rows: 13)
+        view.insertText("z")
+        try require(requested.count == fitted + 5, "Once the host used the phone grid, losing it again lets typing reclaim it: \(requested)")
+        return "PASS iOS emulator mode preservation\nPASS suppress mirrored replies and forward real keyboard input\nPASS host grid survives UIKit attachment, rotation and keyboard-sized viewports\nPASS host resize preserves modes\nPASS fit-to-width and zoom preserve the host grid\nPASS the phone requests the grid that fits its screen and text size, and reclaims it when typing"
     }
 }
