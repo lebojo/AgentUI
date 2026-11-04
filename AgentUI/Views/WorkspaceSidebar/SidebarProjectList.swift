@@ -16,6 +16,7 @@ struct SidebarProjectList: View {
 
     var body: some View {
         List(selection: $store.selection) {
+            SidebarWorkInProgressSection(store: store, query: query)
             Section {
                 ForEach(result.groups) { group in
                     SidebarFolderRow(sheet: $sheet, removal: $removal, store: store, group: group, query: query)

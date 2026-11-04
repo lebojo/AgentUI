@@ -265,6 +265,11 @@ import Observation
         return branchesByPath[initialPath]
     }
 
+    func divergentBranch(for terminalID: UUID, worktreePath: String) -> GitBranch? {
+        guard let current = entries[terminalID]?.branch, current != branchesByPath[worktreePath] else { return nil }
+        return current
+    }
+
     func refreshRepositories(worktreePaths: [String]) async {
         guard !refreshingRepositories else { return }
         refreshingRepositories = true
@@ -396,6 +401,7 @@ import Observation
 
     var runningCount: Int { entries.values.filter { !$0.hasExited }.count }
     var runningAgents: [UUID: ConversationAgent] { entries.compactMapValues(\.agentKind) }
+    var agentStatuses: [UUID: AgentStatus] { entries.compactMapValues(\.agentStatus) }
 
     func session(_ id: UUID) -> TerminalSession? { entries[id] }
     func subagent(_ id: UUID?) -> SubagentSelection? {

@@ -183,6 +183,50 @@ private final class ChangeFlag: @unchecked Sendable {
                     "A layout with a single pane disappears")
         print("PASS split terminal layouts")
 
+        let worktreeID = splitProject.worktrees[0].id
+        let b = try split.addTerminal(projectID: splitProject.id, worktreeID: worktreeID, name: "b").terminal.id
+        let c = try split.splitTerminal(b, axis: .horizontal).terminal.id
+        let d = try split.addTerminal(projectID: splitProject.id, worktreeID: worktreeID, name: "d").terminal.id
+        let e = try split.splitTerminal(first, axis: .vertical).terminal.id
+        func blocks() -> [SidebarTerminalBlock] {
+            let worktree = split.worktree(containing: first)!
+            return worktree.terminalBlocks(showing: worktree.terminals)
+        }
+        try require(blocks().map { $0.terminals.map(\.id) } == [[first, e], [b, c], [d]], "Split panes form one sidebar block placed at their first terminal")
+        try require(blocks().map(\.axis) == [.vertical, .horizontal, nil], "A block keeps its split axis")
+        try require(blocks()[0].contains(e) && !blocks()[0].contains(b), "A block knows its terminals")
+        func moveBlocks(_ source: IndexSet, to destination: Int) {
+            let current = blocks()
+            let move = current.terminalMove(from: source, to: destination)
+            split.reorderTerminals(in: worktreeID, current.terminalIDs, from: move.source, to: move.destination)
+        }
+        try require(blocks().terminalMove(from: [1], to: 3) == SidebarTerminalMove(source: [2, 3], destination: 5), "Moving a block moves all of its terminals")
+        moveBlocks([2], to: 0)
+        try require(blocks().map { $0.terminals.map(\.id) } == [[d], [first, e], [b, c]], "A single terminal moves above a split block")
+        moveBlocks([1], to: 3)
+        try require(split.worktree(containing: first)?.terminals.map(\.id) == [d, b, c, first, e], "A split block moves as a whole")
+        let filtered = split.worktree(containing: first)!.terminalBlocks(showing: split.worktree(containing: first)!.terminals.filter { [first, c, d].contains($0.id) })
+        try require(filtered.map { $0.terminals.map(\.id) } == [[d], [c], [first]] && filtered.allSatisfy { !$0.isSplit && $0.axis == nil },
+                    "A split whose other panes are filtered out shows as a single row")
+        print("PASS sidebar split blocks")
+
+        var busy = Project(url: root.appendingPathComponent("busy"))
+        let waiting = TerminalRecord(name: "Review")
+        let working = TerminalRecord(name: "Build")
+        let ready = TerminalRecord(name: "Docs")
+        let shell = TerminalRecord(name: "Shell")
+        busy.worktrees[0].terminals = [ready, shell, working]
+        busy.worktrees.append(Worktree(name: "feature-x", path: root.appendingPathComponent("feature-x").path, terminals: [waiting]))
+        let statuses: [UUID: AgentStatus] = [waiting.id: .waitingForInput, working.id: .working, ready.id: .ready]
+        let progress = WorkInProgress.groups(in: [busy], statuses: statuses, agents: [working.id: .codex], query: "")
+        try require(progress.map(\.status) == [.waitingForInput, .working, .ready], "Agents needing input come first, then working, then ready")
+        try require(progress.flatMap(\.items).map(\.id) == [waiting.id, working.id, ready.id], "Only terminals running an agent are listed")
+        try require(progress[0].items[0].location == "busy · feature-x" && progress[1].items[0].agent == .codex, "Items carry their project, worktree and agent")
+        try require(WorkInProgress.groups(in: [busy], statuses: [:], agents: [:], query: "").isEmpty, "No running agent hides the section")
+        let searched = WorkInProgress.groups(in: [busy], statuses: statuses, agents: [:], query: "feature")
+        try require(searched.map(\.status) == [.waitingForInput] && searched[0].items.map(\.id) == [waiting.id], "The sidebar filter applies to work in progress")
+        print("PASS work in progress groups")
+
         let gitRoot = root.appendingPathComponent("grouped")
         try fm.createDirectory(at: gitRoot, withIntermediateDirectories: true)
         _ = try await GitService.run(["init", "-q", "-b", "main"], at: gitRoot.path)

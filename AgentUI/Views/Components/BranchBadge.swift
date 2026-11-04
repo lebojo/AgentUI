@@ -8,7 +8,7 @@ struct BranchBadge: View {
 
     var body: some View {
         HStack(spacing: Spacing.xxs) {
-            Image(systemName: branch.isDetached ? "point.topleft.down.to.point.bottomright.curvepath" : "arrow.triangle.branch")
+            Image(systemName: branch.symbolName)
                 .font(Typography.xxs.weight(.medium))
             Text(branch.name).lineLimit(1).truncationMode(.middle)
         }

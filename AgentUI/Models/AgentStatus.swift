@@ -4,6 +4,7 @@ enum AgentStatus: Equatable, Sendable {
     case working, ready, waitingForInput
 
     static let outputActivityWindow: TimeInterval = 2
+    static let attentionOrder: [AgentStatus] = [.waitingForInput, .working, .ready]
 
     static let approvalPrompts = [
         "Would you like to run the following command",

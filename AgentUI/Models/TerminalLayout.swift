@@ -19,6 +19,10 @@ indirect enum TerminalLayout: Codable, Equatable, Identifiable, Sendable {
 
     var isSplit: Bool { terminalIDs.count > 1 }
 
+    var axis: SplitAxis? {
+        if case .split(let axis, _) = self { axis } else { nil }
+    }
+
     func contains(_ id: UUID) -> Bool { terminalIDs.contains(id) }
 
     func neighbour(of id: UUID) -> UUID? {

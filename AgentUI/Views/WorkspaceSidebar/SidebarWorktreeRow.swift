@@ -19,6 +19,7 @@ struct SidebarWorktreeRow: View {
     private var terminals: [TerminalRecord] {
         worktree.terminals.filter { showAll || matches(worktree.displayName) || matches($0.name) }
     }
+    private var branch: GitBranch? { store.sessions.branchesByPath[worktree.path] }
     private var worktreeRemoval: Removal { .worktree(projectID: project.id, worktreeID: worktree.id, name: worktree.displayName) }
     private var isExpanded: Binding<Bool> {
         guard isInserted else { return .constant(false) }
@@ -27,10 +28,7 @@ struct SidebarWorktreeRow: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: isExpanded) {
-            ForEach(terminals) { terminal in
-                SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, worktree: worktree)
-            }
-            .onMove(perform: store.isReadOnly ? nil : { store.reorderTerminals(in: worktree.id, terminals.map(\.id), from: $0, to: $1) })
+            SidebarTerminalList(sheet: $sheet, removal: $removal, store: store, worktree: worktree, terminals: terminals)
             if worktree.terminals.isEmpty {
                 Button("Open Terminal") { openTerminal() }
                     .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
@@ -38,7 +36,10 @@ struct SidebarWorktreeRow: View {
         } label: {
             HStack(spacing: Spacing.s) {
                 Image(systemName: "arrow.triangle.branch").foregroundStyle(Palette.textSecondary)
-                Text(worktree.displayName).lineLimit(1)
+                Text(worktree.displayName).lineLimit(1).layoutPriority(1)
+                if let branch, branch.name != worktree.name {
+                    SidebarBranchName(branch: branch, color: Palette.textSecondary)
+                }
                 Spacer(minLength: Spacing.xxs)
                 Button { openTerminal() } label: { Image(systemName: "plus").font(Typography.xs.weight(.semibold)) }
                     .buttonStyle(.borderless).help("New terminal in \(worktree.displayName)")

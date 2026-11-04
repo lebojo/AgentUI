@@ -17,14 +17,15 @@ struct SidebarProjectRow: View {
         project.worktreeGroups.filter { showAll || matches(project.name) || matches($0.name) || !visibleWorktrees(in: $0.id).isEmpty }
     }
 
+    private var primaryBranch: GitBranch? {
+        project.worktrees.first(where: \.isPrimary).flatMap { store.sessions.branchesByPath[$0.path] }
+    }
+
     var body: some View {
         DisclosureGroup(isExpanded: expanded(project.id)) {
             ForEach(project.worktrees.filter(\.isPrimary)) { worktree in
                 let terminals = worktree.terminals.filter { showAll || matches(project.name) || matches($0.name) }
-                ForEach(terminals) { terminal in
-                    SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: terminal, worktree: worktree)
-                }
-                .onMove(perform: store.isReadOnly ? nil : { store.reorderTerminals(in: worktree.id, terminals.map(\.id), from: $0, to: $1) })
+                SidebarTerminalList(sheet: $sheet, removal: $removal, store: store, worktree: worktree, terminals: terminals)
                 if worktree.terminals.isEmpty {
                     Button("Open Terminal") { store.openTerminal(project, worktree, launch: settings.agentLaunch) }
                         .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
@@ -45,9 +46,12 @@ struct SidebarProjectRow: View {
             HStack(spacing: Spacing.s) {
                 Image(systemName: project.appearance.displaySymbol.systemName).foregroundStyle(project.appearance.color)
                 HStack(spacing: Spacing.xs) {
-                    Text(project.name).lineLimit(1)
+                    Text(project.name).lineLimit(1).layoutPriority(1)
                     if project.worktrees.allSatisfy({ $0.terminals.isEmpty }) {
                         Image(systemName: "moon").font(Typography.caption)
+                    }
+                    if let branch = primaryBranch {
+                        SidebarBranchName(branch: branch, color: Palette.textSecondary)
                     }
                 }
                 .foregroundStyle(project.worktrees.allSatisfy({ $0.terminals.isEmpty }) ? Palette.textSecondary : Palette.textPrimary)
