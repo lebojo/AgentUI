@@ -419,7 +419,14 @@ import Observation
         removal.projectID.map(busyProjects.contains) ?? false
     }
 
-    func remove(_ removal: Removal) {
+    func deletableBranch(for removal: Removal) async -> String? {
+        guard case .worktree(let projectID, let worktreeID, _) = removal,
+              let worktree = projects.first(where: { $0.id == projectID })?.worktrees.first(where: { $0.id == worktreeID }),
+              !worktree.isPrimary else { return nil }
+        return await GitRepository.deletableBranch(at: worktree.path)
+    }
+
+    func remove(_ removal: Removal, branch: BranchRemoval = .keep) {
         guard !isBusy(removal) else {
             errorMessage = String(localized: "A Git operation is in progress on this project. Try again when it’s finished.")
             return
@@ -429,8 +436,10 @@ import Observation
         case .terminal(let id): closeTerminal(id)
         case .worktree(let projectID, let worktreeID, _):
             Task {
-                do { try await deleteWorktree(projectID: projectID, worktreeID: worktreeID) }
-                catch { errorMessage = error.localizedDescription }
+                do {
+                    let cleanup = try await deleteWorktree(projectID: projectID, worktreeID: worktreeID, branch: branch)
+                    if let failure = cleanup.failure { errorMessage = failure }
+                } catch { errorMessage = error.localizedDescription }
             }
         case .orphanWorktree(let path, _): trashOrphanWorktree(at: path)
         }
@@ -572,7 +581,7 @@ import Observation
         try await GitService.fetchRemotes(project: project)
     }
 
-    func deleteWorktree(projectID: UUID, worktreeID: UUID) async throws {
+    @discardableResult func deleteWorktree(projectID: UUID, worktreeID: UUID, branch removal: BranchRemoval = .keep) async throws -> BranchCleanup {
         guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: String(localized: "A Git operation is already in progress on this project.")) }
         guard let project = projects.first(where: { $0.id == projectID }),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }) else {
@@ -585,6 +594,8 @@ import Observation
             busyProjects.remove(projectID)
             removingWorktrees.remove(worktreeID)
         }
+        let branch = removal == .keep ? WorktreeBranch.none : await GitService.worktreeBranch(at: worktree.path, project: project)
+        if let refusal = branch.refusal { throw WorkspaceError(message: refusal) }
         let started = worktree.terminals.filter { sessions.isRunning($0.id) }
         for terminal in started { sessions.close(terminal.id) }
         do {
@@ -593,6 +604,11 @@ import Observation
             for context in started.compactMap({ context(for: $0.id) }) { sessions.start(context) }
             throw error
         }
+        forgetWorktree(worktreeID, of: projectID)
+        return await deleteBranch(branch, removal, of: project)
+    }
+
+    private func forgetWorktree(_ worktreeID: UUID, of projectID: UUID) {
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
         let remaining = projects[index].worktrees.first { $0.id == worktreeID }?.terminals ?? []
         for terminal in remaining { sessions.close(terminal.id) }
@@ -602,6 +618,16 @@ import Observation
             repairSelection()
         }
         save()
+    }
+
+    private func deleteBranch(_ branch: WorktreeBranch, _ removal: BranchRemoval, of project: Project) async -> BranchCleanup {
+        guard let name = branch.deletableName else { return .untouched }
+        do {
+            try await GitService.deleteBranch(name, removal, project: project)
+            return .deleted(name)
+        } catch {
+            return .kept(name, reason: error.localizedDescription)
+        }
     }
 
     @discardableResult func addWorktreeGroup(_ name: String, projectID: UUID, moving worktreeID: UUID? = nil) -> UUID? {

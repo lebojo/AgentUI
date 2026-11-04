@@ -72,6 +72,39 @@ struct GitRepository: Sendable {
     }
 }
 
+extension GitRepository {
+    var worktreeBranch: WorktreeBranch {
+        WorktreeBranch(branch, defaultBranches: DefaultBranch.names(remoteHeads: remoteHeads), checkedOutElsewhere: branchesCheckedOutElsewhere)
+    }
+
+    @concurrent static func deletableBranch(at path: String) async -> String? {
+        atRoot(URL(fileURLWithPath: path))?.worktreeBranch.deletableName
+    }
+
+    private var branchesCheckedOutElsewhere: Set<String> {
+        let linked = (try? FileManager.default.contentsOfDirectory(at: commonDirectory.appendingPathComponent("worktrees"), includingPropertiesForKeys: nil)) ?? []
+        let own = gitDirectory.standardizedFileURL.path
+        let heads = ([commonDirectory] + linked).filter { $0.standardizedFileURL.path != own }.map { $0.appendingPathComponent("HEAD") }
+        return Set(heads.compactMap { Self.smallTextFile($0).flatMap { Self.reference($0, under: "refs/heads/") } })
+    }
+
+    private var remoteHeads: [String] {
+        let refs = commonDirectory.appendingPathComponent("refs/remotes")
+        let remotes = (try? FileManager.default.contentsOfDirectory(atPath: refs.path)) ?? []
+        return remotes.compactMap { remote in
+            Self.smallTextFile(refs.appendingPathComponent(remote).appendingPathComponent("HEAD"))
+                .flatMap { Self.reference($0, under: "refs/remotes/\(remote)/") }
+        }
+    }
+
+    private static func reference(_ head: String, under namespace: String) -> String? {
+        let prefix = "ref: " + namespace
+        guard head.hasPrefix(prefix) else { return nil }
+        let name = String(head.dropFirst(prefix.count))
+        return name.isEmpty ? nil : name
+    }
+}
+
 struct RepositoryDiscoveryResult: Sendable {
     var repositories: [URL]
     var skippedDirectories: [String]

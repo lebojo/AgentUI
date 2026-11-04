@@ -44,6 +44,42 @@ enum GitService {
         }
     }
 
+    @concurrent static func worktreeBranch(at path: String, project: Project) async -> WorktreeBranch {
+        async let head = run(["rev-parse", "--symbolic-full-name", "HEAD"], at: path, timeout: 10)
+        async let worktrees = run(["worktree", "list", "--porcelain", "-z"], at: project.path, timeout: 10)
+        async let remoteHeads = run(["for-each-ref", "--format=%(symref:lstrip=3)", "refs/remotes/*/HEAD"], at: project.path, timeout: 10)
+        do {
+            let reference = try await head
+            let branch = reference.hasPrefix("refs/heads/") ? GitBranch(name: String(reference.dropFirst("refs/heads/".count))) : nil
+            return WorktreeBranch(branch, defaultBranches: DefaultBranch.names(remoteHeads: try await remoteHeads.split(separator: "\n").map(String.init)),
+                                  checkedOutElsewhere: checkedOutBranches(in: try await worktrees, excluding: path))
+        } catch {
+            return GitRepository.atRoot(URL(fileURLWithPath: path))?.worktreeBranch ?? .none
+        }
+    }
+
+    private static func checkedOutBranches(in porcelain: String, excluding path: String) -> Set<String> {
+        let own = WorkspacePath.canonical(URL(fileURLWithPath: path))
+        var worktree: String?
+        var branches: Set<String> = []
+        for field in porcelain.split(separator: "\0") {
+            if field.hasPrefix("worktree ") {
+                worktree = WorkspacePath.canonical(URL(fileURLWithPath: String(field.dropFirst("worktree ".count))))
+            } else if field.hasPrefix("branch refs/heads/"), worktree != own {
+                branches.insert(String(field.dropFirst("branch refs/heads/".count)))
+            }
+        }
+        return branches
+    }
+
+    @concurrent static func deleteBranch(_ branch: String, _ removal: BranchRemoval, project: Project) async throws {
+        guard let arguments = removal.arguments(for: branch) else { return }
+        do { _ = try await run(arguments, at: project.path, timeout: 20) }
+        catch let error as ReadCommandError where error.message.contains("not fully merged") {
+            throw WorkspaceError(message: String(localized: "The branch “\(branch)” isn’t fully merged. If its commits are no longer needed, delete it with git branch -D \(branch)."))
+        }
+    }
+
     static func hasLocalChanges(at path: String) async throws -> Bool {
         guard FileManager.default.fileExists(atPath: path) else { return false }
         return try await !run(["status", "--porcelain", "--untracked-files=normal"], at: path, timeout: 20).isEmpty

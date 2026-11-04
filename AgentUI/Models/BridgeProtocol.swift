@@ -11,6 +11,7 @@ struct BridgeRequest: Codable, Sendable {
     var directory: String?
     var command: [String]
     var force: Bool?
+    var deleteBranch: Bool?
 }
 
 struct BridgeResponse: Codable, Sendable {
@@ -21,5 +22,7 @@ struct BridgeResponse: Codable, Sendable {
     var terminalID: UUID?
     var path: String?
     var workspace: Workspace?
+    var branch: String?
+    var branchDeleted: Bool?
 }
 

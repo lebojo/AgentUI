@@ -87,8 +87,7 @@ enum InspectorService {
             guard fields.count == 2, fields[1].isEmpty, String(fields[0]) != current else { return nil }
             return ComparisonBranch(reference: String(fields[0]))
         }
-        let candidates = [await remoteDefault.map(trimmed)].compactMap { $0 }
-            + ["refs/heads/main", "refs/heads/master", "refs/remotes/origin/main", "refs/remotes/origin/master"]
+        let candidates = DefaultBranch.preferredReferences(remoteHead: await remoteDefault.map(trimmed))
         let preferred = candidates.lazy.compactMap { candidate in all.first { $0.reference == candidate } }.first
         var shown = Array(all.prefix(limit))
         if let preferred, !shown.contains(preferred) { shown.insert(preferred, at: 0) }

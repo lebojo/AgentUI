@@ -65,4 +65,14 @@ enum Removal: Hashable, Sendable {
             String(localized: "Its terminals will be closed and its folder will be erased from disk, including uncommitted changes. This can’t be undone. The branch and its commits stay in the repository.")
         }
     }
+
+    func confirmation(deletableBranch branch: String?) -> String {
+        guard case .worktree = self, branch != nil else { return confirmation }
+        return String(localized: "Delete Worktree Only")
+    }
+
+    func message(deletableBranch branch: String?) -> String {
+        guard case .worktree = self, let branch else { return message }
+        return String(localized: "Its terminals will be closed and its folder will be erased from disk, including uncommitted changes. This can’t be undone. You can keep the branch “\(branch)” and its commits in the repository, or delete it too if it’s merged.")
+    }
 }

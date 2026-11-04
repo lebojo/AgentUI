@@ -253,6 +253,42 @@ private final class ChangeFlag: @unchecked Sendable {
                     "A main folder or a broken worktree has no registration to remove")
         print("PASS worktree folder adoption")
 
+        let reviewRemoval = Removal.worktree(projectID: grouped.id, worktreeID: review.id, name: review.name)
+        let reviewBranch = await groups.deletableBranch(for: reviewRemoval)
+        try require(reviewBranch == "review/one", "The removal dialog offers to delete a worktree's branch")
+        let mainBranch = await groups.deletableBranch(for: .worktree(projectID: grouped.id, worktreeID: groupedProject().worktrees[0].id, name: "Main"))
+        try require(mainBranch == nil, "The main folder never offers to delete its branch")
+        let reviewCleanup = try await groups.deleteWorktree(projectID: grouped.id, worktreeID: review.id, branch: .merged)
+        let reviewLeft = try await GitService.run(["branch", "--list", "review/one"], at: gitRoot.path)
+        try require(reviewCleanup == .deleted("review/one") && reviewLeft.isEmpty && !groupedProject().worktrees.contains { $0.id == review.id },
+                    "Deleting a worktree with its merged branch removes both")
+        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Work"], at: other.path)
+        let otherCleanup = try await groups.deleteWorktree(projectID: grouped.id, worktreeID: other.id, branch: .merged)
+        let otherLeft = try await GitService.run(["branch", "--list", "feature/two"], at: gitRoot.path)
+        try require(otherCleanup.branch == "feature/two" && !otherCleanup.isDeleted && otherCleanup.failure?.contains("git branch -D feature/two") == true
+                        && !otherLeft.isEmpty && !groupedProject().worktrees.contains { $0.id == other.id },
+                    "An unmerged branch is kept with an explanation, but the worktree is deleted")
+        let keptCleanup = try await groups.deleteWorktree(projectID: grouped.id, worktreeID: groupedProject().worktrees.first { $0.path == adoptable.path }!.id)
+        let adoptLeft = try await GitService.run(["branch", "--list", "adopt/me"], at: gitRoot.path)
+        try require(keptCleanup == .untouched && !adoptLeft.isEmpty, "Deleting a worktree alone keeps its branch")
+        guard let lonelyProject = groups.projects.first(where: { $0.path == WorkspacePath.canonical(lonelyRoot) }),
+              let onMain = lonelyProject.worktrees.first(where: { $0.path == extra.path }) else {
+            throw WorkspaceError(message: "FAIL: the extra worktree belongs to the lonely project")
+        }
+        _ = try await GitService.run(["checkout", "-q", "-b", "feature"], at: lonelyRoot.path)
+        _ = try await GitService.run(["checkout", "-q", "main"], at: extra.path)
+        let onMainBranch = await groups.deletableBranch(for: .worktree(projectID: lonelyProject.id, worktreeID: onMain.id, name: onMain.name))
+        try require(onMainBranch == nil, "The removal dialog never offers to delete main in a local-only repository")
+        do {
+            try await groups.deleteWorktree(projectID: lonelyProject.id, worktreeID: onMain.id, branch: .force)
+            throw WorkspaceError(message: "FAIL: main deleted")
+        } catch let error as WorkspaceError {
+            try require(error.message.contains("main branch") && fm.fileExists(atPath: extra.path)
+                            && groups.projects.contains { $0.worktrees.contains { $0.id == onMain.id } },
+                        "Forcing the deletion of a worktree on main in a local-only repository is refused before removing anything")
+        }
+        print("PASS worktree deletion with or without its branch")
+
         let legacy = Data(#"{"version":1,"folders":[],"collapsed":[],"projects":[{"id":"\#(UUID())","name":"Old","path":"/tmp/old","worktrees":[{"id":"\#(UUID())","name":"Principal","path":"/tmp/old","isPrimary":true,"terminals":[]}]}]}"#.utf8)
         let decoded = try JSONDecoder().decode(Workspace.self, from: legacy)
         try require(decoded.projects[0].worktreeGroups.isEmpty && decoded.projects[0].worktrees[0].layouts.isEmpty && decoded.projects[0].worktrees[0].groupID == nil,
