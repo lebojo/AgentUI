@@ -47,8 +47,29 @@ import Foundation
         try require(floating.focusedID == first.id, "Next tab wraps around")
         floating.selectTab(offset: -1)
         try require(floating.focusedID == right.id, "Selecting a tab restores its last focused pane")
-        let decodedFloating = try JSONDecoder().decode(FloatingTerminal.self, from: JSONEncoder().encode(floating))
-        try require(decodedFloating == floating, "Floating tabs, splits and focus round-trip")
+        let beforeFocusChange = floating
+        floating.focus(second.id)
+        floating.select(.terminal(first.id))
+        try require(floating.hasSameLayout(as: beforeFocusChange) && floating != beforeFocusChange, "Focus and tab changes keep the persisted layout")
+        var restructured = floating
+        restructured.addTab(path: "/three")
+        try require(!restructured.hasSameLayout(as: floating), "A new tab changes the persisted layout")
+        restructured = floating
+        restructured.split(first.id, axis: .vertical, path: "/one")
+        try require(!restructured.hasSameLayout(as: floating), "A split changes the persisted layout")
+        restructured = floating
+        restructured.close(second.id)
+        try require(!restructured.hasSameLayout(as: floating), "Closing a pane changes the persisted layout")
+        floating.select(floating.tabs[1])
+        let encodedFloating = try JSONEncoder().encode(floating)
+        let persistedKeys = try (JSONSerialization.jsonObject(with: encodedFloating) as? [String: Any]).unwrapped().keys
+        try require(Set(persistedKeys) == ["panes", "tabs", "focusHistory"], "The floating terminal persists its panes, tabs and focus order")
+        let decodedFloating = try JSONDecoder().decode(FloatingTerminal.self, from: encodedFloating)
+        try require(decodedFloating == floating && decodedFloating.focusedID == second.id && decodedFloating.selectedTab == floating.selectedTab, "Floating tabs, splits and focus round-trip")
+        let floatingContext = TerminalContext(floating: FloatingTerminal.Pane(path: "/one"))
+        try require(floatingContext.isFloating && floatingContext.worktree.path == "/one", "Floating terminals are told apart from workspace terminals")
+        let floatingRequest = try AgentCLI.parse(["terminal", "create"], environment: [:], currentDirectory: "/one")
+        try require(floatingRequest.projectID == nil && floatingRequest.worktreeID == nil && floatingRequest.directory == "/one", "Without exported IDs the CLI infers the project from the current folder")
         floating.close(right.id)
         try require(floating.selectedTab == .terminal(second.id) && floating.focusedID == second.id, "Closing a pane focuses its neighbour")
         floating.close(second.id)

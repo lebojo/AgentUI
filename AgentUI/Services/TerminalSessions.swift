@@ -61,9 +61,10 @@ import Observation
         env["TERM"] = "xterm-256color"
         env["COLORTERM"] = "truecolor"
         env["TERM_PROGRAM"] = "AgentUI"
-        env["AGENTUI_PROJECT_ID"] = context.project.id.uuidString
-        env["AGENTUI_WORKTREE_ID"] = context.worktree.id.uuidString
-        env["AGENTUI_TERMINAL_ID"] = context.terminal.id.uuidString
+        let workspaceContext = context.isFloating ? nil : context
+        env["AGENTUI_PROJECT_ID"] = workspaceContext?.project.id.uuidString
+        env["AGENTUI_WORKTREE_ID"] = workspaceContext?.worktree.id.uuidString
+        env["AGENTUI_TERMINAL_ID"] = workspaceContext?.terminal.id.uuidString
         if env["LANG"] == nil { env["LANG"] = "en_US.UTF-8" }
         let shell = LoginShell.path(environment: env)
         let args = if command.isEmpty { ["-l"] }

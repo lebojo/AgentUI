@@ -15,6 +15,7 @@ import AppKit
 
 @MainActor final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     var store: WorkspaceStore?
+    var floating: FloatingTerminalStore?
     var bridge: AgentBridge?
     var closeCommand: CloseTerminalCommand?
     var host: LocalHost?
@@ -52,6 +53,7 @@ import AppKit
     }
     func applicationWillTerminate(_ notification: Notification) {
         CommandRunner.cancelAll()
+        floating?.persist()
         store?.sessions.stopAll()
         bridge?.stop()
         host?.stop()
@@ -87,6 +89,7 @@ struct AgentUIApplication: App {
                 .task(id: installedAgents.agents) { await usage.setInstalled(installedAgents.agents) }
                 .onAppear {
                     delegate.store = store
+                    delegate.floating = floating
                     delegate.host = host
                     host.configure(store: store, settings: settings, installedAgents: installedAgents)
                     if delegate.closeCommand == nil { delegate.closeCommand = CloseTerminalCommand(store: store, floating: floating) }

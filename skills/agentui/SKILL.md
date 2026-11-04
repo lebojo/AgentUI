@@ -2,7 +2,7 @@
 name: agentui
 description: Drive the AgentUI macOS app with the `agentui` CLI. Use when the AGENTUI_INSTANCE environment variable is set (you are in an AgentUI terminal), or when the user asks to use AgentUI from another terminal. Use it to start another agent in parallel on its own branch (`agentui worktree create`), to ask another agent for a review or a second opinion in the same worktree (`agentui terminal create`), to run a long process such as a dev server or watcher in a visible terminal, to add a project to the sidebar, to list projects, worktrees and terminals, or to delete a worktree once its branch is merged into the main branch. Prefer it over raw `git worktree add`, background jobs or a new shell when AgentUI is running.
 metadata:
-  version: "3"
+  version: "4"
 ---
 
 # AgentUI CLI
@@ -14,6 +14,8 @@ AgentUI is a macOS app that organizes projects, Git worktrees and terminals in a
 | `AGENTUI_INSTANCE` | Set only inside an AgentUI terminal. |
 | `AGENTUI_CLI` | Absolute path of `agentui`, for shells that reset PATH. |
 | `AGENTUI_PROJECT_ID`, `AGENTUI_WORKTREE_ID`, `AGENTUI_TERMINAL_ID` | The context of the current terminal. |
+
+The floating terminal (⇧⌘T) belongs to no project and does not set the last three variables: as outside AgentUI, the project and worktree come from the current directory.
 
 Check first: `test -n "$AGENTUI_INSTANCE" && agentui list`.
 

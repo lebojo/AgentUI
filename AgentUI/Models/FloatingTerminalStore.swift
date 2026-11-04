@@ -5,9 +5,11 @@ import Observation
     private static let stateKey = "floatingTerminal.state"
 
     private(set) var state: FloatingTerminal {
-        didSet { persist() }
+        didSet { if !state.hasSameLayout(as: oldValue) { persist() } }
     }
-    var isPresented = false
+    var isPresented = false {
+        didSet { if !isPresented { persist() } }
+    }
     let sessions: TerminalSessions
     @ObservationIgnored private weak var window: NSWindow?
     @ObservationIgnored private let defaults: UserDefaults
@@ -85,7 +87,7 @@ import Observation
         if let focusedID = state.focusedID { close(focusedID) } else { isPresented = false }
     }
 
-    private func persist() {
+    func persist() {
         guard let data = try? JSONEncoder().encode(state) else { return }
         defaults.set(data, forKey: Self.stateKey)
     }

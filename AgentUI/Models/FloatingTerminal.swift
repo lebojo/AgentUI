@@ -22,6 +22,10 @@ struct FloatingTerminal: Codable, Equatable, Sendable {
 
     func pane(_ id: UUID) -> Pane? { panes.first { $0.id == id } }
 
+    func hasSameLayout(as other: FloatingTerminal) -> Bool {
+        panes == other.panes && tabs == other.tabs
+    }
+
     func focusedID(in tab: TerminalLayout) -> UUID {
         focusHistory.first(where: tab.contains) ?? tab.id
     }
@@ -75,4 +79,6 @@ extension TerminalContext {
         worktree = WorktreeInfo(id: FloatingTerminal.worktreeID, name: pane.path, path: pane.path, isPrimary: true)
         terminal = TerminalRecord(id: pane.id, name: TerminalRecord.defaultName)
     }
+
+    var isFloating: Bool { project.id == FloatingTerminal.projectID }
 }
