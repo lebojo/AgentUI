@@ -34,10 +34,12 @@ struct NativeTerminalView: NSViewRepresentable {
         let coordinator = context.coordinator
         coordinator.focus = focus
         coordinator.wasFocused = isFocused
-        coordinator.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown]) { [weak host, weak session] event in
+        coordinator.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown, .keyUp]) { [weak host, weak session] event in
             guard let host, let session, event.window === host.window else { return event }
-            if event.type == .keyDown {
-                if host.window?.firstResponder === session.view, !event.modifierFlags.contains(.command) { session.usedLocally() }
+            if event.type == .keyDown || event.type == .keyUp {
+                guard host.window?.firstResponder === session.view else { return event }
+                if event.type == .keyDown, !event.modifierFlags.contains(.command) { session.usedLocally() }
+                return session.view.routeKey(event)
             } else if host.bounds.contains(host.convert(event.locationInWindow, from: nil)) {
                 session.usedLocally()
                 coordinator.focus()

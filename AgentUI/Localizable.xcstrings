@@ -204,6 +204,16 @@
         }
       }
     },
+    "Keyboard" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clavier"
+          }
+        }
+      }
+    },
     "Merge Request" : {
       "localizations" : {
         "fr" : {
@@ -440,6 +450,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tout désindexer"
+          }
+        }
+      }
+    },
+    "Use Option as Meta key" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser Option comme touche Méta"
+          }
+        }
+      }
+    },
+    "When off, Option types characters such as @, [ or ~. Option with the arrow keys, Delete or Return always acts as Meta." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactivé, Option saisit les caractères comme @, [ ou ~. Option avec les flèches, Supprimer ou Retour agit toujours comme Méta."
           }
         }
       }

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 enum SettingsTests {
@@ -60,6 +61,28 @@ enum SettingsTests {
         let decodedAppearance = try JSONDecoder().decode(TerminalAppearance.self, from: JSONEncoder().encode(appearance))
         try CoreTests.require(decodedAppearance == appearance, "Terminal appearance round-trips")
         print("PASS terminal appearance settings")
+
+        func optionKey(_ key: NSEvent.SpecialKey?, _ modifiers: NSEvent.ModifierFlags, meta: Bool = false, kitty: Bool = false,
+                       alternate: Bool = false, applicationCursor: Bool = false) -> TerminalKeyRoute? {
+            TerminalKeyRoute(key: key, modifiers: modifiers, optionAsMeta: meta,
+                             screen: .init(usesKittyKeyboard: kitty, showsAlternateBuffer: alternate, usesApplicationCursor: applicationCursor))
+        }
+        let arrow: NSEvent.ModifierFlags = [.numericPad, .function]
+        try CoreTests.require(optionKey(.leftArrow, arrow.union(.option)) == .sends([0x1B, 0x62]), "Option-Left jumps a word back like Terminal")
+        try CoreTests.require(optionKey(.rightArrow, arrow.union(.option), meta: true) == .sends([0x1B, 0x66]), "Option-Right jumps a word forward like Terminal")
+        try CoreTests.require(optionKey(.leftArrow, arrow.union(.option), kitty: true) == .actsAsMeta, "Kitty keyboard apps get the modified arrow")
+        try CoreTests.require(optionKey(.leftArrow, arrow.union([.option, .shift])) == .actsAsMeta, "Option-Shift-Left keeps its modifiers")
+        try CoreTests.require(optionKey(.carriageReturn, .option) == .actsAsMeta && optionKey(.delete, .option) == .actsAsMeta, "Option with Return or Delete acts as Meta")
+        try CoreTests.require(optionKey(nil, [.option, .shift]) == .composesCharacter, "Option-Shift-5 types [ on AZERTY")
+        try CoreTests.require(optionKey(nil, .option, meta: true) == .actsAsMeta, "The setting turns Option into Meta for characters")
+        try CoreTests.require(optionKey(.leftArrow, arrow.union(.option), alternate: true) == .actsAsMeta, "Full-screen apps get the modified arrow")
+        try CoreTests.require(optionKey(.leftArrow, arrow.union(.shift)) == .sends([0x1B, 0x5B, 0x44])
+                              && optionKey(.rightArrow, arrow.union(.shift), applicationCursor: true) == .sends([0x1B, 0x4F, 0x43]),
+                              "Shift-Left and Shift-Right move the cursor in a shell instead of printing ;2D")
+        try CoreTests.require(optionKey(.leftArrow, arrow.union(.shift), kitty: true) == nil && optionKey(.leftArrow, arrow.union(.shift), alternate: true) == nil,
+                              "Agents and full-screen apps keep Shift-Arrow selection")
+        try CoreTests.require(optionKey(.upArrow, arrow.union(.shift)) == nil && optionKey(nil, [.option, .command]) == nil, "Other keys and Command shortcuts are untouched")
+        print("PASS terminal option key")
 
         var confirmations = RemovalConfirmations()
         let id = UUID(), worktree = Removal.worktree(projectID: id, worktreeID: id, name: "feature")
