@@ -60,17 +60,25 @@ import AppKit
 
 struct AgentUIApplication: App {
     @NSApplicationDelegateAdaptor(ApplicationDelegate.self) private var delegate
-    @State private var store = WorkspaceStore()
+    @State private var store: WorkspaceStore
+    @State private var floating: FloatingTerminalStore
     @State private var usage = UsageStore(providers: [])
     @State private var settings = SettingsStore()
     @State private var visibility = AppVisibility()
     @State private var host = LocalHost()
     @State private var installedAgents = InstalledAgents()
 
+    init() {
+        let store = WorkspaceStore()
+        _store = State(initialValue: store)
+        _floating = State(initialValue: FloatingTerminalStore(sessions: store.sessions))
+    }
+
     var body: some Scene {
         Window("AgentUI", id: "workspace") {
             ContentView(store: store)
                 .environment(store)
+                .environment(floating)
                 .environment(usage)
                 .environment(settings)
                 .environment(visibility)
@@ -81,7 +89,7 @@ struct AgentUIApplication: App {
                     delegate.store = store
                     delegate.host = host
                     host.configure(store: store, settings: settings, installedAgents: installedAgents)
-                    if delegate.closeCommand == nil { delegate.closeCommand = CloseTerminalCommand(store: store) }
+                    if delegate.closeCommand == nil { delegate.closeCommand = CloseTerminalCommand(store: store, floating: floating) }
                     if delegate.bridge == nil {
                         do { delegate.bridge = try AgentBridge(store: store) }
                         catch { store.errorMessage = error.localizedDescription }
@@ -96,6 +104,7 @@ struct AgentUIApplication: App {
                 Button("Add Project…") { store.chooseProjects() }.keyboardShortcut("o").disabled(store.isReadOnly || store.isImporting)
                 Button("Import Folder…") { store.chooseFolder() }.keyboardShortcut("o", modifiers: [.command, .shift]).disabled(store.isReadOnly || store.isImporting)
             }
+            FloatingTerminalCommands(floating: floating)
             CommandGroup(replacing: .help) {
                 Button("Agent Commands") {
                     let alert = NSAlert()

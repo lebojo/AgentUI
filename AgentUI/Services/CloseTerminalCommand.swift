@@ -2,16 +2,18 @@ import AppKit
 
 @MainActor final class CloseTerminalCommand: NSObject, NSMenuItemValidation {
     private let store: WorkspaceStore
+    private let floating: FloatingTerminalStore
     private var monitor: Any?
     private var observer: NSObjectProtocol?
 
-    init(store: WorkspaceStore) {
+    init(store: WorkspaceStore, floating: FloatingTerminalStore) {
         self.store = store
+        self.floating = floating
         super.init()
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, event.charactersIgnoringModifiers?.lowercased() == "w",
                   event.modifierFlags.intersection([.command, .shift, .control, .option]) == .command,
-                  self.canCloseTerminal, event.window == NSApp.mainWindow else { return event }
+                  self.canCloseFloatingTerminal || (self.canCloseTerminal && event.window == NSApp.mainWindow) else { return event }
             self.close(nil)
             return nil
         }
@@ -21,20 +23,26 @@ import AppKit
         DispatchQueue.main.async { [weak self] in self?.installMenuAction() }
     }
 
+    private var canCloseFloatingTerminal: Bool {
+        floating.isKey && floating.state.focusedID != nil && NSApp.modalWindow == nil
+    }
+
     private var canCloseTerminal: Bool {
-        !store.isReadOnly && store.selectedContext != nil &&
+        !floating.isKey && !store.isReadOnly && store.selectedContext != nil &&
         NSApp.modalWindow == nil && NSApp.mainWindow?.attachedSheet == nil &&
         NSApp.keyWindow == NSApp.mainWindow
     }
 
     @objc func close(_ sender: Any?) {
-        if canCloseTerminal, store.selectedSubagent != nil { store.leaveSubagent() }
+        if canCloseFloatingTerminal { floating.closeFocused() }
+        else if canCloseTerminal, store.selectedSubagent != nil { store.leaveSubagent() }
         else if canCloseTerminal, let id = store.selectedContext?.terminal.id { store.closeTerminal(id) }
         else { NSApp.keyWindow?.performClose(sender) }
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        menuItem.title = if !canCloseTerminal { String(localized: "Close Window") }
+        menuItem.title = if canCloseFloatingTerminal { String(localized: "Close Terminal") }
+            else if !canCloseTerminal { String(localized: "Close Window") }
             else if store.selectedSubagent != nil { String(localized: "Close Subagent") }
             else { String(localized: "Close Terminal") }
         return NSApp.keyWindow != nil

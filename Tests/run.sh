@@ -10,7 +10,7 @@ swift_flags=(-parse-as-library -swift-version 6 -enable-upcoming-feature Nonisol
   -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature MemberImportVisibility)
 trap 'rm -f "$test_binary" "$store_binary" "$conversation_binary" "$remote_binary" "$claude_binary"' EXIT
 xcrun swiftc "${swift_flags[@]}" \
-  AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/BridgeProtocol.swift \
+  AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/BridgeProtocol.swift AgentUI/Models/FloatingTerminal.swift \
   AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Models/DiscoveredWorktree.swift AgentUI/Models/RepositoryImport.swift AgentUI/Models/GitBranch.swift AgentUI/Services/AgentCLI.swift AgentUI/Services/BridgeMailbox.swift AgentUI/Services/FileSystemWatcher.swift \
   AgentUI/Models/InspectorModels.swift AgentUI/Models/GitDiff.swift AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/GitConfiguration.swift AgentUI/Services/GitFilterGuard.swift AgentUI/Services/FileEvents.swift AgentUI/Services/InspectorService.swift \
   AgentUI/Models/InspectorStore.swift AgentUI/Models/InspectorPreviews.swift AgentUI/Services/WorkspaceWriter.swift \

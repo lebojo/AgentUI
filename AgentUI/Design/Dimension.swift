@@ -66,6 +66,13 @@ enum Dimension {
         static let markerWidth: CGFloat = 14
     }
 
+    enum FloatingTerminal {
+        static let idealWidth: CGFloat = 900
+        static let idealHeight: CGFloat = 560
+        static let tabBarHeight: CGFloat = 32
+        static let tabMaxWidth: CGFloat = 180
+    }
+
     enum Usage {
         static let percentMinWidth: CGFloat = 30
     }

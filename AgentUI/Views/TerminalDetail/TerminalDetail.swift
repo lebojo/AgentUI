@@ -13,8 +13,12 @@ struct TerminalDetail: View {
 
             Divider()
 
-            TerminalLayoutView(store: store, layout: layout, focusedID: context.terminal.id, isSplit: layout.isSplit)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            TerminalLayoutView(layout: layout) { id in
+                if let pane = store.context(for: id) {
+                    TerminalPane(store: store, context: pane, isFocused: id == context.terminal.id, isSplit: layout.isSplit)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
             TerminalFooter(session: store.sessions.session(context.terminal.id), path: context.worktree.path)

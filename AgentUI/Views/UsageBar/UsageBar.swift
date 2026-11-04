@@ -53,7 +53,6 @@ struct UsageBar: View {
             }
         }
         .glassBackground()
-        .padding(Spacing.s)
         .sheet(isPresented: $showsDetails) {
             UsageSheet().environment(workspace).environment(usage)
         }

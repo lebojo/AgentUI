@@ -36,6 +36,26 @@ import Foundation
         try require(preserved == Data("broken".utf8), "Corrupt data preserved")
         print("PASS persistence and corrupt file protection")
 
+        var floating = FloatingTerminal()
+        let first = floating.addTab(path: "/one")
+        let second = floating.addTab(path: "/two")
+        try require(floating.tabs.count == 2 && floating.focusedID == second.id, "A new floating tab gets the focus")
+        let right = try floating.split(second.id, axis: .horizontal, path: "/two").unwrapped()
+        try require(floating.selectedTab?.terminalIDs == [second.id, right.id] && floating.focusedID == right.id, "Splitting focuses the new pane in the same tab")
+        floating.selectTab(offset: 1)
+        try require(floating.focusedID == first.id, "Next tab wraps around")
+        floating.selectTab(offset: -1)
+        try require(floating.focusedID == right.id, "Selecting a tab restores its last focused pane")
+        let decodedFloating = try JSONDecoder().decode(FloatingTerminal.self, from: JSONEncoder().encode(floating))
+        try require(decodedFloating == floating, "Floating tabs, splits and focus round-trip")
+        floating.close(right.id)
+        try require(floating.selectedTab == .terminal(second.id) && floating.focusedID == second.id, "Closing a pane focuses its neighbour")
+        floating.close(second.id)
+        try require(floating.tabs == [.terminal(first.id)] && floating.focusedID == first.id, "Closing a tab falls back to the last used one")
+        floating.close(first.id)
+        try require(floating.isEmpty && floating.focusedID == nil && floating.panes.isEmpty, "Closing the last pane empties the floating terminal")
+        print("PASS floating terminal tabs, splits and focus")
+
         let projectID = UUID(), worktreeID = UUID()
         let env = ["AGENTUI_PROJECT_ID": projectID.uuidString, "AGENTUI_WORKTREE_ID": worktreeID.uuidString]
         let prompt = "Don't interpolate $(touch /tmp/agentui-unsafe); `echo secret`"
@@ -451,5 +471,12 @@ import Foundation
         var buffer = [Int32](repeating: 0, count: 16)
         let bytes = proc_listpids(UInt32(PROC_PPID_ONLY), UInt32(pid), &buffer, Int32(buffer.count * 4))
         return bytes > 0 ? buffer[0] : 0
+    }
+}
+
+private extension Optional {
+    func unwrapped() throws -> Wrapped {
+        guard let self else { throw WorkspaceError(message: "FAIL: unexpected nil") }
+        return self
     }
 }

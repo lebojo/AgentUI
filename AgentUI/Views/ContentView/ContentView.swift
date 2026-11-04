@@ -5,6 +5,7 @@ struct ContentView: View {
     @AppStorage("inspectorVisible") private var inspectorVisible = true
 
     @Environment(AppVisibility.self) private var visibility
+    @Environment(FloatingTerminalStore.self) private var floating
 
     @State private var sheet: WorkspaceSheet?
     @State private var removal: Removal?
@@ -53,6 +54,9 @@ struct ContentView: View {
         .modifier(WorkspaceMonitors(store: store))
         .sheet(item: $sheet) { item in
             WorkspaceEditor(store: store, sheet: item)
+        }
+        .sheet(isPresented: Bindable(floating).isPresented) {
+            FloatingTerminalView()
         }
         .sheet(item: $store.pendingImport, onDismiss: store.showNextImport) { plan in
             RepositoryImportSheet(store: store, plan: plan)

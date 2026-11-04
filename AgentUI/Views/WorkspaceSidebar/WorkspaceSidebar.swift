@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct WorkspaceSidebar: View {
     @State private var search = ""
@@ -56,6 +56,9 @@ struct WorkspaceSidebar: View {
                 query: search
             )
             SidebarFooter(store: store)
+        }
+        .toolbar {
+            ToolbarItem { FloatingTerminalButton() }
         }
         .onChange(of: SidebarFilterInput(folders: store.folders, projects: store.projects, query: search), initial: true) { _, input in
             filtered = input.filtered()
