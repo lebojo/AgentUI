@@ -22,8 +22,9 @@ extension View {
         onSubmit(submit)
     }
 
-    func previewSheetFrame(idealWidth: CGFloat, idealHeight: CGFloat) -> some View {
-        frame(minWidth: Dimension.PreviewSheet.minWidth, idealWidth: idealWidth, maxWidth: .infinity,
-              minHeight: Dimension.PreviewSheet.minHeight, idealHeight: idealHeight, maxHeight: .infinity)
+    @ViewBuilder func previewSheetFrame(idealWidth: CGFloat, idealHeight: CGFloat) -> some View {
+        let framed = frame(minWidth: Dimension.PreviewSheet.minWidth, idealWidth: idealWidth, maxWidth: .infinity,
+                           minHeight: Dimension.PreviewSheet.minHeight, idealHeight: idealHeight, maxHeight: .infinity)
+        if #available(macOS 15, *) { framed.presentationSizing(.fitted) } else { framed }
     }
 }
