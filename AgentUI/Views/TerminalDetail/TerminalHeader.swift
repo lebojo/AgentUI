@@ -34,16 +34,18 @@ struct TerminalHeader: View {
     }
 
     private func addTerminal() {
+        guard let current = store.selectedContext else { return }
         do {
-            _ = try store.addTerminal(projectID: context.project.id, worktreeID: context.worktree.id,
+            _ = try store.addTerminal(projectID: current.project.id, worktreeID: current.worktree.id,
                                       command: settings.agentLaunch.command(on: .newTerminal))
         }
         catch { store.errorMessage = error.localizedDescription }
     }
 
     private func split(_ axis: SplitAxis) {
+        guard let current = store.selectedContext else { return }
         do {
-            _ = try store.splitTerminal(context.terminal.id, axis: axis, command: settings.agentLaunch.command(on: .newTerminal))
+            _ = try store.splitTerminal(current.terminal.id, axis: axis, command: settings.agentLaunch.command(on: .newTerminal))
         }
         catch { store.errorMessage = error.localizedDescription }
     }
