@@ -1,8 +1,8 @@
 ---
 name: agentui
-description: Drive the AgentUI macOS app with the `agentui` CLI. Use when the AGENTUI_INSTANCE environment variable is set (you are in an AgentUI terminal), or when the user asks to use AgentUI from another terminal. Use it to start another agent in parallel on its own branch (`agentui worktree create`), to ask another agent for a review or a second opinion in the same worktree (`agentui terminal create`), to run a long process such as a dev server or watcher in a visible terminal, to add a project to the sidebar, to list projects, worktrees and terminals, or to delete a worktree once its branch is merged. Prefer it over raw `git worktree add`, background jobs or a new shell when AgentUI is running.
+description: Drive the AgentUI macOS app with the `agentui` CLI. Use when the AGENTUI_INSTANCE environment variable is set (you are in an AgentUI terminal), or when the user asks to use AgentUI from another terminal. Use it to start another agent in parallel on its own branch (`agentui worktree create`), to ask another agent for a review or a second opinion in the same worktree (`agentui terminal create`), to run a long process such as a dev server or watcher in a visible terminal, to add a project to the sidebar, to list projects, worktrees and terminals, or to delete a worktree once its branch is merged into the main branch. Prefer it over raw `git worktree add`, background jobs or a new shell when AgentUI is running.
 metadata:
-  version: "2"
+  version: "3"
 ---
 
 # AgentUI CLI
@@ -26,7 +26,7 @@ This skill may be newer or older than the installed app. `agentui --help` is the
 - **Parallel work on another branch.** A self-contained task that should not touch the current working tree: `agentui worktree create --branch <branch> -- <agent> "<prompt>"`.
 - **Review or second opinion.** Another agent reads the current worktree: `agentui terminal create --name Review -- <agent> "<prompt>"`.
 - **Long-running process.** A dev server, test watcher or log tail that the user should see: `agentui terminal create --name "Dev server" -- npm run dev`, instead of a background job in your own shell.
-- **Cleanup.** Delete a worktree whose branch is merged, after the user agrees.
+- **Cleanup.** Delete a worktree whose branch is merged into the main branch, after the user agrees.
 
 ## When not to use it
 
@@ -74,6 +74,6 @@ agentui worktree delete --worktree UUID [--delete-branch] [--force]
 
 - Always ask the user before deleting, and say which worktree and branch.
 - Without `--force`, a worktree with uncommitted changes or untracked files is kept and the command fails. Never add `--force` unless the user explicitly agrees to lose those changes.
-- Add `--delete-branch` to delete the branch too, only when the user asked for it. It uses `git branch -d`, so an unmerged branch is kept: the worktree is still deleted, and the command returns `ok: false`, `branchDeleted: false` and a `message` explaining why. Report it to the user instead of retrying. With `--force` as well, the branch is deleted even if it is not merged (`git branch -D`): its unmerged commits are lost, so never combine them without the user's explicit agreement.
+- Add `--delete-branch` to delete the branch too, only when the user asked for it. The branch is deleted only if it is merged into the repository's main branch (`main`, `master` or a remote's `HEAD` branch, locally or on the remote once fetched). Otherwise, for example when the branch was only pushed or the repository has no main branch, the branch is kept: the worktree is still deleted, and the command returns `ok: false`, `branchDeleted: false` and a `message` explaining why. Report it to the user instead of retrying. With `--force` as well, the branch is deleted even if it is not merged (`git branch -D`): its unmerged commits are lost, so never combine them without the user's explicit agreement.
 - The reply adds `branch` and `branchDeleted`. The repository's main branch and a branch checked out in another worktree are never deleted: the command fails before deleting anything.
 - The project's main folder and the worktree of the calling terminal cannot be deleted. Run the command from another worktree.

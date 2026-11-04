@@ -422,9 +422,10 @@ import Observation
 
     func deletableBranch(for removal: Removal) async -> String? {
         guard case .worktree(let projectID, let worktreeID, _) = removal,
-              let worktree = projects.first(where: { $0.id == projectID })?.worktrees.first(where: { $0.id == worktreeID }),
+              let project = projects.first(where: { $0.id == projectID }),
+              let worktree = project.worktrees.first(where: { $0.id == worktreeID }),
               !worktree.isPrimary else { return nil }
-        return await GitRepository.deletableBranch(at: worktree.path)
+        return await GitService.worktreeBranch(at: worktree.path, project: project).deletableName
     }
 
     func remove(_ removal: Removal, branch: BranchRemoval = .keep) {

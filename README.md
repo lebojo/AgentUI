@@ -159,7 +159,7 @@ agentui terminal create --project UUID --worktree UUID --name "Review"
 # Delete a worktree (IDs returned by agentui list); --force also erases uncommitted changes
 agentui worktree delete --worktree UUID
 
-# Delete a worktree and its branch if it is merged (with --force, even if it is not)
+# Delete a worktree and its branch if it is merged into the main branch (with --force, even if it is not)
 agentui worktree delete --worktree UUID --delete-branch
 ```
 
@@ -167,7 +167,7 @@ Commands return JSON with `ok`, `projectID`, `worktreeID`, `terminalID` and `pat
 
 `worktree delete` closes the worktree's terminals and removes its folder, like **Delete Worktree…** in the sidebar; by default, the branch and its commits stay in the repository. It always needs an explicit `--worktree`, refuses the project's main folder and the worktree of the calling terminal, and keeps a worktree with uncommitted changes or untracked files unless `--force` is given.
 
-With `--delete-branch`, the branch is deleted too with `git branch -d`, so only if it is merged; adding `--force` uses `git branch -D` and deletes it even if it is not. The repository's main branch (`main`, `master` or the branch a remote's `HEAD` points to) and a branch checked out in another worktree or in the project's folder are never deleted: the command fails before removing anything. The reply adds `branch` and `branchDeleted`. The worktree leaves the sidebar as soon as its folder is erased, then the branch is deleted. If the worktree was removed but its branch was kept because it is not merged, the command returns `ok: false` with an explanation. In the sidebar, the **Delete Worktree…** confirmation offers **Delete Worktree and Branch**, which uses the same safe `git branch -d`.
+With `--delete-branch`, the branch is deleted too, but only if it is merged into the repository's main branch, locally or in its fetched remote-tracking branch, regardless of what the project's folder has checked out. A branch that was only pushed, with its pull request still open, is kept. If no main branch can be found, the branch is kept too. Adding `--force` uses `git branch -D` and deletes it even if it is not merged. The repository's main branch (`main`, `master` or the branch a remote's `HEAD` points to) and a branch checked out in another worktree or in the project's folder are never deleted: the command fails before removing anything. The reply adds `branch` and `branchDeleted`. The worktree leaves the sidebar as soon as its folder is erased, then the branch is deleted. If the worktree was removed but its branch was kept because it is not merged, the command returns `ok: false` with an explanation. In the sidebar, the **Delete Worktree…** confirmation offers **Delete Worktree and Branch**, which applies the same rules without `--force`.
 
 The CLI waits for the save before reporting success. If the write fails after creation, it returns `ok: false` with the identifiers already created: retry the save in the app, without recreating the terminal. Claude, Codex, Copilot, OpenCode and other tools must already be installed and authenticated on the Mac. Commands run through your interactive login shell, so a tool installed via npm, nvm, bun or any PATH set in `~/.zshrc` is found like in a regular terminal.
 

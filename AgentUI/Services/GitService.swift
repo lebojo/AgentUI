@@ -48,15 +48,19 @@ enum GitService {
     @concurrent static func worktreeBranch(at path: String, project: Project) async -> WorktreeBranch {
         async let head = run(["rev-parse", "--symbolic-full-name", "HEAD"], at: path, timeout: 10)
         async let worktrees = run(["worktree", "list", "--porcelain", "-z"], at: project.path, timeout: 10)
-        async let remoteHeads = run(["for-each-ref", "--format=%(symref:lstrip=3)", "refs/remotes/*/HEAD"], at: project.path, timeout: 10)
+        async let heads = remoteHeads(at: project.path)
         do {
             let reference = try await head
             let branch = reference.hasPrefix("refs/heads/") ? GitBranch(name: String(reference.dropFirst("refs/heads/".count))) : nil
-            return WorktreeBranch(branch, defaultBranches: DefaultBranch.names(remoteHeads: try await remoteHeads.split(separator: "\n").map(String.init)),
+            return WorktreeBranch(branch, defaultBranches: DefaultBranch.names(remoteHeads: try await heads.map(\.name)),
                                   checkedOutElsewhere: checkedOutBranches(in: try await worktrees, excluding: path))
         } catch {
-            return GitRepository.atRoot(URL(fileURLWithPath: path))?.worktreeBranch ?? .none
+            return .none
         }
+    }
+
+    private static func remoteHeads(at path: String) async throws -> [DefaultBranch.RemoteHead] {
+        DefaultBranch.remoteHeads(in: try await run(["for-each-ref", "--format=%(refname)%09%(symref)", "refs/remotes/*/HEAD"], at: path, timeout: 10))
     }
 
     private static func checkedOutBranches(in porcelain: String, excluding path: String) -> Set<String> {
@@ -75,10 +79,27 @@ enum GitService {
 
     @concurrent static func deleteBranch(_ branch: String, _ removal: BranchRemoval, project: Project) async throws {
         guard let arguments = removal.arguments(for: branch) else { return }
-        do { _ = try await run(arguments, at: project.path, timeout: 20) }
-        catch let error as ReadCommandError where error.message.contains("not fully merged") {
+        if removal.requiresMerge { try await requireMergedIntoDefaultBranch(branch, at: project.path) }
+        _ = try await run(arguments, at: project.path, timeout: 20)
+    }
+
+    private static func requireMergedIntoDefaultBranch(_ branch: String, at path: String) async throws {
+        let targets = try await defaultBranchReferences(at: path)
+        guard !targets.isEmpty else {
+            throw WorkspaceError(message: String(localized: "The repository’s main branch couldn’t be found, so the branch “\(branch)” wasn’t deleted. If its commits are no longer needed, delete it with git branch -D \(branch)."))
+        }
+        let reference = "refs/heads/" + branch
+        let merged = try await run(["for-each-ref", "--format=%(refname)"] + targets.map { "--merged=" + $0 } + [reference], at: path, timeout: 20)
+        guard merged.split(whereSeparator: \.isNewline).contains(where: { $0 == reference }) else {
             throw WorkspaceError(message: String(localized: "The branch “\(branch)” isn’t fully merged. If its commits are no longer needed, delete it with git branch -D \(branch)."))
         }
+    }
+
+    private static func defaultBranchReferences(at path: String) async throws -> [String] {
+        let heads = try await remoteHeads(at: path)
+        let candidates = DefaultBranch.candidateReferences(names: DefaultBranch.names(remoteHeads: heads.map(\.name)), remoteHeads: heads)
+        let output = try await run(["for-each-ref", "--format=%(refname)%09%(upstream)%09%(upstream:track)"] + candidates, at: path, timeout: 10)
+        return DefaultBranch.mergeTargets(in: output, candidates: candidates)
     }
 
     static func hasLocalChanges(at path: String) async throws -> Bool {
