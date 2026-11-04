@@ -145,8 +145,9 @@ private final class ChangeFlag: @unchecked Sendable {
         let alphaRecord = ordered.projects.first { $0.id == alpha }!
         let main = alphaRecord.worktrees[0]
         let second = try ordered.addTerminal(projectID: alpha, worktreeID: main.id, select: false)
-        let terminalIDs = ordered.projects.first { $0.id == alpha }!.worktrees[0].terminals.map(\.id)
-        ordered.reorderTerminals(in: main.id, terminalIDs, from: [terminalIDs.count - 1], to: 0)
+        let orderedWorktree = ordered.projects.first { $0.id == alpha }!.worktrees[0]
+        let orderedBlocks = orderedWorktree.terminalBlocks(showing: orderedWorktree.terminals)
+        ordered.reorderTerminalBlocks(in: main.id, orderedBlocks, from: [orderedBlocks.count - 1], to: 0)
         try require(ordered.projects.first { $0.id == alpha }!.worktrees[0].terminals.first?.id == second.terminal.id, "Terminals reorder inside their worktree")
         ordered.moveProject(alpha, to: folderOne)
         ordered.moveProject(gamma, to: folderOne)
@@ -183,32 +184,85 @@ private final class ChangeFlag: @unchecked Sendable {
                     "A layout with a single pane disappears")
         print("PASS split terminal layouts")
 
-        let worktreeID = splitProject.worktrees[0].id
-        let b = try split.addTerminal(projectID: splitProject.id, worktreeID: worktreeID, name: "b").terminal.id
-        let c = try split.splitTerminal(b, axis: .horizontal).terminal.id
-        let d = try split.addTerminal(projectID: splitProject.id, worktreeID: worktreeID, name: "d").terminal.id
-        let e = try split.splitTerminal(first, axis: .vertical).terminal.id
-        func blocks() -> [SidebarTerminalBlock] {
-            let worktree = split.worktree(containing: first)!
-            return worktree.terminalBlocks(showing: worktree.terminals)
+        let dropped = splitProject.worktrees[0].id
+        let pane2 = try split.addTerminal(projectID: splitProject.id, worktreeID: dropped).terminal.id
+        let pane3 = try split.addTerminal(projectID: splitProject.id, worktreeID: dropped).terminal.id
+        let pane4 = try split.addTerminal(projectID: splitProject.id, worktreeID: dropped, select: false).terminal.id
+        try require(!split.moveTerminal(first, beside: first, edge: .trailing) && split.worktree(containing: first)?.layouts.isEmpty == true,
+                    "Dropping a terminal on itself changes nothing")
+        try require(split.moveTerminal(pane2, beside: first, edge: .trailing) && split.layout(for: first) == .split(.horizontal, [.terminal(first), .terminal(pane2)])
+                    && split.selection == pane2, "Dropping a standalone terminal splits the target and selects it")
+        try require(split.moveTerminal(pane3, beside: pane2, edge: .top)
+                    && split.layout(for: first) == .split(.horizontal, [.terminal(first), .split(.vertical, [.terminal(pane3), .terminal(pane2)])]),
+                    "Dropping on an edge inserts before the target")
+        try require(split.moveTerminal(pane3, beside: first, edge: .leading)
+                    && split.layout(for: first) == .split(.horizontal, [.terminal(pane3), .terminal(first), .terminal(pane2)]),
+                    "Rearrange panes within a layout")
+        _ = try split.splitTerminal(pane4, axis: .vertical)
+        try require(split.worktree(containing: first)?.layouts.count == 2, "A worktree can hold several layouts")
+        try require(split.moveTerminal(pane4, beside: pane2, edge: .bottom)
+                    && split.layout(for: first) == .split(.horizontal, [.terminal(pane3), .terminal(first), .split(.vertical, [.terminal(pane2), .terminal(pane4)])])
+                    && split.worktree(containing: first)?.layouts.count == 1 && split.selection == pane4,
+                    "Moving from another layout of the worktree dissolves the emptied layout")
+        let elsewhere = root.appendingPathComponent("dropped-elsewhere")
+        try fm.createDirectory(at: elsewhere, withIntermediateDirectories: true)
+        let otherWorktree = try split.addProject(elsewhere)
+        let foreign = otherWorktree.worktrees[0].terminals[0].id
+        try require(!split.canMoveTerminal(foreign, beside: first) && !split.moveTerminal(foreign, beside: first, edge: .leading)
+                    && split.layout(for: foreign) == .terminal(foreign), "Terminals of another worktree cannot be combined")
+        split.beginDragging(first)
+        try require(split.draggedTerminal == first, "Remember the dragged terminal")
+        try await split.flushPersistence()
+        let reloadedDrops = try WorkspaceDisk.load(from: splitFile)
+        try require(reloadedDrops == split.state, "Dropped layouts persist")
+        print("PASS drop terminals into layouts")
+
+        do {
+            let split = WorkspaceStore(fileURL: root.appendingPathComponent("blocks.json"))
+            let blocksRoot = root.appendingPathComponent("blocks-project")
+            try fm.createDirectory(at: blocksRoot, withIntermediateDirectories: true)
+            let splitProject = try split.addProject(blocksRoot)
+            let first = splitProject.worktrees[0].terminals[0].id
+            let worktreeID = splitProject.worktrees[0].id
+            let b = try split.addTerminal(projectID: splitProject.id, worktreeID: worktreeID, name: "b").terminal.id
+            let c = try split.splitTerminal(b, axis: .horizontal).terminal.id
+            let d = try split.addTerminal(projectID: splitProject.id, worktreeID: worktreeID, name: "d").terminal.id
+            let e = try split.splitTerminal(first, axis: .vertical).terminal.id
+            func blocks() -> [SidebarTerminalBlock] {
+                let worktree = split.worktree(containing: first)!
+                return worktree.terminalBlocks(showing: worktree.terminals)
+            }
+            try require(blocks().map { $0.terminals.map(\.id) } == [[first, e], [b, c], [d]], "Split panes form one sidebar block placed at their first terminal")
+            try require(blocks().map(\.axis) == [.vertical, .horizontal, nil], "A block keeps its split axis")
+            try require(blocks()[0].contains(e) && !blocks()[0].contains(b), "A block knows its terminals")
+            func moveBlocks(_ source: IndexSet, to destination: Int) {
+                split.reorderTerminalBlocks(in: worktreeID, blocks(), from: source, to: destination)
+            }
+            moveBlocks([2], to: 0)
+            try require(blocks().map { $0.terminals.map(\.id) } == [[d], [first, e], [b, c]], "A single terminal moves above a split block")
+            moveBlocks([1], to: 3)
+            try require(split.worktree(containing: first)?.terminals.map(\.id) == [d, b, c, first, e], "A split block moves as a whole")
+            let filtered = split.worktree(containing: first)!.terminalBlocks(showing: split.worktree(containing: first)!.terminals.filter { [first, c, d].contains($0.id) })
+            try require(filtered.map { $0.terminals.map(\.id) } == [[d], [c], [first]] && filtered.allSatisfy { !$0.isSplit && $0.axis == nil },
+                        "A split whose other panes are filtered out shows as a single row")
+            let leadingRoot = root.appendingPathComponent("blocks-leading")
+            try fm.createDirectory(at: leadingRoot, withIntermediateDirectories: true)
+            let leadingProject = try split.addProject(leadingRoot)
+            let leadingWorktree = leadingProject.worktrees[0].id
+            let paneA = leadingProject.worktrees[0].terminals[0].id
+            let paneB = try split.addTerminal(projectID: leadingProject.id, worktreeID: leadingWorktree, name: "b").terminal.id
+            let paneC = try split.addTerminal(projectID: leadingProject.id, worktreeID: leadingWorktree, name: "c").terminal.id
+            try require(split.moveTerminal(paneC, beside: paneA, edge: .leading), "Drop a terminal before another one")
+            func leadingBlocks() -> [[UUID]] {
+                let worktree = split.worktree(containing: paneA)!
+                return worktree.terminalBlocks(showing: worktree.terminals).map { $0.terminals.map(\.id) }
+            }
+            try require(leadingBlocks() == [[paneC, paneA], [paneB]], "A leading drop orders the block by its panes")
+            let worktreeBlocks = split.worktree(containing: paneA)!
+            split.reorderTerminalBlocks(in: leadingWorktree, worktreeBlocks.terminalBlocks(showing: worktreeBlocks.terminals), from: [1], to: 0)
+            try require(leadingBlocks() == [[paneB], [paneC, paneA]], "A terminal moves above a block whose pane order differs from the terminal order")
+            print("PASS sidebar split blocks")
         }
-        try require(blocks().map { $0.terminals.map(\.id) } == [[first, e], [b, c], [d]], "Split panes form one sidebar block placed at their first terminal")
-        try require(blocks().map(\.axis) == [.vertical, .horizontal, nil], "A block keeps its split axis")
-        try require(blocks()[0].contains(e) && !blocks()[0].contains(b), "A block knows its terminals")
-        func moveBlocks(_ source: IndexSet, to destination: Int) {
-            let current = blocks()
-            let move = current.terminalMove(from: source, to: destination)
-            split.reorderTerminals(in: worktreeID, current.terminalIDs, from: move.source, to: move.destination)
-        }
-        try require(blocks().terminalMove(from: [1], to: 3) == SidebarTerminalMove(source: [2, 3], destination: 5), "Moving a block moves all of its terminals")
-        moveBlocks([2], to: 0)
-        try require(blocks().map { $0.terminals.map(\.id) } == [[d], [first, e], [b, c]], "A single terminal moves above a split block")
-        moveBlocks([1], to: 3)
-        try require(split.worktree(containing: first)?.terminals.map(\.id) == [d, b, c, first, e], "A split block moves as a whole")
-        let filtered = split.worktree(containing: first)!.terminalBlocks(showing: split.worktree(containing: first)!.terminals.filter { [first, c, d].contains($0.id) })
-        try require(filtered.map { $0.terminals.map(\.id) } == [[d], [c], [first]] && filtered.allSatisfy { !$0.isSplit && $0.axis == nil },
-                    "A split whose other panes are filtered out shows as a single row")
-        print("PASS sidebar split blocks")
 
         var busy = Project(url: root.appendingPathComponent("busy"))
         let waiting = TerminalRecord(name: "Review")

@@ -29,6 +29,7 @@ import Observation
     private var removingWorktrees: Set<UUID> = []
     @ObservationIgnored private var recentResumes: [String: (terminal: UUID, at: ContinuousClock.Instant)] = [:]
     @ObservationIgnored private var restoredSessions = false
+    @ObservationIgnored private(set) var draggedTerminal: UUID?
     private let writer: WorkspaceWriter
     var errorMessage: String?
     var busyProjects: Set<UUID> = []
@@ -492,6 +493,29 @@ import Observation
         worktree(containing: terminalID)?.layout(containing: terminalID) ?? .terminal(terminalID)
     }
 
+    func beginDragging(_ terminalID: UUID) {
+        draggedTerminal = terminalID
+    }
+
+    func canMoveTerminal(_ id: UUID, beside target: UUID) -> Bool {
+        guard !isReadOnly, id != target, let worktree = worktree(containing: id) else { return false }
+        return worktree.terminals.contains { $0.id == target }
+    }
+
+    @discardableResult func moveTerminal(_ id: UUID, beside target: UUID, edge: DropEdge) -> Bool {
+        draggedTerminal = nil
+        guard canMoveTerminal(id, beside: target), let worktree = worktree(containing: id) else { return false }
+        let moved = layout(for: target).moving(id, beside: target, edge: edge)
+        updateWorktree(worktree.id) { worktree in
+            let hasTargetLayout = worktree.layouts.contains { $0.contains(target) }
+            let layouts = worktree.layouts.compactMap { $0.contains(target) ? moved : $0.removing(id) } + (hasTargetLayout ? [] : [moved])
+            worktree.layouts = layouts.filter(\.isSplit)
+        }
+        save()
+        selection = id
+        return true
+    }
+
     func worktree(containing terminalID: UUID) -> Worktree? {
         projects.lazy.flatMap(\.worktrees).first { $0.terminals.contains { $0.id == terminalID } }
     }
@@ -672,10 +696,11 @@ import Observation
         reorder(\.projects[p].worktrees, visible, from: source, to: destination)
     }
 
-    func reorderTerminals(in worktreeID: UUID, _ visible: [UUID], from source: IndexSet, to destination: Int) {
-        guard let p = projects.firstIndex(where: { $0.worktrees.contains { $0.id == worktreeID } }),
-              let w = projects[p].worktrees.firstIndex(where: { $0.id == worktreeID }) else { return }
-        reorder(\.projects[p].worktrees[w].terminals, visible, from: source, to: destination)
+    func reorderTerminalBlocks(in worktreeID: UUID, _ blocks: [SidebarTerminalBlock], from source: IndexSet, to destination: Int) {
+        guard !isReadOnly, let worktree = projects.lazy.flatMap(\.worktrees).first(where: { $0.id == worktreeID }),
+              let reordered = blocks.reordering(worktree.terminals, from: source, to: destination) else { return }
+        updateWorktree(worktreeID) { $0.terminals = reordered }
+        save()
     }
 
     private func reorder<Element: Identifiable>(_ elements: ReferenceWritableKeyPath<WorkspaceStore, [Element]>, _ visible: [Element.ID],

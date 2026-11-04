@@ -10,11 +10,6 @@ struct SidebarTerminalBlock: Identifiable, Equatable, Sendable {
     func contains(_ id: UUID?) -> Bool { terminals.contains { $0.id == id } }
 }
 
-struct SidebarTerminalMove: Equatable, Sendable {
-    let source: IndexSet
-    let destination: Int
-}
-
 extension Worktree {
     func terminalBlocks(showing visible: [TerminalRecord]) -> [SidebarTerminalBlock] {
         var placed: Set<UUID> = []
@@ -36,11 +31,11 @@ extension Worktree {
 extension [SidebarTerminalBlock] {
     var terminalIDs: [UUID] { flatMap { $0.terminals.map(\.id) } }
 
-    func terminalMove(from source: IndexSet, to destination: Int) -> SidebarTerminalMove {
-        let starts = reduce(into: [0]) { result, block in result.append(result[result.count - 1] + block.terminals.count) }
-        let terminals = source.filter(indices.contains).reduce(into: IndexSet()) { result, block in
-            result.insert(integersIn: starts[block]..<starts[block + 1])
-        }
-        return SidebarTerminalMove(source: terminals, destination: starts[Swift.min(Swift.max(destination, 0), count)])
+    func reordering(_ terminals: [TerminalRecord], from source: IndexSet, to destination: Int) -> [TerminalRecord]? {
+        guard let order = moving(map(\.id), from: source, to: destination)?.terminalIDs, order != terminalIDs else { return nil }
+        let visible = Set(order)
+        let records = Dictionary(terminals.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var slots = order.compactMap { records[$0] }.makeIterator()
+        return terminals.map { visible.contains($0.id) ? slots.next() ?? $0 : $0 }
     }
 }

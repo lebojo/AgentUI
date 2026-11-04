@@ -16,6 +16,7 @@ struct TerminalDetail: View {
             TerminalLayoutView(layout: layout) { id in
                 if let pane = store.context(for: id) {
                     TerminalPane(store: store, context: pane, isFocused: id == context.terminal.id, isSplit: layout.isSplit)
+                        .terminalDropZone(id)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

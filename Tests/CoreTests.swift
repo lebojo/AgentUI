@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 @main struct CoreTests {
@@ -133,6 +134,7 @@ import Foundation
         print("PASS bridge mailbox rejects symlinks, FIFOs and oversized requests without blocking")
 
         try await agentProcessTests(root: root)
+        try terminalLayoutTests()
 
         let repository = importRoot.appendingPathComponent("API")
         _ = try await GitService.run(["init", "-b", "main"], at: repository.path)
@@ -552,6 +554,48 @@ import Foundation
         let long = await catalog.list(in: longDirectory, since: runStart)
         try require(long.first?.status == .done, "A final answer longer than the read window still ends the subagent")
         print("PASS Claude subagents")
+    }
+
+    static func terminalLayoutTests() throws {
+        let a = UUID(), b = UUID(), c = UUID(), d = UUID()
+        let pair = TerminalLayout.split(.horizontal, [.terminal(a), .terminal(b)])
+        try require(DropEdge(location: CGPoint(x: 10, y: 50), in: CGSize(width: 200, height: 100)) == .leading
+                    && DropEdge(location: CGPoint(x: 190, y: 50), in: CGSize(width: 200, height: 100)) == .trailing
+                    && DropEdge(location: CGPoint(x: 100, y: 5), in: CGSize(width: 200, height: 100)) == .top
+                    && DropEdge(location: CGPoint(x: 100, y: 95), in: CGSize(width: 200, height: 100)) == .bottom
+                    && DropEdge(location: CGPoint(x: 100, y: 400), in: CGSize(width: 200, height: 100)) == .bottom
+                    && DropEdge(location: .zero, in: .zero) == .trailing, "Map a drop location to the nearest pane edge")
+        try require(DropEdge.leading.axis == .horizontal && DropEdge.bottom.axis == .vertical
+                    && DropEdge.leading.insertsBefore && DropEdge.top.insertsBefore && !DropEdge.trailing.insertsBefore,
+                    "Drop edges carry their split axis and side")
+        try require(TerminalLayout.terminal(a).inserting(b, beside: a, edge: .leading) == .split(.horizontal, [.terminal(b), .terminal(a)])
+                    && TerminalLayout.terminal(a).inserting(b, beside: a, edge: .bottom) == .split(.vertical, [.terminal(a), .terminal(b)]),
+                    "Insert before or after a single pane")
+        try require(pair.inserting(c, beside: a, edge: .trailing) == .split(.horizontal, [.terminal(a), .terminal(c), .terminal(b)])
+                    && pair.inserting(c, beside: b, edge: .leading) == .split(.horizontal, [.terminal(a), .terminal(c), .terminal(b)])
+                    && pair.inserting(c, beside: a, edge: .leading) == .split(.horizontal, [.terminal(c), .terminal(a), .terminal(b)]),
+                    "Insert along the same axis without nesting")
+        try require(pair.inserting(c, beside: b, edge: .top) == .split(.horizontal, [.terminal(a), .split(.vertical, [.terminal(c), .terminal(b)])]),
+                    "Insert across the axis nests a split around the target")
+        try require(pair.inserting(c, beside: d, edge: .top) == pair && pair.inserting(a, beside: b, edge: .top) == pair
+                    && pair.inserting(a, beside: a, edge: .top) == pair, "Insert ignores unknown targets, present terminals and itself")
+        try require(pair.moving(a, beside: a, edge: .trailing) == pair && TerminalLayout.terminal(a).moving(a, beside: a, edge: .top) == .terminal(a),
+                    "Dropping a pane on itself changes nothing")
+        try require(pair.moving(a, beside: b, edge: .trailing) == .split(.horizontal, [.terminal(b), .terminal(a)])
+                    && pair.moving(b, beside: a, edge: .trailing) == pair,
+                    "Move a pane within the same split")
+        try require(pair.moving(a, beside: b, edge: .bottom) == .split(.vertical, [.terminal(b), .terminal(a)]),
+                    "Moving across the axis collapses the emptied split")
+        let nested = TerminalLayout.split(.horizontal, [.terminal(a), .split(.vertical, [.terminal(b), .split(.horizontal, [.terminal(c), .terminal(d)])])])
+        try require(nested.removing(b) == .split(.horizontal, [.terminal(a), .terminal(c), .terminal(d)]),
+                    "Removing a pane flattens same-axis nesting")
+        try require(nested.moving(b, beside: a, edge: .leading) == .split(.horizontal, [.terminal(b), .terminal(a), .terminal(c), .terminal(d)]),
+                    "Moving keeps the layout normalised")
+        try require(nested.moving(d, beside: b, edge: .bottom) == .split(.horizontal, [.terminal(a), .split(.vertical, [.terminal(b), .terminal(d), .terminal(c)])]),
+                    "Moving out of a nested split collapses it into its parent")
+        try require(pair.moving(c, beside: a, edge: .top) == .split(.horizontal, [.split(.vertical, [.terminal(c), .terminal(a)]), .terminal(b)]),
+                    "Moving a terminal from elsewhere inserts it")
+        print("PASS terminal layout drops")
     }
 
     static func agentChild(of pid: Int32) -> Int32 {

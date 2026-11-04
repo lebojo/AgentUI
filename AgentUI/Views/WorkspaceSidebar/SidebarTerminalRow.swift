@@ -20,6 +20,7 @@ struct SidebarTerminalRow: View {
                              divergentBranch: store.sessions.divergentBranch(for: terminal.id, worktreePath: worktree.path))
         .padding(.vertical, Spacing.xxs)
         .tag(terminal.id)
+        .terminalDragSource(terminal.id)
         .contextMenu { SidebarTerminalMenu(sheet: $sheet, removal: $removal, terminal: terminal) }
         .swipeActions(edge: .trailing) {
             RemovalButton(pending: $removal, removal: .terminal(terminal.id), placement: .swipe)

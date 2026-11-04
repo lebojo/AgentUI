@@ -19,6 +19,7 @@ struct SidebarSplitMemberRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isFocused ? .isSelected : [])
+        .terminalDragSource(terminal.id)
         .contextMenu { SidebarTerminalMenu(sheet: $sheet, removal: $removal, terminal: terminal) }
     }
 }

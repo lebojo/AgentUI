@@ -19,12 +19,6 @@ struct SidebarTerminalList: View {
                 SidebarTerminalRow(sheet: $sheet, removal: $removal, store: store, terminal: block.terminals[0], worktree: worktree)
             }
         }
-        .onMove(perform: store.isReadOnly ? nil : { move(from: $0, to: $1) })
-    }
-
-    private func move(from source: IndexSet, to destination: Int) {
-        let blocks = blocks
-        let move = blocks.terminalMove(from: source, to: destination)
-        store.reorderTerminals(in: worktree.id, blocks.terminalIDs, from: move.source, to: move.destination)
+        .onMove(perform: store.isReadOnly ? nil : { store.reorderTerminalBlocks(in: worktree.id, blocks, from: $0, to: $1) })
     }
 }

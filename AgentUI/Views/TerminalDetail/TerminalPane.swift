@@ -33,6 +33,7 @@ struct TerminalPane: View {
                 .background(isFocused ? Palette.accent.opacity(0.12) : Color.clear)
                 .contentShape(Rectangle())
                 .onTapGesture { select() }
+                .terminalDragSource(context.terminal.id)
                 Divider()
             }
             if let session {

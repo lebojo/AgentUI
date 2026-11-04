@@ -15,7 +15,7 @@ A native macOS app to organize your projects, Git worktrees and coding agents (C
 - **Folder import**: recursive Git repository discovery, idempotent reimport.
 - **Git worktrees**: one branch per worktree, created in one click, each with its own terminals.
 - **Real terminals**: native PTY, the user's shell, and a branch badge that follows the working directory.
-- **Split terminals**: split the current terminal to the right or below, as many times as needed.
+- **Split terminals**: split the current terminal to the right or below, as many times as needed, or drag a terminal from the sidebar (or a pane by its title) onto an edge of another pane of the same worktree.
 - **Worktree groups**: gather a project's worktrees under a named group in the sidebar.
 - **Inspector**: files, agents, Git changes, diffs, pull/merge request and GitHub Actions or GitLab pipeline checks.
 - **`agentui` CLI**: agents can create terminals and worktrees from inside their own terminal.
@@ -117,7 +117,7 @@ Usage comes from the agents' own sign-in, like Orca: Claude reads the `Claude Co
 | ⇧⌘D | Split the selected terminal below |
 | ⌘W | Close the selected terminal and stop its process; with no terminal selected, close the window |
 
-Split panes are regular terminals of the same worktree: they also appear in the sidebar, and selecting any of them shows the whole split. Clicking a pane focuses it; its × button (or ⌘W) closes it, and the last remaining pane takes the whole space again. The layout is restored on relaunch.
+Split panes are regular terminals of the same worktree: they also appear in the sidebar, and selecting any of them shows the whole split. Dragging a terminal row or a pane title onto a pane highlights the half where it will land (left, right, top or bottom) and moves it there, out of any other split. Clicking a pane focuses it; its × button (or ⌘W) closes it, and the last remaining pane takes the whole space again. The layout is restored on relaunch.
 
 After ⌘W, the selection moves to the neighbouring pane of a split, otherwise to another terminal in the same worktree, then in the same project if any remain. Closing a project's last terminal keeps the project and its worktrees: its name turns secondary with a moon icon, and clicking it reopens a terminal in its main worktree.
 
