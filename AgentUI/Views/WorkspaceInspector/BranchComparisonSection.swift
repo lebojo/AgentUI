@@ -42,6 +42,9 @@ struct BranchComparisonSection: View {
             } else if let comparison = currentComparison {
                 Text("\(comparison.commits) commits ahead of \(comparison.base.name)")
                     .font(Typography.caption).foregroundStyle(Palette.textSecondary)
+                #if os(macOS)
+                if comparison.commits > 0 { ChangeRequestMenu(root: root, base: comparison.base) }
+                #endif
                 GitChangeList(root: root, scope: .branch(comparison.base), changes: comparison.changes, omitted: comparison.omittedChanges)
             } else if base != nil || (branches == nil && branchesError == nil) {
                 ProgressView().controlSize(.small)

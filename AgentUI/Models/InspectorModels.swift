@@ -117,6 +117,10 @@ struct ComparisonBranch: Codable, Hashable, Identifiable, Sendable {
     var name: String {
         Self.prefixes.first(where: reference.hasPrefix).map { String(reference.dropFirst($0.count)) } ?? reference
     }
+    var hostedName: String {
+        let parts = name.split(separator: "/", maxSplits: 1)
+        return reference.hasPrefix("refs/remotes/") && parts.count == 2 ? String(parts[1]) : name
+    }
 }
 
 struct GitBranchList: Codable, Equatable, Sendable {

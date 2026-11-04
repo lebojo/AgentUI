@@ -145,14 +145,17 @@ enum InspectorService {
     }
 
     @concurrent static func hosting(at root: String) async -> GitHosting {
+        await remoteURL(at: root).map(GitHosting.init(remoteURL:)) ?? .github
+    }
+
+    @concurrent static func remoteURL(at root: String) async -> String? {
         let git = URL(fileURLWithPath: "/usr/bin/git")
-        guard let data = try? await ReadCommand.run(git, ["config", "--get-regexp", "^remote\\..*\\.url$"], at: root) else { return .github }
+        guard let data = try? await ReadCommand.run(git, ["config", "--get-regexp", "^remote\\..*\\.url$"], at: root) else { return nil }
         let remotes = String(decoding: data, as: UTF8.self).split(separator: "\n").compactMap { line -> (key: String, url: String)? in
             let parts = line.split(separator: " ", maxSplits: 1).map(String.init)
             return parts.count == 2 ? (key: parts[0], url: parts[1]) : nil
         }
-        let preferred = remotes.first { $0.key == "remote.origin.url" } ?? remotes.first
-        return preferred.map { GitHosting(remoteURL: $0.url) } ?? .github
+        return (remotes.first { $0.key == "remote.origin.url" } ?? remotes.first)?.url
     }
 
     @concurrent static func gitlab(at path: String, branch: GitBranch?, headSHA: String?, executable override: URL? = nil) async throws -> RemoteSnapshot {

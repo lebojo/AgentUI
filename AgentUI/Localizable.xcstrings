@@ -4,12 +4,72 @@
     " M " : {
       "shouldTranslate" : false
     },
+    "Ask the Agent to Create the MR" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demander à l’agent de créer la MR"
+          }
+        }
+      }
+    },
+    "Ask the Agent to Create the PR" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demander à l’agent de créer la PR"
+          }
+        }
+      }
+    },
+    "Ask the Agent to Create the PR/MR" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demander à l’agent de créer la PR/MR"
+          }
+        }
+      }
+    },
     "Create a Pull Request" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Créer une PR/MR"
+          }
+        }
+      }
+    },
+    "Create Merge Request" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer une merge request"
+          }
+        }
+      }
+    },
+    "Create PR/MR" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer une PR/MR"
+          }
+        }
+      }
+    },
+    "Create Pull Request" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer une pull request"
           }
         }
       }
@@ -24,12 +84,42 @@
         }
       }
     },
+    "Merge Request" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Merge request"
+          }
+        }
+      }
+    },
+    "Open in Browser" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir dans le navigateur"
+          }
+        }
+      }
+    },
     "Prompts" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prompts"
+          }
+        }
+      }
+    },
+    "Pull Request" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pull request"
           }
         }
       }
@@ -44,12 +134,12 @@
         }
       }
     },
-    "Sent to the default agent by “Ask the Agent to Create the PR/MR” in the Git inspector." : {
+    "Sent to the default agent by “Ask the Agent to Create the PR” (“the MR” on GitLab) in the Git inspector." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Envoyé à l’agent par défaut par « Demander à l’agent de créer la PR/MR » dans l’inspecteur Git."
+            "value" : "Envoyé à l’agent par défaut par « Demander à l’agent de créer la PR » (« la MR » sur GitLab) dans l’inspecteur Git."
           }
         }
       }

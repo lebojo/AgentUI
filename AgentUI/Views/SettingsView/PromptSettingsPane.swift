@@ -15,7 +15,7 @@ struct PromptSettingsPane: View {
             PromptEditorSection(
                 prompt: $settings.prompts.changeRequest,
                 title: "Create a Pull Request",
-                footer: "Sent to the default agent by “Ask the Agent to Create the PR/MR” in the Git inspector.",
+                footer: "Sent to the default agent by “Ask the Agent to Create the PR” (“the MR” on GitLab) in the Git inspector.",
                 defaultPrompt: AgentPrompts.defaultChangeRequest
             )
         }

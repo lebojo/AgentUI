@@ -129,6 +129,7 @@ enum InspectorTests {
         let detected = await InspectorService.hosting(at: repository.path)
         _ = try await GitService.run(["remote", "remove", "origin"], at: repository.path)
         try require(detected == .gitlab, "Read the hosting from the origin remote")
+        try testChangeRequestPages()
 
         let fakeGlab = root.appendingPathComponent("fake-glab")
         let glabScript = #"""
@@ -240,6 +241,32 @@ enum InspectorTests {
             } catch is ReadCommandError {}
         }
         print("PASS branch comparison lists and diffs changes against another branch")
+    }
+
+    private static func testChangeRequestPages() throws {
+        let require = CoreTests.require
+        let addresses = ["git@github.com:owner/app.git", "https://gitlab.example.com/group/sub/project.git", "ssh://git@gitlab.internal:2222/group/project.git",
+                         "https://user:token@github.com/owner/app/", "http://gitlab.local:8080/group/project", "/Users/me/repo", "file:///tmp/repo.git",
+                         "git@github.com:app.git", "./relative:path"].map(RemoteWebAddress.init(remoteURL:))
+        try require(addresses.map { $0.map { "\($0.scheme)://\($0.host)\($0.port.map { ":\($0)" } ?? "")/\($0.path)" } }
+                    == ["https://github.com/owner/app", "https://gitlab.example.com/group/sub/project", "https://gitlab.internal/group/project",
+                        "https://github.com/owner/app", "http://gitlab.local:8080/group/project", nil, nil, nil, nil],
+                    "Parse SSH, scp-like and HTTPS remotes into web addresses and reject local paths")
+        try require(addresses.prefix(3).map { $0?.hosting } == [.github, .gitlab, .gitlab]
+                    && RemoteWebAddress(remoteURL: "git@bitbucket.org:team/app.git")?.hosting == nil,
+                    "Derive the provider from the remote host and leave unknown hosts generic")
+        let github = addresses[0]?.newChangeRequestURL(branch: "feature/new #1", base: "main")?.absoluteString
+        try require(github == "https://github.com/owner/app/compare/main...feature/new%20%231?expand=1", "Build the GitHub compare page for a new pull request")
+        let gitlab = addresses[1]?.newChangeRequestURL(branch: "feat/a+b", base: "develop")?.absoluteString
+        try require(gitlab == "https://gitlab.example.com/group/sub/project/-/merge_requests/new?merge_request%5Bsource_branch%5D=feat/a%2Bb&merge_request%5Btarget_branch%5D=develop",
+                    "Build the GitLab new merge request page with source and target branches")
+        try require(addresses[4]?.newChangeRequestURL(branch: "x", base: "main")?.absoluteString.hasPrefix("http://gitlab.local:8080/group/project/-/") == true
+                    && RemoteWebAddress(remoteURL: "git@bitbucket.org:team/app.git")?.newChangeRequestURL(branch: "x", base: "main") == nil,
+                    "Keep HTTP ports and skip unknown providers")
+        try require(ComparisonBranch(reference: "refs/remotes/origin/release/1.0").hostedName == "release/1.0"
+                    && ComparisonBranch(reference: "refs/heads/feature/x").hostedName == "feature/x",
+                    "Target the branch name without its remote")
+        print("PASS change request pages for GitHub and GitLab remotes")
     }
 }
 
