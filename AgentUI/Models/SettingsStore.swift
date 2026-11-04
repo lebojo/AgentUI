@@ -6,6 +6,7 @@ import Observation
         static let terminal = "settings.terminal"
         static let agentLaunch = "settings.agentLaunch"
         static let confirmations = "settings.confirmations"
+        static let prompts = "settings.prompts"
     }
 
     var terminal: TerminalAppearance {
@@ -16,6 +17,9 @@ import Observation
     }
     var confirmations: RemovalConfirmations {
         didSet { if oldValue != confirmations { save(confirmations, forKey: Key.confirmations) } }
+    }
+    var prompts: AgentPrompts {
+        didSet { if oldValue != prompts { save(prompts, forKey: Key.prompts) } }
     }
     var worktreesDirectory: URL {
         didSet { if oldValue != worktreesDirectory { saveWorktreesDirectory() } }
@@ -37,6 +41,7 @@ import Observation
         terminal = Self.load(TerminalAppearance.self, forKey: Key.terminal, from: defaults) ?? TerminalAppearance()
         agentLaunch = Self.load(AgentLaunch.self, forKey: Key.agentLaunch, from: defaults) ?? AgentLaunch()
         confirmations = Self.load(RemovalConfirmations.self, forKey: Key.confirmations, from: defaults) ?? RemovalConfirmations()
+        prompts = Self.load(AgentPrompts.self, forKey: Key.prompts, from: defaults) ?? AgentPrompts()
         WorkspaceDisk.scanLegacyWorktreesDirectory(in: defaults)
         worktreesDirectory = WorkspaceDisk.storedWorktreesDirectory(in: defaults)
         scannedWorktreesDirectories = WorkspaceDisk.storedScannedWorktreesDirectories(in: defaults)

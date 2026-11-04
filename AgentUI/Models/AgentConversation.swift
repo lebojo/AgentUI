@@ -39,6 +39,15 @@ enum ConversationAgent: String, Codable, CaseIterable, Identifiable, Sendable {
         [rawValue] + (skippingPermissions ? [permissionBypassFlag] : [])
     }
 
+    func promptCommand(_ prompt: String, skippingPermissions: Bool) -> [String] {
+        let promptArguments = switch self {
+        case .claude, .codex: [prompt]
+        case .copilot: ["-i", prompt]
+        case .openCode: ["--prompt", prompt]
+        }
+        return launchCommand(skippingPermissions: skippingPermissions) + promptArguments
+    }
+
     func resumeCommand(sessionID: String, skippingPermissions: Bool = false) -> [String]? {
         guard AgentConversation.isValidSessionID(sessionID) else { return nil }
         let command = switch self {

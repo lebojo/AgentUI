@@ -4,6 +4,66 @@
     " M " : {
       "shouldTranslate" : false
     },
+    "Create a Pull Request" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer une PR/MR"
+          }
+        }
+      }
+    },
+    "Generate Commits" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Générer les commits"
+          }
+        }
+      }
+    },
+    "Prompts" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompts"
+          }
+        }
+      }
+    },
+    "Restore Default" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rétablir par défaut"
+          }
+        }
+      }
+    },
+    "Sent to the default agent by “Ask the Agent to Create the PR/MR” in the Git inspector." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoyé à l’agent par défaut par « Demander à l’agent de créer la PR/MR » dans l’inspecteur Git."
+          }
+        }
+      }
+    },
+    "Sent to the default agent by “Generate Commits with AI” in the Git inspector." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoyé à l’agent par défaut par « Générer les commits avec l’IA » dans l’inspecteur Git."
+          }
+        }
+      }
+    },
     "—" : {
       "shouldTranslate" : false
     },

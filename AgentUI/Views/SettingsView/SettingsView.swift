@@ -9,6 +9,8 @@ struct SettingsView: View {
                 .tabItem { Label("Display", systemImage: "rectangle.split.2x1") }
             AgentSettingsPane()
                 .tabItem { Label("Agents", systemImage: "sparkles") }
+            PromptSettingsPane()
+                .tabItem { Label("Prompts", systemImage: "text.bubble") }
             HostSettingsPane()
                 .tabItem { Label("Local Access", systemImage: "network") }
         }

@@ -58,6 +58,7 @@ enum Dimension {
         static let themeSampleHeight: CGFloat = 52
         static let swatchSize: CGFloat = 8
         static let pairingCodeSize: CGFloat = 180
+        static let promptEditorHeight: CGFloat = 120
     }
 
     enum DiffSheet {

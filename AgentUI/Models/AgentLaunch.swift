@@ -12,6 +12,10 @@ struct AgentLaunch: Codable, Hashable, Sendable {
 
     var previewCommand: String { agent.launchCommand(skippingPermissions: skipsPermissions).joined(separator: " ") }
 
+    func command(prompt: String) -> [String] {
+        agent.promptCommand(prompt, skippingPermissions: skipsPermissions)
+    }
+
     func launches(on trigger: Trigger) -> Bool {
         switch trigger {
         case .newTerminal: onNewTerminal
