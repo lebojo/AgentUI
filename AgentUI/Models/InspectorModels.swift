@@ -199,10 +199,14 @@ struct GitTracking: Codable, Equatable, Sendable {
     let upstream: String?
     var ahead = 0
     var remote: String?
+    var tracksSameBranch: Bool?
 
-    var push: GitAction? {
-        guard upstream != nil else { return remote.map { .push(settingUpstreamOn: $0) } }
-        return ahead > 0 ? .push(settingUpstreamOn: nil) : nil
+    var isPublished: Bool { upstream != nil && tracksSameBranch == true }
+    var hasUnpushedCommits: Bool { isPublished && ahead > 0 }
+
+    func push(branch: String) -> GitAction? {
+        guard isPublished else { return remote.map { .publish(remote: $0, branch: branch) } }
+        return ahead > 0 ? .push : nil
     }
 
     static func parse(_ data: Data) -> GitTracking? {
@@ -226,7 +230,7 @@ struct GitRemote: Equatable, Sendable {
 }
 
 struct GitRemoteConfiguration: Equatable, Sendable {
-    static let pattern = "^(remote\\..+\\.url|remote\\.pushdefault|branch\\..+\\.(remote|pushremote))$"
+    static let pattern = "^(remote\\..+\\.url|remote\\.pushdefault|branch\\..+\\.(remote|pushremote|merge))$"
 
     private(set) var remotes: [GitRemote] = []
     private var values: [String: String] = [:]
@@ -250,6 +254,11 @@ struct GitRemoteConfiguration: Equatable, Sendable {
         let preferred = [values["branch.\(branch).pushremote"], values["remote.pushdefault"], values["branch.\(branch).remote"], "origin"]
         if let name = preferred.compactMap({ $0 }).first(where: names.contains) { return name }
         return names.count == 1 ? names.first : nil
+    }
+
+    func tracksSameBranch(_ branch: String) -> Bool {
+        guard let remote = values["branch.\(branch).remote"], remotes.contains(where: { $0.name == remote }) else { return false }
+        return values["branch.\(branch).merge"] == "refs/heads/" + branch
     }
 
     private static func remoteName(fromURLKey key: String) -> String? {
@@ -308,7 +317,10 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
 
     var stagedChanges: [GitChange] { changes.filter(\.isStaged) }
     var unstagedChanges: [GitChange] { changes.filter(\.isUnstaged) }
-    var push: GitAction? { headSHA == nil || branch?.isDetached != false ? nil : tracking?.push }
+    var push: GitAction? {
+        guard headSHA != nil, let branch, !branch.isDetached else { return nil }
+        return tracking?.push(branch: branch.name)
+    }
 }
 
 enum GitHosting: String, Codable, Sendable {

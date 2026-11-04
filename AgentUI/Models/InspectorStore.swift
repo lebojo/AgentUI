@@ -18,6 +18,7 @@ import Observation
     private(set) var remoteError: String?
     private(set) var pendingAction: GitAction?
     var actionError: String?
+    @ObservationIgnored private var queuedActions: [CheckedContinuation<Void, Never>] = []
     @ObservationIgnored private var path: String?
     @ObservationIgnored private var reloadTrigger: AsyncStream<Void>.Continuation?
     @ObservationIgnored private var generation = UUID()
@@ -83,13 +84,17 @@ import Observation
     }
 
     @discardableResult func perform(_ action: GitAction, at root: String, run: GitCommand) async -> Bool {
-        guard pendingAction == nil else { return false }
-        pendingAction = action
-        actionError = nil
-        defer {
-            pendingAction = nil
-            reload(remote: action.updatesRemote)
+        if pendingAction == nil {
+            actionError = nil
+        } else {
+            await withCheckedContinuation { queuedActions.append($0) }
         }
+        pendingAction = action
+        defer {
+            reload(remote: action.updatesRemote)
+            if queuedActions.isEmpty { pendingAction = nil } else { queuedActions.removeFirst().resume() }
+        }
+        guard !Task.isCancelled else { return false }
         do {
             try await run(action, root)
             return true

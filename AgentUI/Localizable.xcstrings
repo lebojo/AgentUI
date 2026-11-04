@@ -324,6 +324,16 @@
         }
       }
     },
+    "Some local commits aren’t pushed yet" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Certains commits locaux n’ont pas encore été poussés"
+          }
+        }
+      }
+    },
     "Split view" : {
       "localizations" : {
         "fr" : {

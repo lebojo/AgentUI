@@ -415,7 +415,8 @@ import SystemConfiguration
         case .git(let id):
             let local = try await InspectorService.localGit(at: context(id).worktree.path)
             return try .fitting(local.changes) {
-                LocalGitSnapshot(root: local.root, branch: local.branch, headSHA: local.headSHA, changes: $0, omittedChanges: local.omittedChanges + $1)
+                LocalGitSnapshot(root: local.root, branch: local.branch, headSHA: local.headSHA, changes: $0, omittedChanges: local.omittedChanges + $1,
+                                 tracking: local.tracking)
             }
         case .github(let id):
             let local = try await InspectorService.localGit(at: context(id).worktree.path, changesIn: [])

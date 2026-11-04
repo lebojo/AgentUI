@@ -49,11 +49,13 @@ enum InspectorService {
         let status = ["--literal-pathspecs", "status", "--porcelain=v1", "-z", "--branch", "--untracked-files=all", "--ignore-submodules=dirty"]
             + (paths.map { ["--"] + $0 } ?? [])
         async let changes = paths?.isEmpty == true ? Data() : ReadCommand.run(git, status, at: root, limit: 8_388_608, gitConfiguration: safety)
+        async let configuration = paths == nil ? remoteConfiguration(at: root) : nil
         let branch = GitRepository.containing(root)?.branch
         let output = try await changes
         var tracking = GitTracking.parse(output)
-        if paths == nil, let branch, !branch.isDetached, tracking != nil, tracking?.upstream == nil {
-            tracking?.remote = await remoteConfiguration(at: root).pushRemote(for: branch.name)
+        if let branch, !branch.isDetached, tracking != nil, let configuration = await configuration {
+            tracking?.tracksSameBranch = configuration.tracksSameBranch(branch.name)
+            if tracking?.isPublished == false { tracking?.remote = configuration.pushRemote(for: branch.name) }
         }
         let all = GitChange.parsePorcelain(output)
         let shown = Array(all.prefix(LocalGitSnapshot.changeLimit))

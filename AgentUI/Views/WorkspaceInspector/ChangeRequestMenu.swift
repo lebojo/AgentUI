@@ -16,8 +16,13 @@ struct ChangeRequestMenu: View {
         model.local?.branch.flatMap { $0.isDetached ? nil : $0.name }
     }
 
-    private var isPushed: Bool {
-        model.local?.tracking?.upstream != nil
+    private var tracking: GitTracking? {
+        model.local?.tracking
+    }
+
+    private var browserHelp: LocalizedStringKey {
+        guard tracking?.isPublished == true else { return "Push the branch first" }
+        return tracking?.hasUnpushedCommits == true ? "Some local commits aren’t pushed yet" : "Open in Browser"
     }
 
     private var title: LocalizedStringKey {
@@ -49,8 +54,8 @@ struct ChangeRequestMenu: View {
                     }
                     if let url = address?.newChangeRequestURL(branch: branch, base: base.hostedName) {
                         Button("Open in Browser", systemImage: "safari") { openURL(url) }
-                            .disabled(!isPushed)
-                            .help(isPushed ? Text("Open in Browser") : Text("Push the branch first"))
+                            .disabled(tracking?.isPublished != true)
+                            .help(browserHelp)
                     }
                 }
                 .fixedSize()

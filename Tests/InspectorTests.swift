@@ -56,6 +56,7 @@ enum InspectorTests {
         try await branchComparison(root: root)
         try changeTree()
         try await workingTreeActions(root: root)
+        try await publishing(root: root)
 
         let patch = "diff --git a/f b/f\nindex 1..2 100644\n--- a/f\n+++ b/f\n@@ -3,4 +3,4 @@ func\n keep\n--- old\n-gone\n++++ new\n+\tadded\n same\n\\ No newline at end of file\n"
         let lines = GitDiffLine.parse(patch)
@@ -240,7 +241,7 @@ enum InspectorTests {
         let both = change("both", "M", "M"), staged = change("staged", "A", " "), untracked = change("new", "?", "?"),
             conflict = change("conflict", "U", "U"), deleted = change("gone", " ", "D")
         let snapshot = LocalGitSnapshot(root: "/r", branch: GitBranch(name: "main"), headSHA: "abc", changes: [both, staged, untracked, conflict, deleted],
-                                        tracking: GitTracking(upstream: "origin/main", ahead: 2))
+                                        tracking: GitTracking(upstream: "origin/main", ahead: 2, tracksSameBranch: true))
         try require(snapshot.stagedChanges == [both, staged] && snapshot.unstagedChanges == [both, untracked, conflict, deleted],
                     "Partially staged files appear in both sections, conflicts and untracked files only in Changes")
         try require(GitChangeScope.staged.kind(of: both) == .modified && GitChangeScope.staged.kind(of: staged) == .added
@@ -260,12 +261,20 @@ enum InspectorTests {
                     "Parse the porcelain branch header")
         let parsed = GitChange.parsePorcelain(Data("## main...origin/main [ahead 1]\0 M file\0".utf8))
         try require(parsed.map(\.path) == ["file"], "The branch header is not a change")
-        try require(snapshot.push == .push(settingUpstreamOn: nil) && GitTracking(upstream: "origin/main").push == nil
-                    && GitTracking(upstream: nil).push == nil && GitTracking(upstream: nil, remote: "fork").push == .push(settingUpstreamOn: "fork")
+        try require(snapshot.push == .push && GitTracking(upstream: "origin/main", tracksSameBranch: true).push(branch: "main") == nil
+                    && GitTracking(upstream: nil).push(branch: "main") == nil
+                    && GitTracking(upstream: nil, remote: "fork").push(branch: "main") == .publish(remote: "fork", branch: "main")
                     && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "abc", isDetached: true), headSHA: "abc", changes: [],
                                         tracking: GitTracking(upstream: nil)).push == nil
                     && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "main"), headSHA: nil, changes: [], tracking: GitTracking(upstream: nil)).push == nil,
                     "Offer push only for commits ahead or a branch without upstream that has a remote")
+        let foreign = GitTracking(upstream: "origin/main", ahead: 3, remote: "origin", tracksSameBranch: false)
+        try require(!foreign.isPublished && !foreign.hasUnpushedCommits && foreign.push(branch: "feature") == .publish(remote: "origin", branch: "feature")
+                    && GitTracking(upstream: "origin/main", ahead: 3).push(branch: "feature") == nil
+                    && GitTracking(upstream: "origin/feature", ahead: 1, tracksSameBranch: true).hasUnpushedCommits
+                    && !GitTracking(upstream: "origin/feature", tracksSameBranch: true).hasUnpushedCommits
+                    && !GitTracking(upstream: nil, tracksSameBranch: true).isPublished,
+                    "A branch tracking a differently named upstream is published to its own name, never pushed onto the upstream")
         func remotes(_ entries: [(String, String)]) -> GitRemoteConfiguration {
             GitRemoteConfiguration(Data(entries.map { $0.0 + "\n" + $0.1 + "\0" }.joined().utf8))
         }
@@ -280,13 +289,19 @@ enum InspectorTests {
                     && remotes([("remote.origin.url", "v"), ("branch.main.remote", "gone")]).pushRemote(for: "main") == "origin"
                     && remotes([("remote.--upload-pack=x.url", "v")]).pushRemote(for: "main") == nil,
                     "Publish to the configured push remote, else origin, else the only remote, never an option-like name")
+        let tracked = { (remote: String, merge: String) in
+            remotes([("remote.origin.url", "v"), ("branch.Feature/x.remote", remote), ("branch.Feature/x.merge", merge)]).tracksSameBranch("Feature/x")
+        }
+        try require(tracked("origin", "refs/heads/Feature/x") && !tracked("origin", "refs/heads/main") && !tracked(".", "refs/heads/Feature/x")
+                    && !tracked("gone", "refs/heads/Feature/x") && !remotes([("remote.origin.url", "v")]).tracksSameBranch("main"),
+                    "Only a same-named branch on a configured remote counts as the branch's published upstream")
 
         try require(GitAction.commit(title: "  Title ", description: "\n") == .commit(title: "Title", message: "")
                     && GitAction.commit(title: " ", description: "Body") == nil
                     && GitAction.commit(title: "T", message: "").arguments == ["commit", "--message", "T"]
                     && GitAction.commit(title: "T", message: "$(rm -rf /)").arguments == ["commit", "--message", "T", "--message", "$(rm -rf /)"]
-                    && GitAction.push(settingUpstreamOn: "fork").arguments == ["push", "--set-upstream", "fork", "HEAD"]
-                    && GitAction.push(settingUpstreamOn: nil).arguments == ["push"]
+                    && GitAction.publish(remote: "fork", branch: "feature").arguments == ["push", "--set-upstream", "fork", "HEAD:refs/heads/feature"]
+                    && GitAction.push.arguments == ["push"] && GitAction.publish(remote: "o", branch: "b").updatesRemote
                     && GitAction.unstageAll.arguments == ["reset", "--quiet", "--", "."]
                     && GitAction.stage(["-rf"]).arguments == ["--literal-pathspecs", "add", "--", "-rf"],
                     "Git actions pass titles and paths as plain arguments")
@@ -320,7 +335,7 @@ enum InspectorTests {
         try await InspectorService.perform(.commit(title: "First", message: "Body"), at: repository.path)
         local = try await InspectorService.localGit(at: repository.path)
         let log = try await GitService.run(["log", "-1", "--format=%B"], at: repository.path)
-        try require(local.changes.isEmpty && log == "First\n\nBody" && local.tracking == GitTracking(upstream: nil) && local.push == nil,
+        try require(local.changes.isEmpty && log == "First\n\nBody" && local.tracking == GitTracking(upstream: nil, tracksSameBranch: false) && local.push == nil,
                     "Commit title and description, and hide Push without a remote")
         _ = try await GitService.run(["remote", "add", "fork", "git@github.com:me/app.git"], at: repository.path)
         let onlyFork = try await InspectorService.localGit(at: repository.path).push
@@ -328,8 +343,8 @@ enum InspectorTests {
         let withOrigin = try await InspectorService.localGit(at: repository.path).push
         _ = try await GitService.run(["config", "remote.pushDefault", "fork"], at: repository.path)
         let pushDefault = try await InspectorService.localGit(at: repository.path).push
-        try require(onlyFork == .push(settingUpstreamOn: "fork") && withOrigin == .push(settingUpstreamOn: "origin")
-                    && pushDefault == .push(settingUpstreamOn: "fork"), "Publish the branch to the remote Git would push to")
+        try require(onlyFork == .publish(remote: "fork", branch: "main") && withOrigin == .publish(remote: "origin", branch: "main")
+                    && pushDefault == .publish(remote: "fork", branch: "main"), "Publish the branch to the remote Git would push to")
         try "changed\n".write(to: repository.appendingPathComponent("two.txt"), atomically: true, encoding: .utf8)
         try await InspectorService.perform(.stageAll, at: repository.path)
         try await InspectorService.perform(.unstageAll, at: repository.path)
@@ -353,6 +368,49 @@ enum InspectorTests {
                     && Set(local.unstagedChanges.map(\.path)) == ["side.txt", "two.txt"],
                     "Unstage All keeps the merge in progress")
         print("PASS stage, unstage and commit")
+    }
+
+    private static func publishing(root: URL) async throws {
+        let require = CoreTests.require
+        let remote = root.appendingPathComponent("publishing remote.git")
+        let repository = root.appendingPathComponent("publishing repository")
+        try FileManager.default.createDirectory(at: repository, withIntermediateDirectories: true)
+        _ = try await GitService.run(["init", "-q", "--bare", "-b", "main", remote.path], at: root.path)
+        _ = try await GitService.run(["init", "-q", "-b", "main"], at: repository.path)
+        _ = try await GitService.run(["config", "user.name", "AgentUI Tests"], at: repository.path)
+        _ = try await GitService.run(["config", "user.email", "tests@example.invalid"], at: repository.path)
+        _ = try await GitService.run(["config", "push.default", "upstream"], at: repository.path)
+        _ = try await GitService.run(["remote", "add", "origin", remote.path], at: repository.path)
+        try "base\n".write(to: repository.appendingPathComponent("base.txt"), atomically: true, encoding: .utf8)
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.commit(title: "Base", message: ""), at: repository.path)
+        try await InspectorService.perform(.publish(remote: "origin", branch: "main"), at: repository.path)
+        let mainHead = try await GitService.run(["rev-parse", "HEAD"], at: repository.path)
+        var local = try await InspectorService.localGit(at: repository.path)
+        try require(local.tracking?.isPublished == true && local.push == nil, "Publishing main tracks origin/main")
+        _ = try await GitService.run(["checkout", "-q", "-b", "feature", "origin/main"], at: repository.path)
+        try "feature\n".write(to: repository.appendingPathComponent("feature.txt"), atomically: true, encoding: .utf8)
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.commit(title: "Feature", message: ""), at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(local.tracking?.upstream == "origin/main" && local.tracking?.ahead == 1 && local.tracking?.isPublished == false
+                    && local.push == .publish(remote: "origin", branch: "feature"),
+                    "A branch created from origin/main is published under its own name")
+        guard let push = local.push else { fatalError("Missing push action") }
+        try await InspectorService.perform(push, at: repository.path)
+        let remoteMain = try await GitService.run(["rev-parse", "main"], at: remote.path)
+        let remoteFeature = try await GitService.run(["rev-parse", "feature"], at: remote.path)
+        let featureHead = try await GitService.run(["rev-parse", "HEAD"], at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(remoteMain == mainHead && remoteFeature == featureHead && local.tracking?.upstream == "origin/feature"
+                    && local.tracking?.isPublished == true && local.push == nil,
+                    "Pushing leaves origin/main untouched and makes origin/feature the upstream")
+        try "more\n".write(to: repository.appendingPathComponent("feature.txt"), atomically: true, encoding: .utf8)
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.commit(title: "More", message: ""), at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(local.push == .push && local.tracking?.hasUnpushedCommits == true, "Later commits use a plain push to the same-named upstream")
+        print("PASS publish a branch whose upstream has another name")
     }
 
     private static func branchComparison(root: URL) async throws {

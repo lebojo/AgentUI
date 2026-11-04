@@ -156,6 +156,13 @@ import Foundation
             let transported = try RemoteReply.success(snapshot).decode(RemoteSnapshot.self)
             try require(transported == snapshot, "GitHub and GitLab reviews/checks survive mobile transport")
         }
+        let tracked = LocalGitSnapshot(root: "/r", branch: GitBranch(name: "feature"), headSHA: "abc", changes: [],
+                                       tracking: GitTracking(upstream: "origin/feature", ahead: 2, tracksSameBranch: true))
+        let legacyTracking = Data(#"{"root":"/r","headSHA":"abc","changes":[],"omittedChanges":0,"tracking":{"upstream":"origin/feature","ahead":2}}"#.utf8)
+        let legacySnapshot = try JSONDecoder().decode(LocalGitSnapshot.self, from: legacyTracking)
+        let transportedTracking = try RemoteReply.success(tracked).decode(LocalGitSnapshot.self)
+        try require(transportedTracking == tracked && legacySnapshot.tracking == GitTracking(upstream: "origin/feature", ahead: 2) && legacySnapshot.tracking?.isPublished == false,
+                    "Branch tracking survives mobile transport and older payloads without the same-branch flag still decode")
         print("PASS GitHub and GitLab inspector round trip")
 
         let rejection = try JSONEncoder().encode(RemoteRejection("Versions incompatibles."))

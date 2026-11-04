@@ -6,7 +6,8 @@ enum GitAction: Equatable, Sendable {
     case stageAll
     case unstageAll
     case commit(title: String, message: String)
-    case push(settingUpstreamOn: String?)
+    case push
+    case publish(remote: String, branch: String)
 
     var arguments: [String] {
         switch self {
@@ -16,8 +17,8 @@ enum GitAction: Equatable, Sendable {
         case .unstageAll: ["reset", "--quiet", "--", "."]
         case .commit(let title, let message):
             ["commit", "--message", title] + (message.isEmpty ? [] : ["--message", message])
-        case .push(let remote?): ["push", "--set-upstream", remote, "HEAD"]
-        case .push(nil): ["push"]
+        case .push: ["push"]
+        case .publish(let remote, let branch): ["push", "--set-upstream", remote, "HEAD:refs/heads/" + branch]
         }
     }
 
@@ -28,7 +29,7 @@ enum GitAction: Equatable, Sendable {
         case .stageAll: String(localized: "Stage All")
         case .unstageAll: String(localized: "Unstage All")
         case .commit: String(localized: "Commit")
-        case .push: String(localized: "Push")
+        case .push, .publish: String(localized: "Push")
         }
     }
 
@@ -37,20 +38,23 @@ enum GitAction: Equatable, Sendable {
         case .stage, .stageAll: "plus"
         case .unstage, .unstageAll: "minus"
         case .commit: "checkmark"
-        case .push: "arrow.up"
+        case .push, .publish: "arrow.up"
         }
     }
 
     var timeout: TimeInterval {
         switch self {
         case .commit: 3600
-        case .push: 900
+        case .push, .publish: 900
         default: 300
         }
     }
 
     var updatesRemote: Bool {
-        if case .push = self { true } else { false }
+        switch self {
+        case .push, .publish: true
+        default: false
+        }
     }
 
     static func commit(title: String, description: String) -> GitAction? {

@@ -64,6 +64,29 @@ import Foundation
         await monitoring.value
         print("PASS event-driven inspector refresh without self-triggering")
 
+        let queue = InspectorStore()
+        var performed: [String] = []
+        let first = Task {
+            await queue.perform(.stage(["a"]), at: repository.path) { action, _ in
+                performed.append("start \(action.arguments.last ?? "")")
+                try await Task.sleep(for: .milliseconds(200))
+                performed.append("end \(action.arguments.last ?? "")")
+                throw ReadCommandError(message: "first failed")
+            }
+        }
+        try await wait(until: { queue.pendingAction == .stage(["a"]) }, "The first Git action starts")
+        let second = Task {
+            await queue.perform(.stage(["b"]), at: repository.path) { action, _ in performed.append("run \(action.arguments.last ?? "")") }
+        }
+        let third = Task {
+            await queue.perform(.unstage(["c"]), at: repository.path) { action, _ in performed.append("run \(action.arguments.last ?? "")") }
+        }
+        let results = await [first.value, second.value, third.value]
+        try CoreTests.require(performed == ["start a", "end a", "run b", "run c"] && results == [false, true, true]
+                              && queue.pendingAction == nil && queue.actionError == "first failed",
+                              "Git actions clicked while another runs are queued in order, and a failure stays visible")
+        print("PASS queued Git actions")
+
         let listings = Counter()
         let guardian = GitFilterGuard { root in
             await listings.increment()
