@@ -52,8 +52,10 @@ enum InspectorTests {
                     "Preview both index and worktree diffs")
         let headOnly = try await InspectorService.localGit(at: repository.path, changesIn: [])
         let single = try await InspectorService.localGit(at: repository.path, changesIn: ["tracked file.txt"])
-        try require(headOnly.changes.isEmpty && headOnly.headSHA == local.headSHA && single.changes.map(\.path) == ["tracked file.txt"],
-                    "Remote checks skip git status and remote diffs only check the requested path")
+        try require(headOnly.changes.isEmpty && headOnly.headSHA == local.headSHA && single.changes.map(\.path) == ["tracked file.txt"]
+                        && GitStatus.arguments(limitedTo: nil).contains("--branch") && !GitStatus.arguments(limitedTo: ["a"]).contains("--branch")
+                        && GitStatus.arguments(limitedTo: ["a"]).suffix(2) == ["--", "a"],
+                    "Remote checks skip git status and remote diffs only check the requested path, without counting ahead and behind")
         let empty = try await InspectorService.localGit(at: unborn.path)
         try require(empty.headSHA == nil && empty.tracking == nil && empty.branch?.name == "develop" && empty.changes.allSatisfy(\.isUntracked),
                     "Inspector supports unborn HEAD")

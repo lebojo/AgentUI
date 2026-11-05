@@ -1,7 +1,7 @@
 import Foundation
 
 struct GitStatus: Equatable, Sendable {
-    static let arguments = ["--literal-pathspecs", "status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all", "--ignore-submodules=dirty"]
+    private static let options = ["--literal-pathspecs", "status", "--porcelain=v2", "-z", "--untracked-files=all", "--ignore-submodules=dirty"]
     static let outputLimit = 8_388_608
 
     private static let leadingFieldCounts: [UInt8: Int] = [UInt8(ascii: "1"): 8, UInt8(ascii: "2"): 9, UInt8(ascii: "u"): 10]
@@ -10,6 +10,10 @@ struct GitStatus: Equatable, Sendable {
     var tracking: GitTracking?
     var changes: [GitChange] = []
     var isTruncated = false
+
+    static func arguments(limitedTo paths: [String]?) -> [String] {
+        paths.map { options + ["--"] + $0 } ?? options + ["--branch"]
+    }
 
     static func parse(_ data: Data, isTruncated: Bool = false) -> GitStatus {
         var fields = data.split(separator: 0, omittingEmptySubsequences: false)

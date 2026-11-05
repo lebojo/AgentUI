@@ -78,8 +78,7 @@ enum InspectorService {
             let head = try? await ReadCommand.run(git, ["rev-parse", "--verify", "HEAD"], at: root)
             return GitStatus(headSHA: head.map(trimmed))
         }
-        let arguments = GitStatus.arguments + (paths.map { ["--"] + $0 } ?? [])
-        let output = try await ReadCommand.output(git, arguments, at: root, limit: GitStatus.outputLimit, overflow: .truncate,
+        let output = try await ReadCommand.output(git, GitStatus.arguments(limitedTo: paths), at: root, limit: GitStatus.outputLimit, overflow: .truncate,
                                                   gitConfiguration: configuration.overrides)
         return GitStatus.parse(output.data, isTruncated: output.isTruncated)
     }
