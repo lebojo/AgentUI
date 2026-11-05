@@ -93,6 +93,7 @@ enum CommandRunner {
         let timer = DispatchSource.makeTimerSource(queue: queue)
         let deadline = DispatchTime.now() + timeout
         let outFD = output.fileDescriptor, errFD = error.fileDescriptor, diagnosticLimit = Self.diagnosticLimit
+        let outStart = OSAllocatedUnfairLock<off_t>(initialState: 0), errStart = OSAllocatedUnfairLock<off_t>(initialState: 0)
         timer.schedule(deadline: .now() + .milliseconds(50), repeating: .milliseconds(50))
         timer.setEventHandler {
             job.killIfStillRunning(after: terminationGrace)
@@ -100,8 +101,9 @@ enum CommandRunner {
             let outOverflows = fstat(outFD, &outStat) == 0 && outStat.st_size > limit
             let errOverflows = fstat(errFD, &errStat) == 0 && errStat.st_size > diagnosticLimit
             if overflow == .discard {
-                if outStat.st_size > diagnosticLimit { keepTail(of: outFD, size: outStat.st_size) }
-                if errOverflows { keepTail(of: errFD, size: errStat.st_size) }
+                let outSize = outStat.st_size, errSize = errStat.st_size
+                outStart.withLock { $0 = discardHead(of: outFD, size: outSize, keptFrom: $0) }
+                errStart.withLock { $0 = discardHead(of: errFD, size: errSize, keptFrom: $0) }
             } else if overflow == .truncate, outOverflows {
                 return job.stop(.truncated)
             } else if outOverflows || errOverflows {
@@ -117,6 +119,7 @@ enum CommandRunner {
         let isTruncated = try job.finish(status: &status)
         let reader = try FileHandle(forReadingFrom: outURL)
         defer { try? reader.close() }
+        try reader.seek(toOffset: UInt64(outStart.withLock { $0 }))
         let data = try reader.read(upToCount: limit + 1) ?? Data()
         guard data.count <= limit || overflow != .stop else { throw ReadCommandError(message: String(localized: "The output exceeds the display limit. Open this content in your editor.")) }
         guard status == 0 || isTruncated else {
@@ -136,11 +139,13 @@ enum CommandRunner {
         return String(decoding: try reader.read(upToCount: 4096) ?? Data(), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private static func keepTail(of descriptor: Int32, size: off_t) {
-        var tail = [UInt8](repeating: 0, count: diagnosticTail)
-        let count = pread(descriptor, &tail, diagnosticTail, size - off_t(diagnosticTail))
-        _ = ftruncate(descriptor, 0)
-        if count > 0 { _ = write(descriptor, tail, count) }
+    private static func discardHead(of descriptor: Int32, size: off_t, keptFrom start: off_t) -> off_t {
+        var volume = statfs()
+        guard size - start > diagnosticLimit, fstatfs(descriptor, &volume) == 0, volume.f_bsize > 0 else { return start }
+        let block = off_t(volume.f_bsize)
+        let end = (size - off_t(diagnosticTail)) / block * block
+        var hole = fpunchhole_t(fp_flags: 0, reserved: 0, fp_offset: start, fp_length: end - start)
+        return end > start && fcntl(descriptor, F_PUNCHHOLE, &hole) == 0 ? end : start
     }
 
     private static func waitForExit(of pid: pid_t, on queue: DispatchQueue) async -> Bool {
