@@ -64,6 +64,7 @@ struct WorkspaceMonitors: ViewModifier {
 
     private func watchRepositories(_ watch: RepositoryWatch) async {
         gitActionQueues.prune(keepingRootsOf: watch.worktreePaths)
+        await GitRootCache.shared.prune(keepingPathsIn: watch.worktreePaths)
         guard watch.isVisible else { return }
         let repositories = await GitRepository.repositories(containing: watch.worktreePaths)
         let metadata = Array(Set(repositories.map(\.commonDirectory.path)))

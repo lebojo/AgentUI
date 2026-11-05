@@ -691,6 +691,13 @@ enum InspectorTests {
         let inner = try await cache.root(at: nested.path)
         let afterNested = await resolutions.value
         try require(inner == WorkspacePath.canonical(nested) && afterNested == 2, "A repository created inside the inspected path replaces the cached root")
+        _ = try await cache.root(at: repository.path)
+        await cache.prune(keepingPathsIn: [nested.path])
+        _ = try await cache.root(at: nested.path)
+        let keptAfterPrune = await resolutions.value
+        _ = try await cache.root(at: repository.path)
+        let droppedAfterPrune = await resolutions.value
+        try require(keptAfterPrune == 3 && droppedAfterPrune == 4, "Pruning keeps the roots of current worktrees and drops the others")
         try FileManager.default.removeItem(at: nested.appendingPathComponent(".git"))
         try FileManager.default.removeItem(at: repository.appendingPathComponent(".git"))
         do {
@@ -698,7 +705,7 @@ enum InspectorTests {
             throw WorkspaceError(message: "FAIL: a removed repository still has a root")
         } catch is ReadCommandError {}
         let afterRemoval = await resolutions.value
-        try require(afterRemoval == 3, "A removed repository is resolved by Git again")
+        try require(afterRemoval == 5, "A removed repository is resolved by Git again")
         print("PASS repository roots are cached per inspected path")
         try await branchMergeCache(root: root)
     }

@@ -40,6 +40,12 @@ actor GitRootCache {
         return Location(root: root, repository: repository)
     }
 
+    func prune(keepingPathsIn worktreePaths: [String]) {
+        entries = entries.filter { path, _ in
+            worktreePaths.contains { path == $0 || path.hasPrefix($0 + "/") }
+        }
+    }
+
     @concurrent static func topLevel(at path: String) async throws -> String {
         let output = try await ReadCommand.run(URL(fileURLWithPath: "/usr/bin/git"), ["rev-parse", "--show-toplevel"], at: path)
         return String(decoding: output, as: UTF8.self).trimmingCharacters(in: .newlines)
