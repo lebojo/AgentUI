@@ -223,6 +223,12 @@ import Foundation
         try require(grids.size == tabletGrid, "When a phone leaves the terminal or switches to Chat, the next viewer grid applies")
         grids.withdraw(tablet)
         try require(grids.isEmpty && grids.size == nil, "The Mac grid returns once no viewer shows the terminal")
+        grids.request(portrait, by: phone)
+        grids.takeBack()
+        grids.withdraw(phone)
+        try require(grids.isEmpty && grids.size == nil, "The last viewer leaving a terminal the Mac took back leaves no state behind")
+        grids.request(tabletGrid, by: tablet)
+        try require(grids.size == tabletGrid, "A viewer opening the terminal afterwards gets its grid without typing")
     }
 
     static func testPinnedFrameSize() throws {

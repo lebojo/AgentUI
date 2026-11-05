@@ -10,7 +10,7 @@ struct RemoteGridRequests: Equatable, Sendable {
     private var isTakenBack = false
 
     var size: TerminalGridSize? { isTakenBack ? nil : requests.last?.size }
-    var isEmpty: Bool { requests.isEmpty && !isTakenBack }
+    var isEmpty: Bool { requests.isEmpty }
 
     mutating func request(_ size: TerminalGridSize, by viewer: UUID) {
         requests.removeAll { $0.viewer == viewer }
@@ -19,6 +19,7 @@ struct RemoteGridRequests: Equatable, Sendable {
 
     mutating func withdraw(_ viewer: UUID) {
         requests.removeAll { $0.viewer == viewer }
+        if requests.isEmpty { isTakenBack = false }
     }
 
     mutating func takeBack() {
