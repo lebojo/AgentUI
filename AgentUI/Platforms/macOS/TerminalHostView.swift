@@ -1,8 +1,7 @@
 import AppKit
+import SwiftUI
 
 final class TerminalHostView: NSView {
-    private static let insets = NSEdgeInsets(top: 10, left: 12, bottom: 8, right: 8)
-
     let terminal: ActivityTerminalView
 
     override var isFlipped: Bool { true }
@@ -25,9 +24,9 @@ final class TerminalHostView: NSView {
     }
 
     private func layoutTerminal() {
-        let insets = Self.insets
-        let available = NSRect(x: insets.left, y: insets.top,
-                               width: max(0, bounds.width - insets.left - insets.right),
+        let insets = Dimension.Detail.terminalInsets
+        let available = NSRect(x: insets.leading, y: insets.top,
+                               width: max(0, bounds.width - insets.leading - insets.trailing),
                                height: max(0, bounds.height - insets.top - insets.bottom))
         let frame = backingAlignedRect(available, options: .alignAllEdgesNearest)
         terminal.setFrameOrigin(frame.origin)

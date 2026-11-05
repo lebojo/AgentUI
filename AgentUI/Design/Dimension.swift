@@ -1,4 +1,4 @@
-import CoreGraphics
+import SwiftUI
 
 enum Dimension {
     enum Window {
@@ -26,6 +26,7 @@ enum Dimension {
         static let footerHeight: CGFloat = 29
         static let paneTitleHeight: CGFloat = 24
         static let paneMinLength: CGFloat = 160
+        static let terminalInsets = EdgeInsets(top: 10, leading: 12, bottom: 8, trailing: 8)
     }
 
     enum Badge {

@@ -5,9 +5,7 @@ private struct Viewport: View {
     let session: MobileTerminalSession
 
     var body: some View {
-        if let view = session.view {
-            MobileTerminalViewport(session: session, terminal: view, canvasSize: session.canvasSize)
-        }
+        MobileTerminalViewport(session: session)
     }
 }
 
@@ -38,6 +36,7 @@ private struct Viewport: View {
     private func run() async throws -> String {
         var sent: [Data] = []
         var requested: [TerminalGridSize] = []
+        UserDefaults.standard.removeObject(forKey: TerminalAppearance.mobileFontSizeKey)
         let session = MobileTerminalSession(identity: UUID(), isChat: false) { sent.append($0) } requestGrid: { requested.append($0) }
         let view = session.view!
         let terminal = view.getTerminal()
@@ -92,7 +91,7 @@ private struct Viewport: View {
         let fitted = requested.count
         try require(fitted > 0 && fitted <= 2 && requested.last == fittingGrid(),
                     "Viewport changes are debounced into a request for the grid that fits the phone: \(requested)")
-        session.setFontSize(20)
+        UserDefaults.standard.set(20.0, forKey: TerminalAppearance.mobileFontSizeKey)
         try await Task.sleep(for: .milliseconds(300))
         try require(terminal.cols == 90 && terminal.rows == 35 && terminal.applicationCursor && terminal.currentAttribute == attribute,
                     "Changing the text size keeps the host grid and terminal modes")
@@ -113,6 +112,7 @@ private struct Viewport: View {
         controller.view.layoutIfNeeded()
         view.layoutIfNeeded()
         try require(terminal.cols == 43 && terminal.rows == 13 && terminal.applicationCursor, "Only a host resize changes the grid, preserving modes")
+        try require(view.bounds.size == session.canvasSize, "A host resize resizes the canvas: \(view.bounds.size) \(session.canvasSize)")
         view.insertText("w")
         try await Task.sleep(for: .milliseconds(300))
         try require(requested.count == fitted + 2, "A host grid change alone never makes the phone request its grid again: \(requested)")

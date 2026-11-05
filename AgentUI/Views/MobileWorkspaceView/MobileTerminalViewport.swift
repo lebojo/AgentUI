@@ -1,16 +1,16 @@
 import SwiftUI
-import SwiftTerm
 
 struct MobileTerminalViewport: UIViewRepresentable {
+    @AppStorage(TerminalAppearance.mobileFontSizeKey) private var fontSize = TerminalAppearance.defaultFontSize
+
     let session: MobileTerminalSession
-    let terminal: TerminalView
-    let canvasSize: CGSize
 
     func makeUIView(context: Context) -> MobileTerminalScrollView {
-        MobileTerminalScrollView(session: session, terminal: terminal)
+        MobileTerminalScrollView(session: session)
     }
 
     func updateUIView(_ uiView: MobileTerminalScrollView, context: Context) {
-        uiView.setCanvasSize(canvasSize)
+        session.setFontSize(fontSize)
+        uiView.setCanvasSize(session.canvasSize)
     }
 }

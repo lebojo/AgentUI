@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct MobileSessionDetail: View {
-    @AppStorage(TerminalAppearance.mobileFontSizeKey) private var fontSize = TerminalAppearance.defaultFontSize
-
     let mode: SessionDisplayMode
     let store: MobileWorkspaceStore
     let showSettings: () -> Void
@@ -22,17 +20,16 @@ struct MobileSessionDetail: View {
                                 try await store.input(data, terminal: context.terminal.id)
                             }
                             .id(context.terminal.id)
-                        } else if let terminal = session.view {
-                            MobileTerminalViewport(session: session, terminal: terminal, canvasSize: session.canvasSize)
-                            .onChange(of: fontSize, initial: true) { session.setFontSize(fontSize) }
-                            .id(session.identity)
-                            .disabled(!store.isConnected || session.hasExited)
+                        } else {
+                            MobileTerminalViewport(session: session)
+                                .id(session.identity)
+                                .disabled(!store.isConnected || session.hasExited)
                             if mode == .chat, store.isConnected, !session.hasExited, !store.installedAgents.isEmpty {
                                 AgentShortcutBar(agents: store.installedAgents) { agent in
                                     Task { await store.launch(agent, in: context) }
                                 }
                             }
-                        } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
+                        }
                         if session.hasExited {
                             SessionExitLabel(code: session.exitCode).font(Typography.caption).padding(Spacing.s)
                         }

@@ -21,14 +21,8 @@ struct FloatingTerminalPane: View {
                 NativeTerminalView(session: session, appearance: settings.terminal, isFocused: isFocused) { floating.focus(id) }
                     .id(ObjectIdentifier(session))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if session.hasExited {
-                    HStack {
-                        SessionExitLabel(code: session.exitCode)
-                        Spacer()
-                        Button("Close") { floating.close(id) }
-                        Button("Reopen Terminal") { floating.reopen(id) }
-                    }
-                    .font(Typography.body).padding(Spacing.l).background(Palette.bar)
+                SessionEndedBar(session: session) { floating.reopen(id) } accessory: {
+                    Button("Close") { floating.close(id) }
                 }
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)

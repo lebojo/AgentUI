@@ -31,24 +31,17 @@ struct TerminalPane: View {
                         .overlay(alignment: .topTrailing) { RemoteGridBadge(session: session) }
                 } else {
                     NativeTerminalView(session: session, appearance: settings.terminal, isFocused: isFocused) { select() }
-                    .id(ObjectIdentifier(session))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .overlay(alignment: .topTrailing) { RemoteGridBadge(session: session) }
+                        .id(ObjectIdentifier(session))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .overlay(alignment: .topTrailing) { RemoteGridBadge(session: session) }
                     if displayMode == .chat, !session.hasExited, !installedAgents.agents.isEmpty {
                         AgentShortcutBar(agents: installedAgents.agents) { agent in launch(agent, in: session) }
                             .disabled(session.isLaunchingAgent)
                     }
                 }
-                if session.hasExited {
-                    HStack {
-                        SessionExitLabel(code: session.exitCode)
-                        Spacer()
-                        Button("Reopen Terminal") {
-                            store.sessions.close(context.terminal.id)
-                            store.startSession(for: context.terminal.id)
-                        }
-                    }
-                    .font(Typography.body).padding(Spacing.l).background(Palette.bar)
+                SessionEndedBar(session: session) {
+                    store.sessions.close(context.terminal.id)
+                    store.startSession(for: context.terminal.id)
                 }
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)

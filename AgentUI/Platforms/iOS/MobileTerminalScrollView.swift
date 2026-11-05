@@ -4,24 +4,24 @@ import SwiftTerm
 final class MobileTerminalScrollView: UIScrollView, UIScrollViewDelegate {
     private let canvas = UIView()
     private let session: MobileTerminalSession
-    private let terminal: TerminalView
     private var canvasSize = CGSize.zero
     private var lastViewport = CGSize.zero
     private var followsFit = true
     private var fitting = false
 
-    init(session: MobileTerminalSession, terminal: TerminalView) {
+    init(session: MobileTerminalSession) {
         self.session = session
-        self.terminal = terminal
         super.init(frame: .zero)
         delegate = self
         maximumZoomScale = 3
         minimumZoomScale = 0.1
         contentInsetAdjustmentBehavior = .never
         keyboardDismissMode = .interactive
-        backgroundColor = terminal.layer.backgroundColor.map { UIColor(cgColor: $0) } ?? terminal.nativeBackgroundColor
+        if let terminal = session.view {
+            backgroundColor = terminal.layer.backgroundColor.map { UIColor(cgColor: $0) } ?? terminal.nativeBackgroundColor
+            canvas.addSubview(terminal)
+        }
         canvas.backgroundColor = backgroundColor
-        canvas.addSubview(terminal)
         addSubview(canvas)
         let reset = UITapGestureRecognizer(target: self, action: #selector(resetZoom))
         reset.numberOfTapsRequired = 2
@@ -39,7 +39,7 @@ final class MobileTerminalScrollView: UIScrollView, UIScrollViewDelegate {
         fitting = true
         setZoomScale(1, animated: false)
         canvas.frame = CGRect(origin: .zero, size: size)
-        terminal.frame = canvas.bounds
+        session.view?.frame = canvas.bounds
         contentSize = size
         fitting = false
         followsFit = true
