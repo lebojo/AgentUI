@@ -66,6 +66,7 @@ enum InspectorTests {
         try await workingTreeActions(root: root)
         try await publishing(root: root)
         try await porcelainStatus(root: root)
+        try await gitRootCache(root: root)
 
         let patch = "diff --git a/f b/f\nindex 1..2 100644\n--- a/f\n+++ b/f\n@@ -3,4 +3,4 @@ func\n keep\n--- old\n-gone\n++++ new\n+\tadded\n same\n\\ No newline at end of file\n"
         let lines = GitDiffLine.parse(patch)
@@ -488,6 +489,42 @@ enum InspectorTests {
                     && changes[" untracked file"]?.isUntracked == true && local.changes.count == 6,
                     "Real porcelain v2 status reports renames, copies, conflicts, deletions, untracked files and HEAD")
         print("PASS porcelain v2 status on a real repository")
+    }
+
+    private static func gitRootCache(root: URL) async throws {
+        let require = CoreTests.require
+        let repository = root.appendingPathComponent("root cache repository")
+        let nested = repository.appendingPathComponent("nested")
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        _ = try await GitService.run(["init", "-q", "-b", "main"], at: repository.path)
+        let resolutions = ResolutionCount()
+        let cache = GitRootCache { path in
+            await resolutions.increment()
+            return try await GitRootCache.topLevel(at: path)
+        }
+        let first = try await cache.root(at: nested.path)
+        let second = try await cache.root(at: nested.path)
+        let afterRepeat = await resolutions.value
+        try require(first == WorkspacePath.canonical(repository) && second == first && afterRepeat == 1,
+                    "The repository root of an inspected path is resolved once while its repository stays in place")
+        _ = try await GitService.run(["init", "-q", "-b", "main"], at: nested.path)
+        let inner = try await cache.root(at: nested.path)
+        let afterNested = await resolutions.value
+        try require(inner == WorkspacePath.canonical(nested) && afterNested == 2, "A repository created inside the inspected path replaces the cached root")
+        try FileManager.default.removeItem(at: nested.appendingPathComponent(".git"))
+        try FileManager.default.removeItem(at: repository.appendingPathComponent(".git"))
+        do {
+            _ = try await cache.root(at: nested.path)
+            throw WorkspaceError(message: "FAIL: a removed repository still has a root")
+        } catch is ReadCommandError {}
+        let afterRemoval = await resolutions.value
+        try require(afterRemoval == 3, "A removed repository is resolved by Git again")
+        print("PASS repository roots are cached per inspected path")
+    }
+
+    private actor ResolutionCount {
+        private(set) var value = 0
+        func increment() { value += 1 }
     }
 
     private static func branchComparison(root: URL) async throws {

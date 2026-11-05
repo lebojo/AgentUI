@@ -90,9 +90,8 @@ enum InspectorService {
         return GitDiff(path: change.path, sections: try await [staged, unstaged].compactMap { $0 })
     }
 
-    @concurrent static func root(at path: String) async throws -> String {
-        let git = URL(fileURLWithPath: "/usr/bin/git")
-        return trimmed(try await ReadCommand.run(git, ["rev-parse", "--show-toplevel"], at: path))
+    static func root(at path: String) async throws -> String {
+        try await GitRootCache.shared.root(at: path)
     }
 
     @concurrent static func branches(at root: String, limit: Int = 200) async throws -> GitBranchList {
