@@ -236,7 +236,7 @@ import Observation
         agentStatus = nil
         subagents = []
         journalMonitor.attach(nil)
-        self.exitCode = exitCode.flatMap { $0 & 0x7f == 0 ? ($0 >> 8) & 0xff : nil }
+        self.exitCode = exitCode.flatMap { CommandRunner.ExitStatus(waitStatus: $0).exitCode }
         owner?.agentStopped(in: terminalID)
     }
     func updateRepository(directory: String, branch: GitBranch?, divergentBranch: GitBranch?) {

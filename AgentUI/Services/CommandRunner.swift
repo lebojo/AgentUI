@@ -28,6 +28,10 @@ enum CommandRunner {
             self = signal == 0 ? .exited((waitStatus >> 8) & 0xff) : .signalled(signal)
         }
 
+        var exitCode: Int32? {
+            if case .exited(let code) = self { code } else { nil }
+        }
+
         var failureMessage: String {
             switch self {
             case .exited(let code): String(localized: "The command failed (exit code \(code)).")
