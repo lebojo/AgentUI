@@ -16,8 +16,12 @@ enum InspectorTests {
             .joined(separator: "\0").utf8), isTruncated: true)
         try require(cut.isTruncated && cut.headSHA == "1234" && cut.changes.map(\.path) == ["kept"],
                     "A truncated status keeps its complete records and drops the cut one")
-        try require(WorkingTreeOmission(count: 3, isTruncated: true).message(includingBulkActions: false).contains("3")
-                    && WorkingTreeOmission(count: 3, isTruncated: false).message(includingBulkActions: true) != WorkingTreeOmission(count: 3, isTruncated: false).message(includingBulkActions: false),
+        let omission = { (truncated: Bool, bulk: Bool) in
+            String(localized: WorkingTreeOmission(count: 3, isTruncated: truncated).message(includingBulkActions: bulk))
+        }
+        try require(omission(true, false) == "At least 3 more changes aren’t listed."
+                    && omission(false, true) == "3 more changes aren’t listed. Stage All and Unstage All also apply to them."
+                    && omission(true, true).hasPrefix("At least 3") && omission(false, false) == "3 more changes aren’t listed.",
                     "The working tree notice counts the hidden changes and mentions the bulk actions only when they exist")
         let file = repository.appendingPathComponent("tracked file.txt")
         try "before\n".write(to: file, atomically: true, encoding: .utf8)
@@ -310,8 +314,10 @@ enum InspectorTests {
                     && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "abc", isDetached: true), headSHA: "abc", changes: [],
                                         tracking: GitTracking(upstream: nil)).push == nil
                     && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "main"), headSHA: nil, changes: [], tracking: GitTracking(upstream: nil)).push == nil,
-                    "Offer push only for commits ahead or a branch without upstream that has a remote, never to recreate a deleted upstream")
-        try require(GitActionFailure(action: .stage(["docs/README.md"]), error: "boom").message == "Couldn’t stage README.md: boom"
+                    "Offer push for commits ahead or a branch without upstream that has a remote, and recreate a deleted upstream unless its work is merged")
+        try require(String(localized: GitActionFailure(action: .stage(["docs/README.md"]), error: "boom").message) == "Couldn’t stage README.md: boom"
+                    && String(localized: GitAction.stage(["a"]).accessibilityLabel(for: "a.txt")) == "Stage a.txt"
+                    && String(localized: GitAction.stageAll.accessibilityLabel(for: "a.txt")) == "Stage All"
                     && GitAction.stage(["a"]).retries(.stage(["a"])) && !GitAction.stage(["b"]).retries(.stage(["a"]))
                     && !GitAction.stageAll.retries(.stage(["a"])) && GitAction.commit(title: "b", message: "").retries(.commit(title: "a", message: "")),
                     "A Git failure names its action and only the same action retried clears it")

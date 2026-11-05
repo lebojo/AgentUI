@@ -17,7 +17,7 @@ import Foundation
     func conversationChanges() async -> AsyncStream<Void>
     func resume(_ conversation: AgentConversation, context: TerminalContext) async throws
     func perform(_ action: GitAction, at root: String) async throws
-    func runAgent(prompt: KeyPath<AgentPrompts, String>, name: String, context: TerminalContext)
+    func runAgent(prompt: KeyPath<AgentPrompts, String>, name: String, in worktree: InspectedWorktree)
 }
 
 extension InspectorSource {
@@ -26,5 +26,5 @@ extension InspectorSource {
     func revealLocalFile(_ url: URL) {}
     var canWriteRepository: Bool { false }
     func perform(_ action: GitAction, at root: String) async throws { throw CocoaError(.featureUnsupported) }
-    func runAgent(prompt: KeyPath<AgentPrompts, String>, name: String, context: TerminalContext) {}
+    func runAgent(prompt: KeyPath<AgentPrompts, String>, name: String, in worktree: InspectedWorktree) {}
 }

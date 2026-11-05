@@ -2,13 +2,13 @@ import SwiftUI
 
 struct GitCommitComposer: View {
     @Environment(InspectorStore.self) private var model
+    @Environment(\.inspectedWorktree) private var worktree
 
     let root: String
     let hasStagedChanges: Bool
     let hasChanges: Bool
     let push: GitAction?
     let upstreamIsGone: Bool
-    let context: TerminalContext
     let source: any InspectorSource
 
     private var commit: GitAction? {
@@ -41,12 +41,12 @@ struct GitCommitComposer: View {
                 if model.pendingAction != nil { ProgressView().controlSize(.small) }
             }
             Button {
-                source.runAgent(prompt: \.commit, name: String(localized: "Commits"), context: context)
+                if let worktree { source.runAgent(prompt: \.commit, name: String(localized: "Commits"), in: worktree) }
             } label: {
                 Label("Generate Commits with AI", systemImage: "sparkles")
             }
             .buttonStyle(.bordered)
-            .disabled(!hasChanges || model.pendingAction != nil)
+            .disabled(worktree == nil || !hasChanges || model.pendingAction != nil)
             .help("Open a terminal where the default agent commits the changes")
             if let failure = model.actionFailure {
                 GitActionFailureNotice(message: failure.message)

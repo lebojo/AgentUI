@@ -3,7 +3,7 @@ import SwiftUI
 struct GitActionFailureNotice: View {
     @Environment(InspectorStore.self) private var model
 
-    let message: String
+    let message: LocalizedStringResource
 
     var body: some View {
         HStack(alignment: .top, spacing: Spacing.s) {

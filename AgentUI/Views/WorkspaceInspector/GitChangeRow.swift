@@ -19,7 +19,7 @@ struct GitChangeRow: View {
                     Label(change.name, systemImage: "doc").lineLimit(1).truncationMode(.middle)
                     Spacer(minLength: Spacing.xs)
                     Text(kind.letter).font(Typography.captionMono).foregroundStyle(kind.color)
-                        .frame(width: Dimension.Inspector.statusColumnWidth).accessibilityLabel(kind.title)
+                        .frame(width: Dimension.Inspector.statusColumnWidth).accessibilityLabel(Text(kind.title))
                 }
                 .contentShape(Rectangle())
             }
@@ -27,7 +27,7 @@ struct GitChangeRow: View {
             if source.canWriteRepository, let action = scope.action(for: change) {
                 GitActionButton(action: action, root: root, source: source)
                     .labelStyle(.iconOnly).buttonStyle(.borderless)
-                    .accessibilityLabel(action.title + " " + change.name)
+                    .accessibilityLabel(Text(action.accessibilityLabel(for: change.name)))
             }
         }
         .font(Typography.body)

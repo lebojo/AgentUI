@@ -24,26 +24,37 @@ enum GitAction: Equatable, Sendable {
         }
     }
 
-    var title: String {
+    var title: LocalizedStringResource {
         switch self {
-        case .stage: String(localized: "Stage")
-        case .unstage: String(localized: "Unstage")
-        case .stageAll: String(localized: "Stage All")
-        case .unstageAll: String(localized: "Unstage All")
-        case .commit: String(localized: "Commit")
-        case .push, .pushUpstream, .publish: String(localized: "Push")
+        case .stage: "Stage"
+        case .unstage: "Unstage"
+        case .stageAll: "Stage All"
+        case .unstageAll: "Unstage All"
+        case .commit: "Commit"
+        case .push, .pushUpstream, .publish: "Push"
         }
     }
 
-    var failureTitle: String {
+    var failureTitle: LocalizedStringResource {
         switch self {
-        case .stage(let paths): String(localized: "Couldn’t stage \(Self.fileName(paths))")
-        case .unstage(let paths): String(localized: "Couldn’t unstage \(Self.fileName(paths))")
-        case .stageAll: String(localized: "Couldn’t stage all changes")
-        case .unstageAll: String(localized: "Couldn’t unstage all changes")
-        case .commit: String(localized: "Couldn’t commit")
-        case .push, .pushUpstream: String(localized: "Couldn’t push")
-        case .publish(_, let branch): String(localized: "Couldn’t publish \(branch)")
+        case .stage(let paths):
+            LocalizedStringResource("Couldn’t stage \(Self.fileName(paths))", comment: "Title of a failed Git action; the variable is a file name.")
+        case .unstage(let paths):
+            LocalizedStringResource("Couldn’t unstage \(Self.fileName(paths))", comment: "Title of a failed Git action; the variable is a file name.")
+        case .stageAll: "Couldn’t stage all changes"
+        case .unstageAll: "Couldn’t unstage all changes"
+        case .commit: "Couldn’t commit"
+        case .push, .pushUpstream: "Couldn’t push"
+        case .publish(_, let branch):
+            LocalizedStringResource("Couldn’t publish \(branch)", comment: "Title of a failed Git action; the variable is a branch name.")
+        }
+    }
+
+    func accessibilityLabel(for name: String) -> LocalizedStringResource {
+        switch self {
+        case .stage: LocalizedStringResource("Stage \(name)", comment: "Accessibility label of the button that stages one file; the variable is the file name.")
+        case .unstage: LocalizedStringResource("Unstage \(name)", comment: "Accessibility label of the button that unstages one file; the variable is the file name.")
+        default: title
         }
     }
 
@@ -93,5 +104,7 @@ struct GitActionFailure: Equatable, Sendable {
     let action: GitAction
     let error: String
 
-    var message: String { String(localized: "\(action.failureTitle): \(error)") }
+    var message: LocalizedStringResource {
+        LocalizedStringResource("\(action.failureTitle): \(error)", comment: "Failed Git action; the first variable is its title, the second the Git error.")
+    }
 }

@@ -4,9 +4,9 @@ import SwiftUI
 struct ChangeRequestMenu: View {
     @Environment(\.openURL) private var openURL
     @Environment(InspectorStore.self) private var model
+    @Environment(\.inspectedWorktree) private var worktree
 
     let base: ComparisonBranch
-    let context: TerminalContext
     let source: any InspectorSource
 
     private var branch: String? {
@@ -49,8 +49,10 @@ struct ChangeRequestMenu: View {
     var body: some View {
         if let branch {
             Menu(title, systemImage: "arrow.triangle.pull") {
-                Button(askAgentTitle, systemImage: "sparkles") {
-                    source.runAgent(prompt: \.changeRequest, name: terminalName, context: context)
+                if let worktree {
+                    Button(askAgentTitle, systemImage: "sparkles") {
+                        source.runAgent(prompt: \.changeRequest, name: terminalName, in: worktree)
+                    }
                 }
                 if let url = model.local?.webAddress?.newChangeRequestURL(branch: tracking?.remoteBranch(for: branch) ?? branch, base: base.hostedName,
                                                                         from: model.local?.pushWebAddress) {

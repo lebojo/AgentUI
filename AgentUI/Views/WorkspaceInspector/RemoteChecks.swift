@@ -21,7 +21,7 @@ struct RemoteChecks: View {
             Text("\(remote.hosting.runsTitle) · Local HEAD").font(Typography.sectionTitle)
             if let headSHA { Text(String(headSHA.prefix(8))).font(Typography.captionMono).foregroundStyle(Palette.textSecondary) }
             if let error = remote.checksError {
-                InspectorNotice(title: "Couldn’t load \(remote.hosting.runsTitle)", message: error)
+                InspectorNotice(title: "Couldn’t load \(remote.hosting.runsTitle)", error: error)
             } else if remote.runs.isEmpty {
                 Text(headSHA == nil ? String(localized: "No commits in this repository.") : remote.hosting.noRunsMessage)
                     .font(Typography.body).foregroundStyle(Palette.textSecondary)

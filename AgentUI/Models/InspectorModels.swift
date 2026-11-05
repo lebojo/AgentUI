@@ -98,15 +98,15 @@ enum GitChangeKind: Sendable {
         }
     }
 
-    var title: String {
+    var title: LocalizedStringResource {
         switch self {
-        case .modified, .typeChanged: String(localized: "Modified")
-        case .added: String(localized: "Added")
-        case .deleted: String(localized: "Deleted")
-        case .renamed: String(localized: "Renamed")
-        case .copied: String(localized: "Copied")
-        case .untracked: String(localized: "Untracked")
-        case .conflicted: String(localized: "Conflict")
+        case .modified, .typeChanged: "Modified"
+        case .added: "Added"
+        case .deleted: "Deleted"
+        case .renamed: "Renamed"
+        case .copied: "Copied"
+        case .untracked: "Untracked"
+        case .conflicted: "Conflict"
         }
     }
 }
@@ -116,11 +116,12 @@ enum GitChangeScope: Hashable, Sendable {
     case unstaged
     case branch(ComparisonBranch)
 
-    var emptyTitle: String {
+    var emptyTitle: LocalizedStringResource {
         switch self {
-        case .staged: String(localized: "No Staged Changes")
-        case .unstaged: String(localized: "No Unstaged Changes")
-        case .branch(let base): String(localized: "No differences with \(base.name)")
+        case .staged: "No Staged Changes"
+        case .unstaged: "No Unstaged Changes"
+        case .branch(let base):
+            LocalizedStringResource("No differences with \(base.name)", comment: "Empty branch comparison; the variable is the compared branch.")
         }
     }
 
@@ -132,10 +133,10 @@ enum GitChangeScope: Hashable, Sendable {
         }
     }
 
-    func title(count: Int) -> String {
+    func title(count: Int) -> LocalizedStringResource {
         switch self {
-        case .staged: String(localized: "Staged Changes · \(count)")
-        case .unstaged, .branch: String(localized: "Changes · \(count)")
+        case .staged: LocalizedStringResource("Staged Changes · \(count)", comment: "Section title; the variable is the number of staged files.")
+        case .unstaged, .branch: LocalizedStringResource("Changes · \(count)", comment: "Section title; the variable is the number of changed files.")
         }
     }
 
@@ -322,10 +323,21 @@ struct WorkingTreeOmission: Equatable, Sendable {
     let count: Int
     let isTruncated: Bool
 
-    func message(includingBulkActions: Bool) -> String {
-        let listed = isTruncated ? String(localized: "At least \(count) more changes aren’t listed.") : String(localized: "\(count) more changes aren’t listed.")
-        guard includingBulkActions else { return listed }
-        return listed + " " + String(localized: "Stage All and Unstage All also apply to them.")
+    func message(includingBulkActions: Bool) -> LocalizedStringResource {
+        switch (isTruncated, includingBulkActions) {
+        case (true, true):
+            LocalizedStringResource("At least \(count) more changes aren’t listed. Stage All and Unstage All also apply to them.",
+                                    comment: "Notice under a capped list of changed files; the variable is the minimum number of files not listed.")
+        case (true, false):
+            LocalizedStringResource("At least \(count) more changes aren’t listed.",
+                                    comment: "Notice under a capped list of changed files; the variable is the minimum number of files not listed.")
+        case (false, true):
+            LocalizedStringResource("\(count) more changes aren’t listed. Stage All and Unstage All also apply to them.",
+                                    comment: "Notice under a capped list of changed files; the variable is the number of files not listed.")
+        case (false, false):
+            LocalizedStringResource("\(count) more changes aren’t listed.",
+                                    comment: "Notice under a capped list of changed files; the variable is the number of files not listed.")
+        }
     }
 }
 

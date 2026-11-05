@@ -94,6 +94,46 @@
         }
       }
     },
+    "%lld more changes aren’t listed. Stage All and Unstage All also apply to them." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more change isn’t listed. Stage All and Unstage All also apply to it."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more changes aren’t listed. Stage All and Unstage All also apply to them."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld autre modification n’est pas listée. Tout indexer et Tout désindexer s’y appliquent aussi."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld autres modifications ne sont pas listées. Tout indexer et Tout désindexer s’y appliquent aussi."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "--force-branch only applies with --delete-branch. Add --delete-branch to delete the branch." : {
       "localizations" : {
         "fr" : {
@@ -187,6 +227,46 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Au moins %lld autres modifications ne sont pas listées."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "At least %lld more changes aren’t listed. Stage All and Unstage All also apply to them." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "At least %lld more change isn’t listed. Stage All and Unstage All also apply to it."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "At least %lld more changes aren’t listed. Stage All and Unstage All also apply to them."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Au moins %lld autre modification n’est pas listée. Tout indexer et Tout désindexer s’y appliquent aussi."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Au moins %lld autres modifications ne sont pas listées. Tout indexer et Tout désindexer s’y appliquent aussi."
                 }
               }
             }
@@ -614,22 +694,22 @@
         }
       }
     },
+    "Stage %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indexer %@"
+          }
+        }
+      }
+    },
     "Stage All" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tout indexer"
-          }
-        }
-      }
-    },
-    "Stage All and Unstage All also apply to them." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tout indexer et Tout désindexer s’y appliquent aussi."
           }
         }
       }
@@ -760,6 +840,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Désindexer"
+          }
+        }
+      }
+    },
+    "Unstage %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désindexer %@"
           }
         }
       }

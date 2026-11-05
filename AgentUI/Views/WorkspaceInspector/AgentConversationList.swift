@@ -19,7 +19,7 @@ struct AgentConversationList: View {
                     AgentConversationRow(conversation: conversation) { resume(conversation) }
                 }.listStyle(.plain)
             } else if let error {
-                InspectorNotice(title: "Conversations Unavailable", message: error)
+                InspectorNotice(title: "Conversations Unavailable", error: error)
             } else if conversations != nil {
                 ContentUnavailableView("No Conversations", systemImage: "bubble.left.and.bubble.right",
                                        description: Text("Claude, Codex, Copilot and OpenCode conversations started in this folder will appear here."))

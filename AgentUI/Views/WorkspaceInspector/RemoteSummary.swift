@@ -13,13 +13,13 @@ struct RemoteSummary: View {
                     Text("\(pr.isDraft ? String(localized: "Draft") : pr.state) · \(pr.headRefName) → \(pr.baseRefName)")
                         .font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 } else if let error = remote.changeRequestError {
-                    InspectorNotice(title: "\(remote.hosting.changeRequestTitle) unavailable", message: error)
+                    InspectorNotice(title: "\(remote.hosting.changeRequestTitle) unavailable", error: error)
                 } else {
                     Text("No \(remote.hosting.changeRequestTitle.lowercased()) for this branch.")
                         .font(Typography.body).foregroundStyle(Palette.textSecondary)
                 }
             } else if let error = model.remoteError {
-                InspectorNotice(title: "Remote Repository Unavailable", message: error)
+                InspectorNotice(title: "Remote Repository Unavailable", error: error)
             } else { Text("Loading via gh or glab…").font(Typography.body).foregroundStyle(Palette.textSecondary) }
         }
     }

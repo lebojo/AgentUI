@@ -11,8 +11,8 @@ struct GitActionButton: View {
         Button {
             Task { await model.perform(action, at: root, with: source) }
         } label: {
-            Label(action.title, systemImage: action.symbol)
+            Label { Text(action.title) } icon: { Image(systemName: action.symbol) }
         }
-        .help(action.title)
+        .help(Text(action.title))
     }
 }

@@ -12,7 +12,6 @@ struct BranchComparisonSection: View {
     let root: String
     let headSHA: String
     let refresh: Int
-    let context: TerminalContext
     let source: any InspectorSource
 
     private var currentComparison: BranchComparison? {
@@ -23,7 +22,7 @@ struct BranchComparisonSection: View {
         VStack(alignment: .leading, spacing: Spacing.m) {
             Text("Branch Comparison").font(Typography.sectionTitle)
             if let branchesError {
-                InspectorNotice(title: "Branches Unavailable", message: branchesError)
+                InspectorNotice(title: "Branches Unavailable", error: branchesError)
             }
             if let branches, branches.branches.isEmpty {
                 Text("No other branch to compare with.").font(Typography.body).foregroundStyle(Palette.textSecondary)
@@ -40,12 +39,12 @@ struct BranchComparisonSection: View {
                 }
             }
             if let comparisonError {
-                InspectorNotice(title: "Comparison Unavailable", message: comparisonError)
+                InspectorNotice(title: "Comparison Unavailable", error: comparisonError)
             } else if let comparison = currentComparison {
                 Text("\(comparison.commits) commits ahead of \(comparison.base.name)")
                     .font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 #if os(macOS)
-                if comparison.commits > 0 { ChangeRequestMenu(base: comparison.base, context: context, source: source) }
+                if comparison.commits > 0 { ChangeRequestMenu(base: comparison.base, source: source) }
                 #endif
                 GitChangeList(root: root, scope: .branch(comparison.base), outline: comparisonOutline, omitted: comparison.omittedChanges, source: source)
             } else if base != nil || (branches == nil && branchesError == nil) {
