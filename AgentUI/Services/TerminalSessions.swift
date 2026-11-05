@@ -469,8 +469,10 @@ import Observation
         }
         entries.removeAll()
         remoteGrids.removeAll()
-        if !runningAgents.isEmpty { runningAgents = [:] }
-        if !agentStatuses.isEmpty { agentStatuses = [:] }
+        guard !runningAgents.isEmpty || !agentStatuses.isEmpty else { return }
+        runningAgents = [:]
+        agentStatuses = [:]
+        delegate?.terminalSessionsDidChangeAgents()
     }
 
     func takeBackGrid(of terminal: UUID) {
