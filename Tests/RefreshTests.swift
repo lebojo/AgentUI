@@ -114,6 +114,19 @@ import Foundation
         try CoreTests.require(!hangingResult && queue.pendingAction == nil && queue.actionFailure == nil && cancelledAt.duration(to: .now) < .seconds(5),
                               "Cancelling the running Git action stops its process without reporting a failure")
         try CoreTests.require(!queuedPushResult && !pushed && queue.actionFailure == nil, "Cancelling also drops the queued Git actions")
+        let handingOff = GitActionQueue()
+        var ranAfterHandOff = false
+        let handedOff = Task {
+            try? await Task.sleep(for: .milliseconds(50))
+            return await handingOff.perform(.push) { ranAfterHandOff = true }
+        }
+        let finishedBeforeCancel = await handingOff.perform(.stageAll) { try await Task.sleep(for: .milliseconds(300)) }
+        handingOff.cancel()
+        let handedOffResult = await handedOff.value
+        try CoreTests.require(finishedBeforeCancel && !handedOffResult && !ranAfterHandOff && handingOff.pendingAction == nil,
+                              "Cancelling right after a Git action finishes drops the action it was handing over to")
+        let afterHandOff = await handingOff.perform(.push) {}
+        try CoreTests.require(afterHandOff, "A Git action clicked after a cancel still runs")
         print("PASS cancelled Git action")
 
         let sharedQueues = GitActionQueues()

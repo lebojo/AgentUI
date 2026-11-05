@@ -10,19 +10,19 @@ import Observation
     private(set) var pendingAction: GitAction?
     @ObservationIgnored private var waiting: [CheckedContinuation<Bool, Never>] = []
     @ObservationIgnored private var running: Task<Void, any Error>?
+    @ObservationIgnored private var generation = 0
 
     var isIdle: Bool { pendingAction == nil && commitTitle.isEmpty && commitMessage.isEmpty && failure == nil }
 
     func perform(_ action: GitAction, run: @escaping Command) async -> Bool {
+        let generation = generation
         if pendingAction != nil {
             let admitted = await withCheckedContinuation { waiting.append($0) }
             guard admitted else { return false }
         }
+        defer { handOff() }
+        guard !Task.isCancelled, generation == self.generation else { return false }
         pendingAction = action
-        defer {
-            if waiting.isEmpty { pendingAction = nil } else { waiting.removeFirst().resume(returning: true) }
-        }
-        guard !Task.isCancelled else { return false }
         let task = Task { try await run() }
         running = task
         defer { running = nil }
@@ -39,9 +39,14 @@ import Observation
     }
 
     func cancel() {
+        generation += 1
         let dropped = waiting
         waiting = []
         dropped.forEach { $0.resume(returning: false) }
         running?.cancel()
+    }
+
+    private func handOff() {
+        if waiting.isEmpty { pendingAction = nil } else { waiting.removeFirst().resume(returning: true) }
     }
 }
