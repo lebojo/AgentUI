@@ -53,7 +53,7 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: Dimension.Window.minWidth, minHeight: Dimension.Window.minHeight)
-        .modifier(WorkspaceMonitors(store: store))
+        .modifier(WorkspaceMonitors(store: store, gitActionQueues: gitActionQueues))
         .sheet(item: Bindable(presentation).sheet) { item in
             WorkspaceEditor(store: store, sheet: item)
         }

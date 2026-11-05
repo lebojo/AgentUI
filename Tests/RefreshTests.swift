@@ -138,6 +138,14 @@ import Foundation
                               "Cancelling from another inspector stops the shared action and its queue")
         print("PASS Git actions shared by repository")
 
+        let pruned = GitActionQueues()
+        let idle = pruned.queue(at: "/repo/gone"), drafted = pruned.queue(at: "/repo/drafted"), parent = pruned.queue(at: "/repo/parent")
+        drafted.commitTitle = "Keep me"
+        pruned.prune(keepingRootsOf: ["/repo/parent/sub"])
+        try CoreTests.require(pruned.queue(at: "/repo/gone") !== idle && pruned.queue(at: "/repo/drafted") === drafted
+                                && pruned.queue(at: "/repo/parent") === parent,
+                              "Idle Git action queues of removed worktrees are dropped; drafts and repositories still in use are kept")
+
         let lock = repository.appendingPathComponent("index.lock")
         let cleanup = "touch index.lock; trap 'rm -f index.lock; exit 143' TERM; while true; do sleep 0.05; done"
         let locking = Task {

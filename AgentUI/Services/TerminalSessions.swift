@@ -316,6 +316,8 @@ import Observation
         let result = await Self.inspect(worktreePaths: worktreePaths, locations: locations)
         guard !Task.isCancelled else { return }
         branchesByPath = result.branches
+        let currentPaths = Set(worktreePaths)
+        branchStates = branchStates.filter { currentPaths.contains($0.key) }
         for (path, state) in branchStates where state.branch != result.branches[path] { state.branch = result.branches[path] }
         for value in result.sessions {
             guard let session = entries[value.id], session.identity == value.identity else { continue }

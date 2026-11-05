@@ -11,6 +11,8 @@ import Observation
     @ObservationIgnored private var waiting: [CheckedContinuation<Bool, Never>] = []
     @ObservationIgnored private var running: Task<Void, any Error>?
 
+    var isIdle: Bool { pendingAction == nil && commitTitle.isEmpty && commitMessage.isEmpty && failure == nil }
+
     func perform(_ action: GitAction, run: @escaping Command) async -> Bool {
         if pendingAction != nil {
             let admitted = await withCheckedContinuation { waiting.append($0) }

@@ -23,6 +23,7 @@ struct WorkspaceMonitors: ViewModifier {
     @Environment(UsageStore.self) private var usage
 
     let store: WorkspaceStore
+    let gitActionQueues: GitActionQueues
 
     private var repositoryWatch: RepositoryWatch {
         RepositoryWatch(worktreePaths: store.projects.flatMap(\.worktrees).map(\.path), isVisible: visibility.isVisible)
@@ -62,6 +63,7 @@ struct WorkspaceMonitors: ViewModifier {
     }
 
     private func watchRepositories(_ watch: RepositoryWatch) async {
+        gitActionQueues.prune(keepingRootsOf: watch.worktreePaths)
         guard watch.isVisible else { return }
         let repositories = await GitRepository.repositories(containing: watch.worktreePaths)
         let metadata = Array(Set(repositories.map(\.commonDirectory.path)))

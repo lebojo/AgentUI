@@ -107,7 +107,7 @@ import Observation
 
     @discardableResult func perform(_ action: GitAction, at root: String, run: @escaping GitCommand) async -> Bool {
         let queue = actionQueues.queue(at: root)
-        actions = queue
+        if actions !== queue { actions = queue }
         let succeeded = await queue.perform(action) { try await run(action, root) }
         reload(remote: action.updatesRemote)
         return succeeded
@@ -128,7 +128,8 @@ import Observation
                 let trees = snapshot.changes == local?.changes ? changeTrees : await GitChangeTrees.build(snapshot)
                 guard !Task.isCancelled, generation == token else { break }
                 let oldKey = currentKey, oldBranchKey = branchKey
-                actions = actionQueues.queue(at: snapshot.root)
+                let queue = actionQueues.queue(at: snapshot.root)
+                if actions !== queue { actions = queue }
                 local = snapshot
                 changeTrees = trees
                 localError = nil

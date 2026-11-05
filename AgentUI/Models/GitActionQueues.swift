@@ -9,4 +9,10 @@ import Foundation
         queues[root] = queue
         return queue
     }
+
+    func prune(keepingRootsOf worktreePaths: [String]) {
+        queues = queues.filter { root, queue in
+            !queue.isIdle || worktreePaths.contains { $0 == root || $0.hasPrefix(root + "/") }
+        }
+    }
 }
