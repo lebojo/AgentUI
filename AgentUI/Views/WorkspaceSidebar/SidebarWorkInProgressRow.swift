@@ -20,7 +20,7 @@ struct SidebarWorkInProgressRow: View {
                 Spacer(minLength: Spacing.xs)
             }
             .padding(.vertical, Spacing.xxs).padding(.horizontal, Spacing.xs)
-            .background(Palette.accent.opacity(isSelected ? 0.18 : 0), in: RoundedRectangle(cornerRadius: Radius.s))
+            .background(isSelected ? Palette.selectionFill : .clear, in: RoundedRectangle(cornerRadius: Radius.s))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

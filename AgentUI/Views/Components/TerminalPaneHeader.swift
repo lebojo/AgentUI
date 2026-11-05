@@ -20,7 +20,7 @@ struct TerminalPaneHeader: View {
                 .accessibilityLabel("Close terminal \(title)")
         }
         .font(Typography.s).padding(.horizontal, Spacing.l).frame(height: Dimension.Detail.paneTitleHeight)
-        .background(isFocused ? Palette.accent.opacity(0.12) : Color.clear)
+        .background(isFocused ? Palette.focusedPaneFill : .clear)
         .contentShape(Rectangle())
     }
 }

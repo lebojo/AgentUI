@@ -43,13 +43,10 @@ struct WorkspaceSidebar: View {
             }
             .font(Typography.m)
             .padding(Spacing.m)
-            .background(Palette.fill.opacity(0.6), in: RoundedRectangle(cornerRadius: Radius.m))
+            .background(Palette.searchFieldFill, in: RoundedRectangle(cornerRadius: Radius.m))
             .padding(.horizontal, Spacing.l).padding(.top, Spacing.m).padding(.bottom, Spacing.l)
 
-            SidebarProjectList(
-                                                result: filtered,
-                query: search
-            )
+            SidebarProjectList(result: filtered, query: search)
             SidebarFooter()
         }
         .toolbar {

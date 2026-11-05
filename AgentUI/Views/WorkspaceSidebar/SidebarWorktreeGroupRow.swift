@@ -35,7 +35,7 @@ struct SidebarWorktreeGroupRow: View {
                     .font(Typography.caption).monospacedDigit().foregroundStyle(Palette.textSecondary)
             }
             .contentShape(Rectangle())
-            .background(Palette.accent.opacity(isDropTargeted ? 0.2 : 0), in: RoundedRectangle(cornerRadius: Radius.s))
+            .background(isDropTargeted ? Palette.dropTargetFill : .clear, in: RoundedRectangle(cornerRadius: Radius.s))
             .help(group.name)
             .dropDestination(for: String.self) { values, _ in
                 guard let value = values.first, let id = UUID(uuidString: value) else { return false }
