@@ -429,7 +429,7 @@ private final class ChangeFlag: @unchecked Sendable {
         try fm.createDirectory(at: originHead.deletingLastPathComponent(), withIntermediateDirectories: true)
         try "ref: refs/remotes/gh/team/review/one\n".write(to: originHead, atomically: true, encoding: .utf8)
         groups.sessions.readBranches(of: groups.projects)
-        let remoteDefault = await GitBranchProtection.report(at: review.path, checkedOutElsewhere: []).branch
+        let remoteDefault = await GitBranchProtection.report(at: review.path, in: gitRoot.path, checkedOutElsewhere: []).branch
         let remoteDefaultOffer = await groups.deletableBranch(for: reviewRemoval)
         try require(remoteDefault == .protected("review/one", .defaultBranch) && remoteDefaultOffer == nil,
                     "The removal dialog never offers to delete the branch a remote HEAD points to")
@@ -438,13 +438,13 @@ private final class ChangeFlag: @unchecked Sendable {
         let hidden = root.appendingPathComponent("hidden-review")
         _ = try await GitService.run(["worktree", "add", "-q", "-f", hidden.path, "review/one"], at: gitRoot.path)
         groups.sessions.readBranches(of: groups.projects)
-        let hiddenCheckout = await GitBranchProtection.report(at: review.path, checkedOutElsewhere: []).branch
+        let hiddenCheckout = await GitBranchProtection.report(at: review.path, in: gitRoot.path, checkedOutElsewhere: []).branch
         let hiddenCheckoutOffer = await groups.deletableBranch(for: reviewRemoval)
         try require(hiddenCheckout == .protected("review/one", .checkedOutElsewhere) && hiddenCheckoutOffer == nil,
                     "The removal dialog never offers to delete a branch checked out in a worktree AgentUI doesn't know")
         _ = try await GitService.run(["worktree", "remove", "--force", hidden.path], at: gitRoot.path)
         groups.sessions.readBranches(of: groups.projects)
-        let ownBranch = await GitBranchProtection.report(at: review.path, checkedOutElsewhere: []).branch
+        let ownBranch = await GitBranchProtection.report(at: review.path, in: gitRoot.path, checkedOutElsewhere: []).branch
         try require(ownBranch == .deletable("review/one"), "A worktree's own branch isn't protected as checked out elsewhere")
         let reviewBranch = await groups.deletableBranch(for: reviewRemoval)
         try require(reviewBranch == "review/one", "The removal dialog offers to delete a worktree's branch")
@@ -455,14 +455,22 @@ private final class ChangeFlag: @unchecked Sendable {
         try require(reviewCleanup == .deleted("review/one") && reviewLeft.isEmpty && !groupedProject().worktrees.contains { $0.id == review.id },
                     "Deleting a worktree with its merged branch removes both")
         _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Work"], at: other.path)
-        let otherCleanup = try await groups.deleteWorktree(projectID: grouped.id, worktreeID: other.id, branch: .merged)
+        do {
+            try await groups.deleteWorktree(projectID: grouped.id, worktreeID: other.id, branch: .merged)
+            throw WorkspaceError(message: "FAIL: unmerged worktree deleted")
+        } catch let error as UnmergedBranchError {
+            try require(error == UnmergedBranchError(branch: "feature/two", hasMainBranch: true) && fm.fileExists(atPath: other.path)
+                            && groupedProject().worktrees.contains { $0.id == other.id },
+                        "An unmerged branch is refused before removing anything, so the worktree stays")
+        }
+        let otherCleanup = try await groups.deleteWorktree(projectID: grouped.id, worktreeID: other.id)
         let otherLeft = try await GitService.run(["branch", "--list", "feature/two"], at: gitRoot.path)
-        try require(otherCleanup.branch == "feature/two" && !otherCleanup.isDeleted && otherCleanup.failure?.contains("git branch -D feature/two") == true
+        try require(otherCleanup == .notRequested && otherCleanup.notice == nil && otherCleanup.reportedDeletion == nil
                         && !otherLeft.isEmpty && !groupedProject().worktrees.contains { $0.id == other.id },
-                    "An unmerged branch is kept with an explanation, but the worktree is deleted")
+                    "Deleting the worktree only, after the refusal, keeps its unmerged branch")
         let keptCleanup = try await groups.deleteWorktree(projectID: grouped.id, worktreeID: groupedProject().worktrees.first { $0.path == adoptable.path }!.id)
         let adoptLeft = try await GitService.run(["branch", "--list", "adopt/me"], at: gitRoot.path)
-        try require(keptCleanup == .untouched && !adoptLeft.isEmpty, "Deleting a worktree alone keeps its branch")
+        try require(keptCleanup == .notRequested && !adoptLeft.isEmpty, "Deleting a worktree alone keeps its branch")
         guard let lonelyProject = groups.projects.first(where: { $0.path == WorkspacePath.canonical(lonelyRoot) }),
               let onMain = lonelyProject.worktrees.first(where: { $0.path == extra.path }) else {
             throw WorkspaceError(message: "FAIL: the extra worktree belongs to the lonely project")

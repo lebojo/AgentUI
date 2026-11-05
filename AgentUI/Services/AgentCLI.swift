@@ -19,7 +19,7 @@ enum AgentCLI {
     Each creation returns the identifiers and path as JSON.
     An existing branch is opened as is; otherwise it is created from the project’s HEAD.
     worktree delete closes its terminals and erases its folder; by default, the branch and its commits stay in the repository.
-    With --delete-branch, the branch is deleted too if it’s merged into the repository’s main branch; add --force-branch to delete it even if it isn’t, losing its unmerged commits.
+    With --delete-branch, the branch is deleted too if it’s merged into the repository’s main branch; otherwise nothing is removed. Add --force-branch to delete it even if it isn’t, losing its unmerged commits.
     The repository’s main branch and a branch checked out elsewhere are never deleted.
     Without --force, a worktree with uncommitted changes or untracked files is kept; --force never deletes an unmerged branch.
     A project’s main folder and the current terminal’s worktree can’t be deleted.

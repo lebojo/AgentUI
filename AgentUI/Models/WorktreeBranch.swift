@@ -44,12 +44,24 @@ enum BranchRemoval: Sendable {
     }
 }
 
+struct UnmergedBranchError: LocalizedError, Equatable, Sendable {
+    let branch: String
+    let hasMainBranch: Bool
+
+    var reason: String {
+        hasMainBranch ? String(localized: "The branch “\(branch)” isn’t merged into the main branch.")
+            : String(localized: "The repository’s main branch couldn’t be found, so the branch “\(branch)” can’t be checked.")
+    }
+
+    var errorDescription: String? { String(localized: "\(reason) Nothing was removed.") }
+}
+
 enum BranchCleanup: Equatable, Sendable {
-    case untouched, unchecked, deleted(String), kept(String, reason: String)
+    case notRequested, untouched, unchecked, deleted(String), kept(String, reason: String)
 
     var branch: String? {
         switch self {
-        case .untouched, .unchecked: nil
+        case .notRequested, .untouched, .unchecked: nil
         case .deleted(let name), .kept(let name, _): name
         }
     }
@@ -58,6 +70,8 @@ enum BranchCleanup: Equatable, Sendable {
         if case .deleted = self { true } else { false }
     }
 
+    var reportedDeletion: Bool? { self == .notRequested ? nil : isDeleted }
+
     var notice: String? {
         guard case .untouched = self else { return nil }
         return String(localized: "The worktree was deleted. It wasn’t on a branch, so no branch was deleted.")
@@ -65,7 +79,7 @@ enum BranchCleanup: Equatable, Sendable {
 
     var failure: String? {
         switch self {
-        case .untouched, .deleted: nil
+        case .notRequested, .untouched, .deleted: nil
         case .unchecked: String(localized: "The worktree was deleted, but its branch couldn’t be checked, so it was kept.")
         case .kept(_, let reason): String(localized: "The worktree was deleted, but not its branch. \(reason)")
         }

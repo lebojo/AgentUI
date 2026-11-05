@@ -79,3 +79,8 @@ enum Removal: Hashable, Sendable {
                                        comment: "Message of the worktree deletion dialog; the variable is the branch name.")
     }
 }
+
+struct UnmergedRemoval: Equatable, Sendable {
+    let removal: Removal
+    let reason: String
+}

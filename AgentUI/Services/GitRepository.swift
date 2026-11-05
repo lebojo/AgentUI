@@ -26,19 +26,40 @@ struct GitRepository: Sendable {
         var objectsAreDirectory: ObjCBool = false
         guard fm.fileExists(atPath: common.appendingPathComponent("objects").path, isDirectory: &objectsAreDirectory),
               objectsAreDirectory.boolValue,
-              let head = smallTextFile(gitDirectory.appendingPathComponent("HEAD")) else { return nil }
-        let branch: GitBranch
-        if head.hasPrefix("ref: refs/heads/") {
-            let name = String(head.dropFirst("ref: refs/heads/".count))
-            guard !name.isEmpty else { return nil }
-            branch = GitBranch(name: name)
-        } else if [40, 64].contains(head.count), head.allSatisfy(\.isHexDigit) {
-            branch = GitBranch(name: String(head.prefix(7)), isDetached: true)
-        } else {
-            return nil
-        }
+              let branch = headBranch(in: gitDirectory) else { return nil }
         return GitRepository(root: url, branch: branch, gitDirectory: gitDirectory,
                              commonDirectory: URL(fileURLWithPath: WorkspacePath.canonical(common)))
+    }
+
+    static func registeredWorktree(at path: String, in repositoryPath: String) -> GitRepository? {
+        guard let repository = containing(repositoryPath) else { return nil }
+        let registrations = repository.commonDirectory.appendingPathComponent("worktrees")
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: registrations.path)) ?? []
+        for name in names {
+            let gitDirectory = registrations.appendingPathComponent(name)
+            guard let link = smallTextFile(gitDirectory.appendingPathComponent("gitdir")), folder(ofGitLink: link) == path,
+                  let branch = headBranch(in: gitDirectory) else { continue }
+            return GitRepository(root: URL(fileURLWithPath: path), branch: branch,
+                                 gitDirectory: URL(fileURLWithPath: WorkspacePath.canonical(gitDirectory)),
+                                 commonDirectory: repository.commonDirectory)
+        }
+        return nil
+    }
+
+    private static func folder(ofGitLink link: String) -> String {
+        let folder = URL(fileURLWithPath: link).deletingLastPathComponent()
+        let parent = URL(fileURLWithPath: WorkspacePath.canonical(folder.deletingLastPathComponent()))
+        return parent.appendingPathComponent(folder.lastPathComponent).path
+    }
+
+    private static func headBranch(in gitDirectory: URL) -> GitBranch? {
+        guard let head = smallTextFile(gitDirectory.appendingPathComponent("HEAD")) else { return nil }
+        if head.hasPrefix("ref: refs/heads/") {
+            let name = String(head.dropFirst("ref: refs/heads/".count))
+            return name.isEmpty ? nil : GitBranch(name: name)
+        }
+        guard [40, 64].contains(head.count), head.allSatisfy(\.isHexDigit) else { return nil }
+        return GitBranch(name: String(head.prefix(7)), isDetached: true)
     }
 
     func divergentBranch(from worktree: GitRepository?) -> GitBranch? {

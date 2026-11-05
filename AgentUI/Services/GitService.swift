@@ -57,21 +57,15 @@ enum GitService {
         return entries
     }
 
-    @concurrent static func deleteBranch(_ branch: String, _ removal: BranchRemoval, mergingInto candidates: [String],
-                                         project: Project) async throws {
+    @concurrent static func deleteBranch(_ branch: String, _ removal: BranchRemoval, project: Project) async throws {
         guard let arguments = removal.arguments(for: branch) else { return }
-        if removal.requiresMerge { try await requireMerged(branch, into: candidates, at: project.path) }
         _ = try await run(arguments, at: project.path, timeout: 20)
     }
 
-    private static func requireMerged(_ branch: String, into candidates: [String], at path: String) async throws {
+    @concurrent static func requireMerged(_ branch: String, into candidates: [String], at path: String) async throws {
         let targets = try await mergeTargets(among: candidates, at: path)
-        guard !targets.isEmpty else {
-            throw WorkspaceError(message: String(localized: "The repository’s main branch couldn’t be found, so the branch “\(branch)” wasn’t deleted. If its commits are no longer needed, delete it with git branch -D \(branch)."))
-        }
-        guard try await isMerged(branch, into: targets, at: path) else {
-            throw WorkspaceError(message: String(localized: "The branch “\(branch)” isn’t fully merged. If its commits are no longer needed, delete it with git branch -D \(branch)."))
-        }
+        guard !targets.isEmpty else { throw UnmergedBranchError(branch: branch, hasMainBranch: false) }
+        guard try await isMerged(branch, into: targets, at: path) else { throw UnmergedBranchError(branch: branch, hasMainBranch: true) }
     }
 
     static func mergeTargets(among candidates: [String], at path: String) async throws -> [String] {

@@ -35,6 +35,7 @@ import Observation
     @ObservationIgnored private(set) var draggedTerminal: UUID?
     private let writer: WorkspaceWriter
     var errorMessage: String?
+    var unmergedRemoval: UnmergedRemoval?
     var busyProjects: Set<UUID> = []
     private(set) var orphanWorktrees: [DiscoveredWorktree] = []
     private(set) var workInProgress: [WorkInProgressGroup] = []
@@ -443,7 +444,7 @@ import Observation
     private func branchProtection(of worktree: Worktree, in project: Project) async -> BranchProtectionReport {
         let branches = sessions.branchesByPath
         let elsewhere = project.worktrees.filter { $0.id != worktree.id }.compactMap { branches[$0.path] }.filter { !$0.isDetached }.map(\.name)
-        return await GitBranchProtection.report(at: worktree.path, checkedOutElsewhere: Set(elsewhere))
+        return await GitBranchProtection.report(at: worktree.path, in: project.path, checkedOutElsewhere: Set(elsewhere))
     }
 
     func remove(_ removal: Removal, branch: BranchRemoval = .keep) {
@@ -459,6 +460,8 @@ import Observation
                 do {
                     let cleanup = try await deleteWorktree(projectID: projectID, worktreeID: worktreeID, branch: branch, protectedBranch: .keep)
                     if let failure = cleanup.failure { errorMessage = failure }
+                } catch let error as UnmergedBranchError {
+                    unmergedRemoval = UnmergedRemoval(removal: removal, reason: error.reason)
                 } catch { errorMessage = error.localizedDescription }
             }
         case .orphanWorktree(let path, _): trashOrphanWorktree(at: path)
@@ -644,6 +647,9 @@ import Observation
             : await branchProtection(of: worktree, in: project)
         let keptBranch = handling == .keep ? Self.keptCleanup(of: protection.branch) : nil
         if keptBranch == nil, let refusal = protection.branch.refusal { throw WorkspaceError(message: refusal) }
+        if removal.requiresMerge, let name = protection.branch.deletableName {
+            try await GitService.requireMerged(name, into: protection.mergeCandidates, at: project.path)
+        }
         let started = worktree.terminals.filter { sessions.isRunning($0.id) }
         for terminal in started { sessions.close(terminal.id) }
         do {
@@ -679,9 +685,10 @@ import Observation
     }
 
     private func deleteBranch(_ protection: BranchProtectionReport, _ removal: BranchRemoval, of project: Project) async -> BranchCleanup {
+        guard removal != .keep else { return .notRequested }
         guard let name = protection.branch.deletableName else { return .untouched }
         do {
-            try await GitService.deleteBranch(name, removal, mergingInto: protection.mergeCandidates, project: project)
+            try await GitService.deleteBranch(name, removal, project: project)
             return .deleted(name)
         } catch {
             return .kept(name, reason: error.localizedDescription)

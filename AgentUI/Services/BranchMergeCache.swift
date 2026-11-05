@@ -32,12 +32,13 @@ actor BranchMergeCache {
         if let entry = entries[root], entry.key == key, entry.stamps.allSatisfy({ FileStamp($0.key) == $0.value }) {
             return entry.state
         }
-        guard let candidates = GitBranchProtection.mergeCandidates(of: repository, remoteNames: remoteNames) else {
+        let common = repository.commonDirectory
+        let headFiles = GitBranchProtection.remoteHeadFiles(in: common, remoteNames: remoteNames)
+        guard let candidates = GitBranchProtection.mergeCandidates(of: repository, headFiles: headFiles) else {
             entries.removeValue(forKey: root)
             return .unknown
         }
-        let common = repository.commonDirectory
-        let sources = ["config", "packed-refs", "reftable", "refs/remotes"] + GitBranchProtection.remoteHeadFiles(in: common, remoteNames: remoteNames)
+        let sources = ["config", "packed-refs", "reftable", "refs/remotes"] + headFiles
         var stamps = Self.stamps(of: sources + candidates, in: common)
         do {
             let found = try await targets(candidates, root)

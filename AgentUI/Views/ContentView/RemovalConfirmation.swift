@@ -17,6 +17,12 @@ struct RemovalConfirmation: View {
                 .dialogSuppressionToggle("Don’t ask again", isSuppressed: $skipsConfirmation)
             dialog(allowingSkip: false)
         }
+        .alert(store.unmergedRemoval?.reason ?? "", isPresented: Bindable(store).unmergedRemoval.isPresent, presenting: store.unmergedRemoval) { unmerged in
+            Button("Delete Worktree Only", role: .destructive) { store.remove(unmerged.removal) }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("Nothing was removed. You can delete the worktree and keep the branch and its commits in the repository.")
+        }
         .task(id: removal) {
             skipsConfirmation = false
             guard let removal else {
