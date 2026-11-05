@@ -276,7 +276,6 @@ import Observation
     private var entries: [UUID: TerminalSession] = [:]
     var environment: [String: String] = [:]
     private(set) var branchesByPath: [String: GitBranch] = [:]
-    private(set) var protectedBranchesByPath: [String: ProtectedBranches] = [:]
     private(set) var runningAgents: [UUID: ConversationAgent] = [:]
     private(set) var agentStatuses: [UUID: AgentStatus] = [:]
     @ObservationIgnored weak var delegate: TerminalSessionsDelegate?
@@ -303,7 +302,6 @@ import Observation
         let result = await Self.inspect(worktreePaths: worktreePaths, locations: locations)
         guard !Task.isCancelled else { return }
         if branchesByPath != result.branches { branchesByPath = result.branches }
-        if protectedBranchesByPath != result.protectedBranches { protectedBranchesByPath = result.protectedBranches }
         for value in result.sessions {
             guard let session = entries[value.id], session.identity == value.identity else { continue }
             session.updateRepository(directory: value.directory, branch: value.branch, divergentBranch: value.divergentBranch)
@@ -328,7 +326,6 @@ import Observation
 
     private struct Inspection: Sendable {
         let branches: [String: GitBranch]
-        let protectedBranches: [String: ProtectedBranches]
         let sessions: [SessionRepository]
     }
 
@@ -340,24 +337,15 @@ import Observation
             cache[path] = .some(value)
             return value
         }
-        var protections: [String: GitBranchProtection.Repository] = [:]
         var branches: [String: GitBranch] = [:]
-        var protectedBranches: [String: ProtectedBranches] = [:]
-        for path in Set(worktreePaths) {
-            guard let repository = repository(at: path) else { continue }
-            branches[path] = repository.branch
-            let storage = repository.commonDirectory.path
-            let protection = protections[storage] ?? GitBranchProtection.read(commonDirectory: repository.commonDirectory)
-            protections[storage] = protection
-            protectedBranches[path] = protection.protectedBranches(forGitDirectory: WorkspacePath.canonical(repository.gitDirectory))
-        }
+        for path in Set(worktreePaths) { branches[path] = repository(at: path)?.branch }
         let sessions = locations.map { location in
             let directory = TerminalProcessDirectory.read(pid: location.pid) ?? location.fallback
             let current = repository(at: directory)
             return SessionRepository(id: location.id, identity: location.identity, directory: directory, branch: current?.branch,
                                      divergentBranch: current?.divergentBranch(from: repository(at: location.worktreePath)))
         }
-        return Inspection(branches: branches, protectedBranches: protectedBranches, sessions: sessions)
+        return Inspection(branches: branches, sessions: sessions)
     }
 
     func watchAgents() async {

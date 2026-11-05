@@ -1,45 +1,49 @@
 import Foundation
 
-struct ProtectedBranches: Equatable, Sendable {
-    static let conventional = ProtectedBranches(defaults: DefaultBranch.names(remoteHeads: []), checkedOutElsewhere: [])
-
-    let defaults: Set<String>
-    let checkedOutElsewhere: Set<String>
-}
-
 enum GitBranchProtection {
-    struct Repository: Sendable {
-        let defaults: Set<String>
-        let checkedOut: [String: String]
-
-        func protectedBranches(forGitDirectory gitDirectory: String) -> ProtectedBranches {
-            ProtectedBranches(defaults: defaults, checkedOutElsewhere: Set(checkedOut.filter { $0.key != gitDirectory }.values))
-        }
+    @concurrent static func worktreeBranch(at path: String, checkedOutElsewhere known: Set<String>) async -> WorktreeBranch {
+        guard let repository = GitRepository.containing(path) else { return .unreadable }
+        let gitDirectory = WorkspacePath.canonical(repository.gitDirectory)
+        let elsewhere = checkedOutBranches(in: repository.commonDirectory).filter { $0.key != gitDirectory }.values
+        return WorktreeBranch(repository.branch, defaultBranches: defaultBranches(in: repository.commonDirectory),
+                              checkedOutElsewhere: known.union(elsewhere))
     }
 
-    static func read(commonDirectory: URL) -> Repository {
-        Repository(defaults: DefaultBranch.names(remoteHeads: remoteHeads(in: commonDirectory).map(\.name)),
-                   checkedOut: checkedOutBranches(in: commonDirectory))
+    static func isDefaultBranch(_ branch: String, of remote: String, in commonDirectory: URL) -> Bool {
+        let prefix = "refs/remotes/\(remote)/"
+        return DefaultBranch.conventionalNames.contains(branch)
+            || symbolicTarget(of: commonDirectory.appendingPathComponent(prefix + "HEAD")) == prefix + branch
     }
 
-    static func remoteHeads(in commonDirectory: URL) -> [DefaultBranch.RemoteHead] {
+    private static func defaultBranches(in commonDirectory: URL) -> Set<String> {
+        DefaultBranch.names(remoteHeads: remoteHeads(in: commonDirectory).map(\.name))
+    }
+
+    private static func remoteHeads(in commonDirectory: URL) -> [DefaultBranch.RemoteHead] {
         let remotes = commonDirectory.appendingPathComponent("refs/remotes")
-        let listing = childNames(of: remotes).compactMap { name in
-            symbolicTarget(of: remotes.appendingPathComponent(name).appendingPathComponent("HEAD"))
-                .map { "refs/remotes/\(name)/HEAD\t\($0)" }
+        let files = FileManager.default.enumerator(atPath: remotes.path)?.compactMap { $0 as? String } ?? []
+        let listing = files.filter { $0.hasSuffix("/HEAD") }.sorted().compactMap { file in
+            symbolicTarget(of: remotes.appendingPathComponent(file)).map { "refs/remotes/\(file)\t\($0)" }
         }
         return DefaultBranch.remoteHeads(in: listing.joined(separator: "\n"))
     }
 
-    static func checkedOutBranches(in commonDirectory: URL) -> [String: String] {
+    private static func checkedOutBranches(in commonDirectory: URL) -> [String: String] {
         let linked = commonDirectory.appendingPathComponent("worktrees")
         var gitDirectories = childNames(of: linked).map { linked.appendingPathComponent($0) }
-        if commonDirectory.lastPathComponent == ".git" { gitDirectories.append(commonDirectory) }
+        if !isBare(commonDirectory) { gitDirectories.append(commonDirectory) }
         return gitDirectories.reduce(into: [:]) { branches, gitDirectory in
             guard let reference = symbolicTarget(of: gitDirectory.appendingPathComponent("HEAD")),
                   reference.hasPrefix("refs/heads/") else { return }
             branches[WorkspacePath.canonical(gitDirectory)] = String(reference.dropFirst("refs/heads/".count))
         }
+    }
+
+    private static func isBare(_ commonDirectory: URL) -> Bool {
+        guard let value = WorktreeFolder.coreSetting("bare", in: commonDirectory)?.lowercased() else {
+            return commonDirectory.lastPathComponent != ".git"
+        }
+        return ["true", "yes", "on", "1"].contains(value)
     }
 
     private static func childNames(of directory: URL) -> [String] {

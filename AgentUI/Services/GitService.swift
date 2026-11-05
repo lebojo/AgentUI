@@ -65,16 +65,19 @@ enum GitService {
 
     private static func checkedOutBranches(in porcelain: String, excluding path: String) -> Set<String> {
         let own = WorkspacePath.canonical(URL(fileURLWithPath: path))
-        var worktree: String?
-        var branches: Set<String> = []
+        return Set(worktreeEntries(in: porcelain).filter { $0.path != own }.compactMap(\.branch))
+    }
+
+    static func worktreeEntries(in porcelain: String) -> [GitWorktreeEntry] {
+        var entries: [GitWorktreeEntry] = []
         for field in porcelain.split(separator: "\0") {
             if field.hasPrefix("worktree ") {
-                worktree = WorkspacePath.canonical(URL(fileURLWithPath: String(field.dropFirst("worktree ".count))))
-            } else if field.hasPrefix("branch refs/heads/"), worktree != own {
-                branches.insert(String(field.dropFirst("branch refs/heads/".count)))
+                entries.append(GitWorktreeEntry(path: WorkspacePath.canonical(URL(fileURLWithPath: String(field.dropFirst("worktree ".count))))))
+            } else if field.hasPrefix("branch refs/heads/"), !entries.isEmpty {
+                entries[entries.count - 1].branch = String(field.dropFirst("branch refs/heads/".count))
             }
         }
-        return branches
+        return entries
     }
 
     @concurrent static func deleteBranch(_ branch: String, _ removal: BranchRemoval, project: Project) async throws {
@@ -165,27 +168,16 @@ enum GitService {
 
     @concurrent static func existingWorktrees(project: Project) async throws -> [Worktree] {
         let output = try await run(["worktree", "list", "--porcelain", "-z"], at: project.path, timeout: 10)
-        var result: [Worktree] = []
-        var path: String?
-        var branch: String?
-        func append() {
-            if let path, path != project.path {
-                result.append(Worktree(name: branch ?? URL(fileURLWithPath: path).lastPathComponent,
-                                      path: path, terminals: [TerminalRecord(name: "Terminal")]))
-            }
+        return worktreeEntries(in: output).filter { $0.path != project.path }.map { entry in
+            Worktree(name: entry.branch ?? URL(fileURLWithPath: entry.path).lastPathComponent, path: entry.path,
+                     terminals: [TerminalRecord(name: "Terminal")])
         }
-        for field in output.components(separatedBy: "\0") {
-            if field.hasPrefix("worktree ") {
-                append()
-                path = WorkspacePath.canonical(URL(fileURLWithPath: String(field.dropFirst(9))))
-                branch = nil
-            } else if field.hasPrefix("branch refs/heads/") {
-                branch = String(field.dropFirst(18))
-            }
-        }
-        append()
-        return result
     }
+}
+
+struct GitWorktreeEntry: Equatable, Sendable {
+    let path: String
+    var branch: String?
 }
 
 struct WorktreeCreationError: LocalizedError {

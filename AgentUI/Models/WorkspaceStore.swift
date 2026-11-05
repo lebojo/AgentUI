@@ -429,16 +429,14 @@ import Observation
         removal.projectID.map(busyProjects.contains) ?? false
     }
 
-    func deletableBranch(for removal: Removal) -> String? {
+    func deletableBranch(for removal: Removal) async -> String? {
         guard case .worktree(let projectID, let worktreeID, _) = removal,
               let project = projects.first(where: { $0.id == projectID }),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }),
               !worktree.isPrimary else { return nil }
         let branches = sessions.branchesByPath
         let elsewhere = project.worktrees.filter { $0.id != worktreeID }.compactMap { branches[$0.path] }.filter { !$0.isDetached }.map(\.name)
-        let protection = sessions.protectedBranchesByPath[worktree.path] ?? .conventional
-        return WorktreeBranch(branches[worktree.path], defaultBranches: protection.defaults,
-                              checkedOutElsewhere: protection.checkedOutElsewhere.union(elsewhere)).deletableName
+        return await GitBranchProtection.worktreeBranch(at: worktree.path, checkedOutElsewhere: Set(elsewhere)).deletableName
     }
 
     func remove(_ removal: Removal, branch: BranchRemoval = .keep) {

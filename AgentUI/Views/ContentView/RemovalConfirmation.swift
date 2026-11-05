@@ -17,9 +17,15 @@ struct RemovalConfirmation: View {
                 .dialogSuppressionToggle("Don’t ask again", isSuppressed: $skipsConfirmation)
             dialog(allowingSkip: false)
         }
-        .onChange(of: removal) {
+        .task(id: removal) {
             skipsConfirmation = false
-            prompt = removal.map { Prompt(removal: $0, deletableBranch: store.deletableBranch(for: $0)) }
+            guard let removal else {
+                prompt = nil
+                return
+            }
+            let branch = await store.deletableBranch(for: removal)
+            guard !Task.isCancelled else { return }
+            prompt = Prompt(removal: removal, deletableBranch: branch)
         }
     }
 

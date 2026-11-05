@@ -11,17 +11,12 @@ import Observation
     func agentResumes() -> [UUID: AgentResume?] { [:] }
     func subagent(_ id: UUID?) -> SubagentSelection? { nil }
     var branchesByPath: [String: GitBranch] = [:]
-    var protectedBranchesByPath: [String: ProtectedBranches] = [:]
     var agentStatuses: [UUID: AgentStatus] = [:]
     var runningAgents: [UUID: ConversationAgent] = [:]
 
     func readBranches(of projects: [Project]) {
-        let repositories = projects.flatMap(\.worktrees).map(\.path).compactMap { path in GitRepository.containing(path).map { (path, $0) } }
-        branchesByPath = Dictionary(repositories.map { ($0.0, $0.1.branch) }, uniquingKeysWith: { first, _ in first })
-        protectedBranchesByPath = Dictionary(repositories.map { path, repository in
-            (path, GitBranchProtection.read(commonDirectory: repository.commonDirectory)
-                .protectedBranches(forGitDirectory: WorkspacePath.canonical(repository.gitDirectory)))
-        }, uniquingKeysWith: { first, _ in first })
+        let repositories = projects.flatMap(\.worktrees).map(\.path).compactMap { path in GitRepository.containing(path).map { (path, $0.branch) } }
+        branchesByPath = Dictionary(repositories, uniquingKeysWith: { first, _ in first })
     }
 }
 
@@ -398,31 +393,44 @@ private final class ChangeFlag: @unchecked Sendable {
                     "A linked worktree knows its own registration in the repository")
         try require(WorktreeFolder.registration(of: lonelyRoot) == nil && WorktreeFolder.registration(of: broken) == nil,
                     "A main folder or a broken worktree has no registration to remove")
+        let linkedRoot = fm.temporaryDirectory.appendingPathComponent("agentui-store-link-\(UUID())")
+        try fm.createSymbolicLink(at: linkedRoot, withDestinationURL: URL(fileURLWithPath: WorkspacePath.canonical(root)))
+        defer { try? fm.removeItem(at: linkedRoot) }
+        let lonelyGitFile = URL(fileURLWithPath: lonely.path).appendingPathComponent(".git")
+        let lonelyGitLink = try String(contentsOf: lonelyGitFile, encoding: .utf8)
+        let canonicalRegistration = lonelyRegistration?.path ?? ""
+        let linkedRegistration = linkedRoot.path + canonicalRegistration.dropFirst(WorkspacePath.canonical(root).count)
+        try "gitdir: \(linkedRegistration)\n".write(to: lonelyGitFile, atomically: true, encoding: .utf8)
+        let registrationThroughLink = WorktreeFolder.registration(of: URL(fileURLWithPath: lonely.path))
+        try lonelyGitLink.write(to: lonelyGitFile, atomically: true, encoding: .utf8)
+        try require(!canonicalRegistration.isEmpty && registrationThroughLink?.path == canonicalRegistration,
+                    "A worktree whose Git link goes through a symlink still knows its registration")
         print("PASS worktree folder adoption")
 
         let reviewRemoval = Removal.worktree(projectID: grouped.id, worktreeID: review.id, name: review.name)
-        let originHead = gitRoot.appendingPathComponent(".git/refs/remotes/origin/HEAD")
+        let originHead = gitRoot.appendingPathComponent(".git/refs/remotes/gh/team/HEAD")
         try fm.createDirectory(at: originHead.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try "ref: refs/remotes/origin/review/one\n".write(to: originHead, atomically: true, encoding: .utf8)
+        try "ref: refs/remotes/gh/team/review/one\n".write(to: originHead, atomically: true, encoding: .utf8)
         groups.sessions.readBranches(of: groups.projects)
-        try require(groups.sessions.protectedBranchesByPath[review.path]?.defaults == ["main", "master", "review/one"]
-                        && groups.deletableBranch(for: reviewRemoval) == nil,
+        let remoteDefault = await GitBranchProtection.worktreeBranch(at: review.path, checkedOutElsewhere: [])
+        let remoteDefaultOffer = await groups.deletableBranch(for: reviewRemoval)
+        try require(remoteDefault == .protected("review/one", .defaultBranch) && remoteDefaultOffer == nil,
                     "The removal dialog never offers to delete the branch a remote HEAD points to")
         try fm.removeItem(at: originHead.deletingLastPathComponent())
         let hidden = root.appendingPathComponent("hidden-review")
         _ = try await GitService.run(["worktree", "add", "-q", "-f", hidden.path, "review/one"], at: gitRoot.path)
         groups.sessions.readBranches(of: groups.projects)
-        let reviewProtection = groups.sessions.protectedBranchesByPath[review.path]
-        try require(reviewProtection?.checkedOutElsewhere.isSuperset(of: ["main", "review/one"]) == true
-                        && groups.deletableBranch(for: reviewRemoval) == nil,
+        let hiddenCheckout = await GitBranchProtection.worktreeBranch(at: review.path, checkedOutElsewhere: [])
+        let hiddenCheckoutOffer = await groups.deletableBranch(for: reviewRemoval)
+        try require(hiddenCheckout == .protected("review/one", .checkedOutElsewhere) && hiddenCheckoutOffer == nil,
                     "The removal dialog never offers to delete a branch checked out in a worktree AgentUI doesn't know")
         _ = try await GitService.run(["worktree", "remove", "--force", hidden.path], at: gitRoot.path)
         groups.sessions.readBranches(of: groups.projects)
-        try require(groups.sessions.protectedBranchesByPath[review.path]?.checkedOutElsewhere.contains("review/one") == false,
-                    "A worktree's own branch isn't protected as checked out elsewhere")
-        let reviewBranch = groups.deletableBranch(for: reviewRemoval)
+        let ownBranch = await GitBranchProtection.worktreeBranch(at: review.path, checkedOutElsewhere: [])
+        try require(ownBranch == .deletable("review/one"), "A worktree's own branch isn't protected as checked out elsewhere")
+        let reviewBranch = await groups.deletableBranch(for: reviewRemoval)
         try require(reviewBranch == "review/one", "The removal dialog offers to delete a worktree's branch")
-        let mainBranch = groups.deletableBranch(for: .worktree(projectID: grouped.id, worktreeID: groupedProject().worktrees[0].id, name: "Main"))
+        let mainBranch = await groups.deletableBranch(for: .worktree(projectID: grouped.id, worktreeID: groupedProject().worktrees[0].id, name: "Main"))
         try require(mainBranch == nil, "The main folder never offers to delete its branch")
         let reviewCleanup = try await groups.deleteWorktree(projectID: grouped.id, worktreeID: review.id, branch: .merged)
         let reviewLeft = try await GitService.run(["branch", "--list", "review/one"], at: gitRoot.path)
@@ -444,7 +452,7 @@ private final class ChangeFlag: @unchecked Sendable {
         _ = try await GitService.run(["checkout", "-q", "-b", "feature"], at: lonelyRoot.path)
         _ = try await GitService.run(["checkout", "-q", "main"], at: extra.path)
         groups.sessions.readBranches(of: groups.projects)
-        let onMainBranch = groups.deletableBranch(for: .worktree(projectID: lonelyProject.id, worktreeID: onMain.id, name: onMain.name))
+        let onMainBranch = await groups.deletableBranch(for: .worktree(projectID: lonelyProject.id, worktreeID: onMain.id, name: onMain.name))
         try require(onMainBranch == nil, "The removal dialog never offers to delete main in a local-only repository")
         do {
             try await groups.deleteWorktree(projectID: lonelyProject.id, worktreeID: onMain.id, branch: .force)

@@ -19,7 +19,7 @@ struct GitRepository: Sendable {
         } else {
             guard let gitfile = smallTextFile(marker), gitfile.hasPrefix("gitdir: ") else { return nil }
             let location = String(gitfile.dropFirst("gitdir: ".count))
-            gitDirectory = resolve(location, relativeTo: url)
+            gitDirectory = URL(fileURLWithPath: WorkspacePath.canonical(resolve(location, relativeTo: url)))
         }
         let common = smallTextFile(gitDirectory.appendingPathComponent("commondir"))
             .map { resolve($0, relativeTo: gitDirectory) } ?? gitDirectory
@@ -185,27 +185,27 @@ enum WorktreeFolder {
 
     static func registration(of worktree: URL) -> URL? {
         guard let repository = GitRepository.atRoot(worktree),
-              repository.gitDirectory.deletingLastPathComponent().standardizedFileURL
-                == repository.commonDirectory.appendingPathComponent("worktrees").standardizedFileURL else { return nil }
+              repository.gitDirectory.deletingLastPathComponent().path
+                == repository.commonDirectory.appendingPathComponent("worktrees").path else { return nil }
         return repository.gitDirectory
     }
 
     private static func mainWorktree(of commonDirectory: URL) -> URL? {
         if commonDirectory.lastPathComponent == ".git" { return commonDirectory.deletingLastPathComponent() }
-        guard let configured = coreWorktree(in: commonDirectory.appendingPathComponent("config")) else { return nil }
+        guard let configured = coreSetting("worktree", in: commonDirectory) else { return nil }
         return (configured as NSString).isAbsolutePath
             ? URL(fileURLWithPath: configured)
             : commonDirectory.appendingPathComponent(configured).standardizedFileURL
     }
 
-    private static func coreWorktree(in config: URL) -> String? {
-        guard let text = try? String(contentsOf: config, encoding: .utf8) else { return nil }
+    static func coreSetting(_ name: String, in commonDirectory: URL) -> String? {
+        guard let text = try? String(contentsOf: commonDirectory.appendingPathComponent("config"), encoding: .utf8) else { return nil }
         var inCore = false
         for line in text.components(separatedBy: .newlines).map({ $0.trimmingCharacters(in: .whitespaces) }) {
             if line.hasPrefix("[") { inCore = line.lowercased() == "[core]" }
             guard inCore else { continue }
             let parts = line.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
-            if parts.count == 2, parts[0].lowercased() == "worktree" { return parts[1] }
+            if parts.count == 2, parts[0].lowercased() == name { return parts[1] }
         }
         return nil
     }

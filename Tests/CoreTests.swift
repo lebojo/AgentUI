@@ -428,6 +428,11 @@ import Foundation
         try require(heads == [DefaultBranch.RemoteHead(name: "develop", reference: "refs/remotes/origin/develop"),
                               DefaultBranch.RemoteHead(name: "trunk", reference: "refs/remotes/gh/team/trunk")],
                     "Remote HEADs name their default branch, even when the remote name has a slash")
+        let listed = GitService.worktreeEntries(in: "worktree /nonexistent/main\0HEAD 1234\0branch refs/heads/main\0\0worktree /nonexistent/bare\0bare\0\0"
+                                                    + "worktree /nonexistent/detached\0HEAD 5678\0detached\0\0worktree /nonexistent/feature\0branch refs/heads/feature/x\0\0")
+        try require(listed == [GitWorktreeEntry(path: "/nonexistent/main", branch: "main"), GitWorktreeEntry(path: "/nonexistent/bare"),
+                               GitWorktreeEntry(path: "/nonexistent/detached"), GitWorktreeEntry(path: "/nonexistent/feature", branch: "feature/x")],
+                    "The worktree list keeps each worktree with its branch, if any")
         let candidates = DefaultBranch.references(remoteHeads: [DefaultBranch.RemoteHead(name: "main", reference: "refs/remotes/origin/main")])
         try require(candidates == ["refs/remotes/origin/main", "refs/heads/main", "refs/heads/master", "refs/remotes/origin/master"],
                     "Default branch candidates are remote HEADs, then local and origin main or master")
