@@ -21,7 +21,6 @@ struct SidebarSplitBlockLabel: View {
             }
         }
         .padding(.vertical, Spacing.xxs)
-        .tag(focusedID ?? block.id)
         .help("Terminals shown side by side in a split view")
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Split view")

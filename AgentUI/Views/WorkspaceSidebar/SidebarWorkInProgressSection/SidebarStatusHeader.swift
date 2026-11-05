@@ -14,7 +14,6 @@ struct SidebarStatusHeader: View {
         }
         .font(Typography.caption.weight(.medium))
         .foregroundStyle(Palette.textSecondary)
-        .selectionDisabled()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(status.title), \(count) terminals")
         .accessibilityAddTraits(.isHeader)

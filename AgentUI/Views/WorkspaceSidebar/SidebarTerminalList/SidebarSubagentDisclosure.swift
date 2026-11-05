@@ -13,6 +13,7 @@ struct SidebarSubagentDisclosure<Label: View>: View {
     }
 
     var body: some View {
+        let subagents = subagents
         if subagents.isEmpty {
             label
         } else {

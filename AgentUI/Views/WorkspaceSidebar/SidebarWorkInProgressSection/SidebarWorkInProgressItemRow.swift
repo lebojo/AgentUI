@@ -24,7 +24,6 @@ struct SidebarWorkInProgressItemRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .selectionDisabled()
         .help(item.location)
         .accessibilityLabel(item.name)
         .accessibilityValue(item.location)

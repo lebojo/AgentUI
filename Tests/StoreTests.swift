@@ -248,6 +248,9 @@ private final class ChangeFlag: @unchecked Sendable {
             try require(blocks().map { $0.terminals.map(\.id) } == [[first, e], [b, c], [d]], "Split panes form one sidebar block placed at their first terminal")
             try require(blocks().map(\.axis) == [.vertical, .horizontal, nil], "A block keeps its split axis")
             try require(blocks()[0].contains(e) && !blocks()[0].contains(b), "A block knows its terminals")
+            try require(blocks()[0].selectionTag(for: e) == e && blocks()[0].selectionTag(for: d) == first && blocks()[0].singleTerminal == nil
+                            && blocks()[2].singleTerminal?.id == d && blocks()[2].selectionTag(for: nil) == d,
+                        "A split block is selected through its focused pane, a single row through its terminal")
             func moveBlocks(_ source: IndexSet, to destination: Int) {
                 split.reorderTerminalBlocks(in: worktreeID, blocks(), from: source, to: destination)
             }
