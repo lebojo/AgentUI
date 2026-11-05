@@ -14,7 +14,8 @@ import uuid
 binary = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else '/tmp/heka-build/Build/Products/Debug/Heka.app/Contents/MacOS/Heka')
 screenshots = pathlib.Path(__file__).resolve().parents[1] / '.impeccable/review'
 screenshots.mkdir(parents=True, exist_ok=True)
-for name in [name for name in os.environ if name.startswith('HEKA_')]:
+test_options = {'HEKA_SKIP_WINDOW_TESTS', 'HEKA_CAPTURE_TOOL'}
+for name in [name for name in os.environ if name.startswith('HEKA_') and name not in test_options]:
     del os.environ[name]
 root = pathlib.Path(tempfile.mkdtemp(prefix='heka-integration-')).resolve()
 state = root / 'state'
