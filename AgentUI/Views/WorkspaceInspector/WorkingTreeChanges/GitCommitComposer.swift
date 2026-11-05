@@ -46,9 +46,9 @@ struct GitCommitComposer: View {
                 Spacer(minLength: Spacing.xs)
                 if model.pendingAction != nil {
                     ProgressView().controlSize(.small)
-                    Button("Cancel", action: model.cancelPendingAction)
+                    Button("Cancel", action: model.cancelActions)
                         .buttonStyle(.borderless)
-                        .help("Stop the running Git command")
+                        .help("Stop the running Git command and drop the waiting ones")
                 }
             }
             Button {

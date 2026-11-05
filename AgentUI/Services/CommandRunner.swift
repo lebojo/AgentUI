@@ -10,6 +10,7 @@ enum CommandRunner {
     private static let registry = Registry()
     private static let diagnosticLimit = 65_536
     private static let diagnosticTail = 16_384
+    private static let terminationGrace: DispatchTimeInterval = .seconds(2)
 
     static func cancelAll() { registry.cancelAll() }
 
@@ -73,6 +74,7 @@ enum CommandRunner {
         let outFD = output.fileDescriptor, errFD = error.fileDescriptor, diagnosticLimit = Self.diagnosticLimit
         timer.schedule(deadline: .now() + .milliseconds(50), repeating: .milliseconds(50))
         timer.setEventHandler {
+            job.killIfStillRunning(after: terminationGrace)
             var outStat = stat(), errStat = stat()
             let outOverflows = fstat(outFD, &outStat) == 0 && outStat.st_size > limit
             let errOverflows = fstat(errFD, &errStat) == 0 && errStat.st_size > diagnosticLimit
@@ -162,6 +164,8 @@ enum CommandRunner {
         private let lock = NSLock()
         private var pid: pid_t?
         private var reason: StopReason?
+        private var stoppedAt: DispatchTime?
+        private var killed = false
         private var finished = false
 
         func start(executable: String, arguments: [String], environment: [String: String], directory: String,
@@ -184,7 +188,14 @@ enum CommandRunner {
                 try checked(posix_spawn_file_actions_addchdir_np(&actions, directory))
             }
             try checked(posix_spawnattr_setpgroup(&attributes, 0))
-            try checked(posix_spawnattr_setflags(&attributes, Int16(POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_CLOEXEC_DEFAULT)))
+            var unblocked = sigset_t(), defaulted = sigset_t()
+            sigemptyset(&unblocked)
+            sigemptyset(&defaulted)
+            [SIGTERM, SIGINT, SIGHUP, SIGQUIT].forEach { sigaddset(&defaulted, $0) }
+            try checked(posix_spawnattr_setsigmask(&attributes, &unblocked))
+            try checked(posix_spawnattr_setsigdefault(&attributes, &defaulted))
+            try checked(posix_spawnattr_setflags(&attributes, Int16(POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF
+                                                                   | POSIX_SPAWN_CLOEXEC_DEFAULT)))
             let argv = ([executable] + arguments).map { strdup($0) } + [nil]
             let env = environment.map { strdup("\($0.key)=\($0.value)") } + [nil]
             defer { argv.forEach { free($0) }; env.forEach { free($0) } }
@@ -202,9 +213,26 @@ enum CommandRunner {
         func stop(_ reason: StopReason) {
             lock.lock()
             defer { lock.unlock() }
-            guard !finished, self.reason == nil else { return }
-            self.reason = reason
-            if let pid { kill(-pid, SIGKILL) }
+            guard !finished else { return }
+            if self.reason == nil {
+                self.reason = reason
+                stoppedAt = .now()
+                if let pid { kill(-pid, SIGTERM) }
+            }
+            if reason == .waitFailure { killGroup() }
+        }
+
+        func killIfStillRunning(after grace: DispatchTimeInterval) {
+            lock.lock()
+            defer { lock.unlock() }
+            guard !finished, let stoppedAt, DispatchTime.now() >= stoppedAt + grace else { return }
+            killGroup()
+        }
+
+        private func killGroup() {
+            guard !killed, let pid else { return }
+            killed = true
+            kill(-pid, SIGKILL)
         }
 
         func finish(status: inout Int32) throws -> Bool {

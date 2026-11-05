@@ -20,7 +20,7 @@ import Observation
     private(set) var remoteError: String?
     private(set) var pendingAction: GitAction?
     var actionFailure: GitActionFailure?
-    @ObservationIgnored private var queuedActions: [CheckedContinuation<Void, Never>] = []
+    @ObservationIgnored private var queuedActions: [CheckedContinuation<Bool, Never>] = []
     @ObservationIgnored private var runningAction: Task<Void, any Error>?
     @ObservationIgnored private var path: String?
     @ObservationIgnored private var reloadTrigger: AsyncStream<Void>.Continuation?
@@ -91,12 +91,13 @@ import Observation
 
     @discardableResult func perform(_ action: GitAction, at root: String, run: @escaping GitCommand) async -> Bool {
         if pendingAction != nil {
-            await withCheckedContinuation { queuedActions.append($0) }
+            let admitted = await withCheckedContinuation { queuedActions.append($0) }
+            guard admitted else { return false }
         }
         pendingAction = action
         defer {
             reload(remote: action.updatesRemote)
-            if queuedActions.isEmpty { pendingAction = nil } else { queuedActions.removeFirst().resume() }
+            if queuedActions.isEmpty { pendingAction = nil } else { queuedActions.removeFirst().resume(returning: true) }
         }
         guard !Task.isCancelled else { return false }
         let running = Task { try await run(action, root) }
@@ -114,7 +115,10 @@ import Observation
         }
     }
 
-    func cancelPendingAction() {
+    func cancelActions() {
+        let queued = queuedActions
+        queuedActions = []
+        queued.forEach { $0.resume(returning: false) }
         runningAction?.cancel()
     }
 

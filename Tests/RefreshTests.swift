@@ -102,13 +102,40 @@ import Foundation
             }
         }
         try await wait(until: { queue.pendingAction == .commit(title: "t", message: "") }, "A hanging Git action starts")
+        var pushed = false
+        let queuedPush = Task {
+            await queue.perform(.push, at: repository.path) { _, _ in pushed = true }
+        }
         try await Task.sleep(for: .milliseconds(200))
         let cancelledAt = ContinuousClock.now
-        queue.cancelPendingAction()
+        queue.cancelActions()
         let hangingResult = await hanging.value
+        let queuedPushResult = await queuedPush.value
         try CoreTests.require(!hangingResult && queue.pendingAction == nil && queue.actionFailure == nil && cancelledAt.duration(to: .now) < .seconds(5),
                               "Cancelling the running Git action stops its process without reporting a failure")
+        try CoreTests.require(!queuedPushResult && !pushed && queue.actionFailure == nil, "Cancelling also drops the queued Git actions")
         print("PASS cancelled Git action")
+
+        let lock = repository.appendingPathComponent("index.lock")
+        let cleanup = "touch index.lock; trap 'rm -f index.lock; exit 143' TERM; while true; do sleep 0.05; done"
+        let locking = Task {
+            _ = try await CommandRunner.run(URL(fileURLWithPath: "/bin/sh"), ["-c", cleanup], at: repository.path, timeout: 3600, limit: 0, readOnly: false)
+        }
+        try await wait(until: { FileManager.default.fileExists(atPath: lock.path) }, "A command creating a lock starts")
+        locking.cancel()
+        _ = await locking.result
+        try CoreTests.require(!FileManager.default.fileExists(atPath: lock.path), "A cancelled command is asked to stop and removes its lock")
+        let stubborn = Task {
+            _ = try await CommandRunner.run(URL(fileURLWithPath: "/bin/sh"), ["-c", "trap '' TERM; sleep 600"], at: repository.path,
+                                            timeout: 3600, limit: 0, readOnly: false)
+        }
+        try await Task.sleep(for: .milliseconds(200))
+        let stubbornCancelledAt = ContinuousClock.now
+        stubborn.cancel()
+        _ = await stubborn.result
+        let stubbornDelay = stubbornCancelledAt.duration(to: .now)
+        try CoreTests.require(stubbornDelay >= .seconds(1) && stubbornDelay < .seconds(5), "A command ignoring the stop request is killed after a grace period")
+        print("PASS cancelled command cleanup")
 
         let listings = Counter()
         let guardian = GitFilterGuard { root in

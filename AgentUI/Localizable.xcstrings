@@ -854,12 +854,12 @@
         }
       }
     },
-    "Stop the running Git command" : {
+    "Stop the running Git command and drop the waiting ones" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arrêter la commande Git en cours"
+            "value" : "Arrêter la commande Git en cours et abandonner celles en attente"
           }
         }
       }
