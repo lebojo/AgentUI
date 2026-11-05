@@ -42,10 +42,9 @@ enum GitBranchProtection {
 
     private static func remoteHeads(of repository: GitRepository, in headFiles: [String]) -> [DefaultBranch.RemoteHead]? {
         guard storesReferencesInFiles(repository) else { return nil }
-        let listing = headFiles.compactMap { file in
-            symbolicTarget(of: repository.commonDirectory.appendingPathComponent(file)).map { "\(file)\t\($0)" }
+        return headFiles.compactMap { file in
+            symbolicTarget(of: repository.commonDirectory.appendingPathComponent(file)).flatMap { DefaultBranch.RemoteHead(headFile: file, target: $0) }
         }
-        return DefaultBranch.remoteHeads(in: listing.joined(separator: "\n"))
     }
 
     private static func storesReferencesInFiles(_ repository: GitRepository) -> Bool {

@@ -25,10 +25,7 @@ enum DefaultBranch {
     static func remoteHeads(in output: String) -> [RemoteHead] {
         output.split(whereSeparator: \.isNewline).compactMap { line in
             let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-            guard fields.count == 2, fields[0].hasSuffix("/HEAD") else { return nil }
-            let remote = String(fields[0].dropLast("HEAD".count))
-            guard fields[1].hasPrefix(remote), fields[1].count > remote.count else { return nil }
-            return RemoteHead(name: String(fields[1].dropFirst(remote.count)), reference: fields[1])
+            return fields.count == 2 ? RemoteHead(headFile: fields[0], target: fields[1]) : nil
         }
     }
 
@@ -48,5 +45,14 @@ enum DefaultBranch {
         references.reduce(into: []) { unique, reference in
             if !unique.contains(reference) { unique.append(reference) }
         }
+    }
+}
+
+extension DefaultBranch.RemoteHead {
+    init?(headFile: String, target: String) {
+        guard headFile.hasSuffix("/HEAD") else { return nil }
+        let remote = String(headFile.dropLast("HEAD".count))
+        guard target.hasPrefix(remote), target.count > remote.count else { return nil }
+        self.init(name: String(target.dropFirst(remote.count)), reference: target)
     }
 }

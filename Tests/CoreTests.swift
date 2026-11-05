@@ -579,6 +579,10 @@ import Foundation
         try require(heads == [DefaultBranch.RemoteHead(name: "develop", reference: "refs/remotes/origin/develop"),
                               DefaultBranch.RemoteHead(name: "trunk", reference: "refs/remotes/gh/team/trunk")],
                     "Remote HEADs name their default branch, even when the remote name has a slash")
+        try require(DefaultBranch.RemoteHead(headFile: "refs/remotes/gh/team/HEAD", target: "refs/remotes/gh/team/trunk") == heads.last
+                        && DefaultBranch.RemoteHead(headFile: "refs/remotes/fork/HEAD", target: "refs/remotes/origin/main") == nil
+                        && DefaultBranch.RemoteHead(headFile: "refs/remotes/fork/main", target: "refs/remotes/fork/main") == nil,
+                    "A remote HEAD file is read directly, and must point inside its own remote")
         let listed = GitService.worktreeEntries(in: "worktree /nonexistent/main\0HEAD 1234\0branch refs/heads/main\0\0worktree /nonexistent/bare\0bare\0\0"
                                                     + "worktree /nonexistent/detached\0HEAD 5678\0detached\0\0worktree /nonexistent/feature\0branch refs/heads/feature/x\0\0")
         try require(listed == [GitWorktreeEntry(path: "/nonexistent/main", branch: "main"), GitWorktreeEntry(path: "/nonexistent/bare"),
