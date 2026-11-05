@@ -44,7 +44,12 @@ struct GitCommitComposer: View {
                     }
                 }
                 Spacer(minLength: Spacing.xs)
-                if model.pendingAction != nil { ProgressView().controlSize(.small) }
+                if model.pendingAction != nil {
+                    ProgressView().controlSize(.small)
+                    Button("Cancel", action: model.cancelPendingAction)
+                        .buttonStyle(.borderless)
+                        .help("Stop the running Git command")
+                }
             }
             Button {
                 if let worktree { source.runAgent(.commit, name: String(localized: "Commits"), in: worktree) }

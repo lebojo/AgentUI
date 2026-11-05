@@ -277,6 +277,10 @@ struct ComparisonBranch: Codable, Hashable, Identifiable, Sendable {
         guard reference.hasPrefix("refs/remotes/") else { return nil }
         return names.filter { name.hasPrefix($0 + "/") && name.count > $0.count + 1 }.max { $0.count < $1.count }
     }
+
+    func hostedName(among remotes: some Sequence<String>) -> String {
+        remote(among: remotes).map { String(name.dropFirst($0.count + 1)) } ?? hostedName
+    }
 }
 
 struct GitBranchList: Codable, Equatable, Sendable {
@@ -329,10 +333,13 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
     func newChangeRequestURL(into base: ComparisonBranch) -> URL? {
         guard let branch, !branch.isDetached else { return nil }
         let addresses = remoteWebAddresses ?? [:]
-        let remote = base.remote(among: addresses.keys)
-        let baseBranch = remote.map { String(base.name.dropFirst($0.count + 1)) } ?? base.hostedName
-        let target = remote.flatMap { addresses[$0] } ?? webAddress
-        return target?.newChangeRequestURL(branch: tracking?.remoteBranch(for: branch.name) ?? branch.name, base: baseBranch, from: pushWebAddress)
+        let target = base.remote(among: addresses.keys).flatMap { addresses[$0] } ?? webAddress
+        return target?.newChangeRequestURL(branch: tracking?.remoteBranch(for: branch.name) ?? branch.name, base: hostedName(of: base),
+                                           from: pushWebAddress)
+    }
+
+    func hostedName(of base: ComparisonBranch) -> String {
+        base.hostedName(among: (remoteWebAddresses ?? [:]).keys)
     }
 
     func limited(to changes: [GitChange], omitting omitted: Int) -> LocalGitSnapshot {

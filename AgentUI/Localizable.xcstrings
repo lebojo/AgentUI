@@ -854,6 +854,16 @@
         }
       }
     },
+    "Stop the running Git command" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter la commande Git en cours"
+          }
+        }
+      }
+    },
     "Terminals shown side by side in a split view" : {
       "localizations" : {
         "fr" : {

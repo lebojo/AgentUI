@@ -337,9 +337,12 @@ enum InspectorTests {
                     "Publish Again pushes like Publish and says which remote branch it recreates")
         var prompts = AgentPrompts()
         prompts.changeRequest = "Open the PR."
-        try require(AgentRequest.changeRequest(base: ComparisonBranch(reference: "refs/remotes/origin/develop")).prompt(from: prompts)
-                        == "Open the PR.\n\nBase branch: develop"
-                    && AgentRequest.changeRequest(base: ComparisonBranch(reference: "refs/heads/release/1.0")).prompt(from: prompts).hasSuffix("Base branch: release/1.0")
+        let teamRemote = LocalGitSnapshot(root: "/r", branch: GitBranch(name: "feature"), headSHA: "abc", changes: [],
+                                          remoteWebAddresses: ["team/upstream": RemoteWebAddress(remoteURL: "git@github.com:team/app.git")!])
+        try require(AgentRequest.changeRequest(baseBranch: teamRemote.hostedName(of: ComparisonBranch(reference: "refs/remotes/team/upstream/develop")))
+                        .prompt(from: prompts) == "Open the PR.\n\nBase branch: develop"
+                    && teamRemote.hostedName(of: ComparisonBranch(reference: "refs/remotes/origin/release/1.0")) == "release/1.0"
+                    && teamRemote.hostedName(of: ComparisonBranch(reference: "refs/heads/release/1.0")) == "release/1.0"
                     && AgentRequest.commit.prompt(from: prompts) == prompts.commit,
                     "Asking the agent for a change request names the base chosen in Branch Comparison, without its remote, after the user's prompt")
         try require(String(localized: GitActionFailure(action: .stage(["docs/README.md"]), error: "boom").message) == "Couldn’t stage README.md: boom"

@@ -96,6 +96,20 @@ import Foundation
                               "A commit keeps a push failure and a later successful push clears it")
         print("PASS queued Git actions")
 
+        let hanging = Task {
+            await queue.perform(.commit(title: "t", message: ""), at: repository.path) { _, _ in
+                _ = try await CommandRunner.run(URL(fileURLWithPath: "/bin/sleep"), ["600"], at: repository.path, timeout: 3600, limit: 0, readOnly: false)
+            }
+        }
+        try await wait(until: { queue.pendingAction == .commit(title: "t", message: "") }, "A hanging Git action starts")
+        try await Task.sleep(for: .milliseconds(200))
+        let cancelledAt = ContinuousClock.now
+        queue.cancelPendingAction()
+        let hangingResult = await hanging.value
+        try CoreTests.require(!hangingResult && queue.pendingAction == nil && queue.actionFailure == nil && cancelledAt.duration(to: .now) < .seconds(5),
+                              "Cancelling the running Git action stops its process without reporting a failure")
+        print("PASS cancelled Git action")
+
         let listings = Counter()
         let guardian = GitFilterGuard { root in
             await listings.increment()

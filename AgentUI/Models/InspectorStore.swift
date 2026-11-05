@@ -21,6 +21,7 @@ import Observation
     private(set) var pendingAction: GitAction?
     var actionFailure: GitActionFailure?
     @ObservationIgnored private var queuedActions: [CheckedContinuation<Void, Never>] = []
+    @ObservationIgnored private var runningAction: Task<Void, any Error>?
     @ObservationIgnored private var path: String?
     @ObservationIgnored private var reloadTrigger: AsyncStream<Void>.Continuation?
     @ObservationIgnored private var generation = UUID()
@@ -88,7 +89,7 @@ import Observation
         reloadTrigger?.yield()
     }
 
-    @discardableResult func perform(_ action: GitAction, at root: String, run: GitCommand) async -> Bool {
+    @discardableResult func perform(_ action: GitAction, at root: String, run: @escaping GitCommand) async -> Bool {
         if pendingAction != nil {
             await withCheckedContinuation { queuedActions.append($0) }
         }
@@ -98,8 +99,11 @@ import Observation
             if queuedActions.isEmpty { pendingAction = nil } else { queuedActions.removeFirst().resume() }
         }
         guard !Task.isCancelled else { return false }
+        let running = Task { try await run(action, root) }
+        runningAction = running
+        defer { runningAction = nil }
         do {
-            try await run(action, root)
+            try await withTaskCancellationHandler { try await running.value } onCancel: { running.cancel() }
             if let actionFailure, action.retries(actionFailure.action) { self.actionFailure = nil }
             return true
         } catch is CancellationError {
@@ -108,6 +112,10 @@ import Observation
             actionFailure = GitActionFailure(action: action, error: error.localizedDescription)
             return false
         }
+    }
+
+    func cancelPendingAction() {
+        runningAction?.cancel()
     }
 
     private func localLoop(path: String, token: UUID, changes: AsyncStream<Void>,

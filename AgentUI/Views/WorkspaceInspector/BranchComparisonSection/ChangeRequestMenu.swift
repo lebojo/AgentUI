@@ -51,7 +51,7 @@ struct ChangeRequestMenu: View {
             Menu(title, systemImage: "arrow.triangle.pull") {
                 if let worktree {
                     Button(askAgentTitle, systemImage: "sparkles") {
-                        source.runAgent(.changeRequest(base: base), name: terminalName, in: worktree)
+                        source.runAgent(.changeRequest(baseBranch: model.local?.hostedName(of: base) ?? base.hostedName), name: terminalName, in: worktree)
                     }
                 }
                 if let url = model.local?.newChangeRequestURL(into: base) {
