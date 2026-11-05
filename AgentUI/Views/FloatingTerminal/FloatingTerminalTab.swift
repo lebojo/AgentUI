@@ -6,10 +6,9 @@ struct FloatingTerminalTab: View {
     @State private var isHovered = false
 
     let tab: TerminalLayout
+    let title: String
+    let directory: String
     let isSelected: Bool
-
-    private var focusedID: UUID { floating.state.focusedID(in: tab) }
-    private var title: String { floating.title(of: focusedID) }
 
     var body: some View {
         HStack(spacing: Spacing.xs) {
@@ -32,7 +31,7 @@ struct FloatingTerminalTab: View {
         .contentShape(RoundedRectangle(cornerRadius: Radius.m))
         .onTapGesture { floating.select(tab) }
         .onHover { isHovered = $0 }
-        .help(floating.directory(of: focusedID))
+        .help(directory)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction { floating.select(tab) }

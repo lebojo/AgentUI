@@ -5,13 +5,17 @@ struct FloatingTerminalTabBar: View {
 
     var body: some View {
         HStack(spacing: Spacing.s) {
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(spacing: Spacing.xs) {
+                    let selectedID = floating.state.selectedTab?.id
                     ForEach(floating.state.tabs) { tab in
-                        FloatingTerminalTab(tab: tab, isSelected: tab.id == floating.state.selectedTab?.id)
+                        let focusedID = floating.state.focusedID(in: tab)
+                        FloatingTerminalTab(tab: tab, title: floating.title(of: focusedID),
+                                            directory: floating.directory(of: focusedID), isSelected: tab.id == selectedID)
                     }
                 }
             }
+            .scrollIndicators(.hidden)
             Button { floating.openTab() } label: { Image(systemName: "plus") }
                 .help("New Tab (⌘T)")
                 .accessibilityLabel("New tab")

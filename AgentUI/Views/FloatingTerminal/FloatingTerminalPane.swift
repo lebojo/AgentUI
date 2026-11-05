@@ -13,22 +13,8 @@ struct FloatingTerminalPane: View {
     var body: some View {
         VStack(spacing: 0) {
             if isSplit {
-                HStack(spacing: Spacing.s) {
-                    Image(systemName: "terminal").foregroundStyle(isFocused ? Palette.accent : Palette.textSecondary)
-                    Text(floating.title(of: id)).lineLimit(1)
-                        .foregroundStyle(isFocused ? Palette.textPrimary : Palette.textSecondary)
-                    if let branch = session?.branch {
-                        BranchBadge(branch: branch).frame(maxWidth: Dimension.Badge.sidebarMaxWidth)
-                    }
-                    Spacer(minLength: Spacing.xs)
-                    Button { floating.close(id) } label: { Image(systemName: "xmark") }
-                        .buttonStyle(.borderless).help("Close This Pane")
-                        .accessibilityLabel("Close terminal \(floating.title(of: id))")
-                }
-                .font(Typography.s).padding(.horizontal, Spacing.l).frame(height: Dimension.Detail.paneTitleHeight)
-                .background(isFocused ? Palette.accent.opacity(0.12) : Color.clear)
-                .contentShape(Rectangle())
-                .onTapGesture { floating.focus(id) }
+                TerminalPaneHeader(title: floating.title(of: id), branch: session?.branch, isFocused: isFocused) { floating.close(id) }
+                    .onTapGesture { floating.focus(id) }
                 Divider()
             }
             if let session {

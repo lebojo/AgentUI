@@ -17,23 +17,11 @@ struct TerminalPane: View {
     var body: some View {
         VStack(spacing: 0) {
             if isSplit {
-                HStack(spacing: Spacing.s) {
-                    Image(systemName: "terminal").foregroundStyle(isFocused ? Palette.accent : Palette.textSecondary)
-                    Text(context.terminal.name).lineLimit(1)
-                        .foregroundStyle(isFocused ? Palette.textPrimary : Palette.textSecondary)
-                    if let branch = store.sessions.branch(for: context.terminal.id, initialPath: context.worktree.path) {
-                        BranchBadge(branch: branch).frame(maxWidth: Dimension.Badge.sidebarMaxWidth)
-                    }
-                    Spacer(minLength: Spacing.xs)
-                    Button { store.closeTerminal(context.terminal.id) } label: { Image(systemName: "xmark") }
-                        .buttonStyle(.borderless).help("Close This Pane")
-                        .accessibilityLabel("Close terminal \(context.terminal.name)")
-                }
-                .font(Typography.s).padding(.horizontal, Spacing.l).frame(height: Dimension.Detail.paneTitleHeight)
-                .background(isFocused ? Palette.accent.opacity(0.12) : Color.clear)
-                .contentShape(Rectangle())
-                .onTapGesture { select() }
-                .terminalDragSource(context.terminal.id)
+                TerminalPaneHeader(title: context.terminal.name,
+                                   branch: store.sessions.branch(for: context.terminal.id, initialPath: context.worktree.path),
+                                   isFocused: isFocused) { store.closeTerminal(context.terminal.id) }
+                    .onTapGesture { select() }
+                    .terminalDragSource(context.terminal.id)
                 Divider()
             }
             if let session {
