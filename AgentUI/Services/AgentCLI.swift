@@ -10,8 +10,10 @@ enum AgentCLI {
     agentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]
     agentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]
     agentui terminal send --terminal UUID [--enter] (-- TEXT… | --stdin)
-    agentui terminal read --terminal UUID [--lines N]
+    agentui terminal send --terminal UUID --key KEY [--key KEY…]
+    agentui terminal read --terminal UUID [--lines N | --reply | --messages N]
     agentui terminal wait --terminal UUID [--idle SECONDS | --exit] [--timeout SECONDS]
+    agentui terminal close --terminal UUID [--force]
 
     From an AgentUI terminal, the project and worktree are implicit.
     Elsewhere, they are inferred from the current folder if it belongs to a project open in AgentUI.
@@ -27,10 +29,13 @@ enum AgentCLI {
     Without --force, a worktree with uncommitted changes or untracked files is kept; --force never deletes an unmerged branch.
     A project’s main folder and the current terminal’s worktree can’t be deleted.
     terminal send types TEXT into another terminal, or the standard input with --stdin. With --enter, the text is submitted as one message, like pressing Return; --enter alone just presses Return.
+    --key presses keys one after the other, in order: enter, escape, tab, shift-tab, backspace, delete, space, up, down, left, right, home, end, page-up, page-down, ctrl-a … ctrl-z.
     terminal read prints the last lines of a terminal (50 by default, 10,000 at most) as output.
+    For Claude, Codex and Copilot, --reply prints instead the agent’s answer to the last message as output, and --messages N the last N messages of its conversation (200 at most) as messages.
     terminal wait returns once the terminal has printed nothing for --idle SECONDS (5 by default), or once its command has exited with --exit. It gives up after --timeout SECONDS (120 by default, 3,600 at most) with ok: false.
     Their replies include running, exitCode and, for a recognized agent, agent and status (working, ready or waitingForInput).
-    The current terminal can’t send to or wait for itself.
+    terminal close stops the terminal’s processes and removes it. Without --force, it refuses while its agent is working.
+    The current terminal can’t send to, wait for or close itself.
     """)
 
     static func run(arguments: [String]) -> Int32 {
@@ -123,7 +128,7 @@ enum AgentCLI {
             request.path = URL(fileURLWithPath: arguments[2]).standardizedFileURL.path
             return request
         }
-        if arguments.count >= 2, ["send", "read", "wait"].contains(arguments[1]), arguments[0] == "terminal" {
+        if arguments.count >= 2, ["send", "read", "wait", "close"].contains(arguments[1]), arguments[0] == "terminal" {
             return try parseTerminalCommand(arguments, into: request, callerID: environment["AGENTUI_TERMINAL_ID"].flatMap(UUID.init(uuidString:)))
         }
         let commands = [["terminal", "create"], ["worktree", "create"], ["worktree", "delete"]]
@@ -188,6 +193,8 @@ enum AgentCLI {
             case ("terminal.send", "--enter"): request.pressesEnter = true; index += 1; continue
             case ("terminal.send", "--stdin"): readsInput = true; index += 1; continue
             case ("terminal.wait", "--exit"): request.waitsForExit = true; index += 1; continue
+            case ("terminal.read", "--reply"): request.reply = true; index += 1; continue
+            case ("terminal.close", "--force"): request.force = true; index += 1; continue
             default: break
             }
             guard index + 1 < arguments.count else { throw WorkspaceError(message: String(localized: "Missing value for \(option).")) }
@@ -200,6 +207,14 @@ enum AgentCLI {
                 guard let lines = Int(value), (1...TerminalWait.maximumLines).contains(lines) else {
                     throw WorkspaceError(message: String(localized: "--lines must be a whole number from 1 to \(TerminalWait.maximumLines).")) }
                 request.lines = lines
+            case ("terminal.read", "--messages"):
+                guard let count = Int(value), (1...TerminalWait.maximumMessages).contains(count) else {
+                    throw WorkspaceError(message: String(localized: "--messages must be a whole number from 1 to \(TerminalWait.maximumMessages).")) }
+                request.messages = count
+            case ("terminal.send", "--key"):
+                guard TerminalKey(name: value) != nil else {
+                    throw WorkspaceError(message: String(localized: "Unknown key: \(value). Use \(TerminalKey.names).")) }
+                request.keys = (request.keys ?? []) + [value]
             case ("terminal.wait", "--idle"):
                 request.idleSeconds = try seconds(value, option: option, maximum: TerminalWait.maximumTimeout)
             case ("terminal.wait", "--timeout"):
@@ -214,11 +229,22 @@ enum AgentCLI {
         if request.waitsForExit == true, request.idleSeconds != nil {
             throw WorkspaceError(message: String(localized: "Use either --idle or --exit, not both."))
         }
+        if [request.lines != nil, request.reply == true, request.messages != nil].filter({ $0 }).count > 1 {
+            throw WorkspaceError(message: String(localized: "Use only one of --lines, --reply and --messages."))
+        }
+        if let keys = request.keys {
+            guard request.text == nil, !readsInput, request.pressesEnter != true else {
+                throw WorkspaceError(message: String(localized: "--key can’t be combined with text, --stdin or --enter. Send them in separate commands, or add --key enter."))
+            }
+            guard keys.count <= TerminalKey.maximumCount else {
+                throw WorkspaceError(message: String(localized: "Too many keys: \(TerminalKey.maximumCount) at most."))
+            }
+        }
         if readsInput, request.text != nil {
             throw WorkspaceError(message: String(localized: "Use either --stdin or text after --, not both."))
         }
-        if request.action == "terminal.send", !readsInput, request.text?.isEmpty ?? true, request.pressesEnter != true {
-            throw WorkspaceError(message: String(localized: "Nothing to send: add the text after --, or --stdin, or --enter."))
+        if request.action == "terminal.send", !readsInput, request.text?.isEmpty ?? true, request.pressesEnter != true, request.keys == nil {
+            throw WorkspaceError(message: String(localized: "Nothing to send: add the text after --, --stdin, --enter or --key."))
         }
         if target == callerID, request.action != "terminal.read" {
             throw WorkspaceError(message: String(localized: "This is the current terminal. Pass the UUID of another terminal."))

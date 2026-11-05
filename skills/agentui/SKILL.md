@@ -2,7 +2,7 @@
 name: agentui
 description: Drive the AgentUI macOS app with the `agentui` CLI. Use when the AGENTUI_INSTANCE environment variable is set (you are in an AgentUI terminal), or when the user asks to use AgentUI from another terminal. Use it to start another agent in parallel on its own branch (`agentui worktree create`), to ask another agent for a review or a second opinion in the same worktree (`agentui terminal create`), to run a long process such as a dev server or watcher in a visible terminal, to send a message to another agent's terminal, read its output or wait for it to finish (`agentui terminal send`, `read`, `wait`), to add a project to the sidebar, to list projects, worktrees and terminals, or to delete a worktree once its branch is merged into the main branch. Prefer it over raw `git worktree add`, background jobs or a new shell when AgentUI is running.
 metadata:
-  version: "10"
+  version: "11"
 ---
 
 # AgentUI CLI
@@ -46,8 +46,10 @@ agentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COM
 agentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGS…]
 agentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]
 agentui terminal send --terminal UUID [--enter] (-- TEXT… | --stdin)
-agentui terminal read --terminal UUID [--lines N]
+agentui terminal send --terminal UUID --key KEY [--key KEY…]
+agentui terminal read --terminal UUID [--lines N | --reply | --messages N]
 agentui terminal wait --terminal UUID [--idle SECONDS | --exit] [--timeout SECONDS]
+agentui terminal close --terminal UUID [--force]
 ```
 
 - Without `--project` or `--worktree`, commands target the current project and worktree. `--project` alone targets that project's main folder; `--worktree` alone finds its project.
@@ -76,21 +78,25 @@ Address a terminal with the `terminalID` returned by `terminal create` or `workt
 ```sh
 agentui terminal send --terminal "$CHILD" --enter -- "Fix the findings of your review, then commit."
 agentui terminal wait --terminal "$CHILD" --idle 10 --timeout 110
-agentui terminal read --terminal "$CHILD" --lines 80
+agentui terminal read --terminal "$CHILD" --reply
 ```
 
 - `send` types the text into the terminal, as if on its keyboard. With `--enter`, it is submitted as one message, multi-line text included, like pressing Return in Claude, Codex, Copilot or OpenCode. Without `--enter`, the text is typed but not submitted. `--enter` alone presses Return, for example to accept a default choice. The text after `--` is joined with spaces and sent verbatim; for a long or multi-line message, pipe it with `--stdin` (`agentui terminal send --terminal "$CHILD" --enter --stdin < prompt.md`). 64 KB at most.
+- `--key` presses keys one after the other, in order: `enter`, `escape`, `tab`, `shift-tab`, `backspace`, `delete`, `space`, `up`, `down`, `left`, `right`, `home`, `end`, `page-up`, `page-down`, `ctrl-a` … `ctrl-z`. Use it to interrupt a child (`escape` for Claude, Codex and Copilot; `ctrl-c` for most other programs) or to move in a menu (`--key down --key enter`). It can't be combined with text: send the text in another command.
 - `wait` returns once the terminal has printed nothing for `--idle` seconds (5 by default), counted from the call, or with `--exit` once its command has exited. An agent that works shows a spinner or a timer, so a quiet terminal usually means it finished or waits for an answer. It gives up after `--timeout` seconds (120 by default, 3600 at most) with `ok: false` and the current state. Keep `--timeout` below the time limit of your own shell tool, and call `wait` again if needed.
-- `read` returns the last `--lines` lines of the terminal (50 by default, 10,000 at most) in `output`, wrapped lines joined. For a full-screen program, it is what the screen shows. Read before answering: a child may wait for a permission prompt rather than for a new message.
+- `read --reply` returns in `output` the agent's answer to the last message it received, as plain text without the screen around it: menus, spinners and tool output are left out. It works for Claude, Codex and Copilot once the agent has recorded its conversation, and fails with a `message` otherwise. Prefer it to read a child's result.
+- `read --messages N` returns the last N messages of the conversation (200 at most) in `messages`, each with `kind` (`input`, `assistant`, `tool` or `notice`), `text`, and for tools `title` and `toolState`.
+- `read` alone returns the last `--lines` lines of the screen (50 by default, 10,000 at most) in `output`, wrapped lines joined. Use it for programs other than these agents, and to see what the child shows right now: a permission prompt or a menu appears on the screen, not in `--reply`.
 - Each reply includes `running`, `exitCode` once the command has exited and, for a recognized agent, `agent` and `status` (`working`, `ready` or `waitingForInput`).
-- Typical loop: `send --enter`, `wait --idle 10`, `read`, decide. Check `status` and the output before sending again: a message typed while the child is working is queued or mixed with its input, depending on the agent.
+- Typical loop: `send --enter`, `wait --idle 10`, `read --reply`, decide; if `status` is `waitingForInput`, `read` the screen to see the prompt. Check `status` and the output before sending again: a message typed while the child is working is queued or mixed with its input, depending on the agent.
 - Only send what the user asked for or what the task clearly calls for. Never approve a child's permission prompt, or answer for the user, unless they asked you to; report the prompt to them instead.
 - To send the same message to several children, run `send` once per terminal.
 - Sending to a terminal that has exited fails: create a new one, or resume the agent there.
+- `close` stops the terminal's processes and removes it from the sidebar. Without `--force`, it refuses while the terminal's agent is `working`. Close the terminals you created once their work is collected; ask the user before closing one you didn't create, and before using `--force`.
 
 ## Limits
 
-- The output read is the terminal's text, not the agent's structured conversation. For a result to reuse, ask the child to commit it or write it to a file in its worktree.
+- `--reply` and `--messages` are not available for OpenCode or other programs: read the screen instead. For a large result, ask the child to commit it or write it to a file in its worktree.
 - `agentui` only works while AgentUI is running.
 
 ## Deleting a worktree

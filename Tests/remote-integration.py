@@ -395,6 +395,21 @@ try:
                     break
     print("PASS Claude structured journal over TCP, multiline paste, no duplicate input or TUI scraping", flush=True)
 
+    def agentui(*args):
+        result = subprocess.run([str(instance / "bin" / "agentui"), *args], env=os.environ | {"AGENTUI_INSTANCE": str(instance)},
+                                capture_output=True, text=True, timeout=30)
+        data = json.loads(result.stdout)
+        assert data["ok"] and result.returncode == 0, (args, data, result.stderr)
+        return data
+    first = agentui("terminal", "read", "--terminal", agent, "--reply")
+    assert first["agent"] == "claude" and "STRUCTURED_REPLY" in first["output"], first
+    assert all(text not in first["output"] for text in ["Bonjour du Mac", "First line", "CLAUDE_FIXTURE_READY", "TUI_NOISE"]), first
+    agentui("terminal", "send", "--terminal", agent, "--enter", "--", "Deuxième\nquestion")
+    inputs = lambda: [m["text"] for m in agentui("terminal", "read", "--terminal", agent, "--messages", "200")["messages"] if m["kind"] == "input"]
+    wait_for(lambda: inputs() == [prompt, "Deuxième\nquestion"])
+    wait_for(lambda: [m["kind"] for m in agentui("terminal", "read", "--terminal", agent, "--messages", "3")["messages"]] == ["input", "tool", "assistant"])
+    print("PASS agentui terminal read --reply and --messages return the agent's conversation, not its screen", flush=True)
+
     codex_launcher = root / "bin" / "codex"
     codex_launcher.write_bytes((Path(__file__).resolve().parent / "fixtures/codex-terminal.py").read_bytes())
     codex_launcher.chmod(0o755)

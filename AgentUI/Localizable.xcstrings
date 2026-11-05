@@ -174,12 +174,32 @@
         }
       }
     },
+    "--key can’t be combined with text, --stdin or --enter. Send them in separate commands, or add --key enter." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--key ne se combine pas avec un texte, --stdin ou --enter. Envoie-les dans des commandes séparées, ou ajoute --key enter."
+          }
+        }
+      }
+    },
     "--lines must be a whole number from 1 to %lld." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "--lines doit être un nombre entier de 1 à %lld."
+          }
+        }
+      }
+    },
+    "--messages must be a whole number from 1 to %lld." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--messages doit être un nombre entier de 1 à %lld."
           }
         }
       }
@@ -214,12 +234,12 @@
         }
       }
     },
-    "agentui — organize the terminals and worktrees of the running app\n\nagentui list\nagentui project add /path/to/project\nagentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]\nagentui terminal send --terminal UUID [--enter] (-- TEXT… | --stdin)\nagentui terminal read --terminal UUID [--lines N]\nagentui terminal wait --terminal UUID [--idle SECONDS | --exit] [--timeout SECONDS]\n\nFrom an AgentUI terminal, the project and worktree are implicit.\nElsewhere, they are inferred from the current folder if it belongs to a project open in AgentUI.\nChild commands are passed as arguments, without shell interpretation.\nExamples:\n  agentui terminal create --name Review -- claude \"Review the changes\"\n  agentui worktree create --branch feature/tests -- codex \"Add the tests\"\nEach creation returns the identifiers and path as JSON.\nAn existing branch is opened as is; otherwise it is created from the project’s HEAD.\nworktree delete closes its terminals and erases its folder; by default, the branch and its commits stay in the repository.\nWith --delete-branch, the branch is deleted too if it’s merged into the repository’s main branch; otherwise nothing is removed. Add --force-branch to delete it even if it isn’t, losing its unmerged commits.\nThe repository’s main branch and a branch checked out elsewhere are never deleted.\nWithout --force, a worktree with uncommitted changes or untracked files is kept; --force never deletes an unmerged branch.\nA project’s main folder and the current terminal’s worktree can’t be deleted.\nterminal send types TEXT into another terminal, or the standard input with --stdin. With --enter, the text is submitted as one message, like pressing Return; --enter alone just presses Return.\nterminal read prints the last lines of a terminal (50 by default, 10,000 at most) as output.\nterminal wait returns once the terminal has printed nothing for --idle SECONDS (5 by default), or once its command has exited with --exit. It gives up after --timeout SECONDS (120 by default, 3,600 at most) with ok: false.\nTheir replies include running, exitCode and, for a recognized agent, agent and status (working, ready or waitingForInput).\nThe current terminal can’t send to or wait for itself." : {
+    "agentui — organize the terminals and worktrees of the running app\n\nagentui list\nagentui project add /path/to/project\nagentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]\nagentui terminal send --terminal UUID [--enter] (-- TEXT… | --stdin)\nagentui terminal send --terminal UUID --key KEY [--key KEY…]\nagentui terminal read --terminal UUID [--lines N | --reply | --messages N]\nagentui terminal wait --terminal UUID [--idle SECONDS | --exit] [--timeout SECONDS]\nagentui terminal close --terminal UUID [--force]\n\nFrom an AgentUI terminal, the project and worktree are implicit.\nElsewhere, they are inferred from the current folder if it belongs to a project open in AgentUI.\nChild commands are passed as arguments, without shell interpretation.\nExamples:\n  agentui terminal create --name Review -- claude \"Review the changes\"\n  agentui worktree create --branch feature/tests -- codex \"Add the tests\"\nEach creation returns the identifiers and path as JSON.\nAn existing branch is opened as is; otherwise it is created from the project’s HEAD.\nworktree delete closes its terminals and erases its folder; by default, the branch and its commits stay in the repository.\nWith --delete-branch, the branch is deleted too if it’s merged into the repository’s main branch; otherwise nothing is removed. Add --force-branch to delete it even if it isn’t, losing its unmerged commits.\nThe repository’s main branch and a branch checked out elsewhere are never deleted.\nWithout --force, a worktree with uncommitted changes or untracked files is kept; --force never deletes an unmerged branch.\nA project’s main folder and the current terminal’s worktree can’t be deleted.\nterminal send types TEXT into another terminal, or the standard input with --stdin. With --enter, the text is submitted as one message, like pressing Return; --enter alone just presses Return.\n--key presses keys one after the other, in order: enter, escape, tab, shift-tab, backspace, delete, space, up, down, left, right, home, end, page-up, page-down, ctrl-a … ctrl-z.\nterminal read prints the last lines of a terminal (50 by default, 10,000 at most) as output.\nFor Claude, Codex and Copilot, --reply prints instead the agent’s answer to the last message as output, and --messages N the last N messages of its conversation (200 at most) as messages.\nterminal wait returns once the terminal has printed nothing for --idle SECONDS (5 by default), or once its command has exited with --exit. It gives up after --timeout SECONDS (120 by default, 3,600 at most) with ok: false.\nTheir replies include running, exitCode and, for a recognized agent, agent and status (working, ready or waitingForInput).\nterminal close stops the terminal’s processes and removes it. Without --force, it refuses while its agent is working.\nThe current terminal can’t send to, wait for or close itself." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "agentui — organiser les terminaux et worktrees de l’application ouverte\n\nagentui list\nagentui project add /chemin/du/projet\nagentui terminal create [--name NOM] [--project UUID] [--worktree UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree create --branch BRANCHE [--name NOM] [--project UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]\nagentui terminal send --terminal UUID [--enter] (-- TEXTE… | --stdin)\nagentui terminal read --terminal UUID [--lines N]\nagentui terminal wait --terminal UUID [--idle SECONDES | --exit] [--timeout SECONDES]\n\nDepuis un terminal AgentUI, le projet et le worktree sont implicites.\nAilleurs, ils sont déduits du dossier courant s’il appartient à un projet ouvert dans AgentUI.\nLes commandes enfant sont passées comme arguments, sans interprétation shell.\nExemples :\n  agentui terminal create --name Review -- claude \"Relis les modifications\"\n  agentui worktree create --branch feature/tests -- codex \"Ajoute les tests\"\nChaque création renvoie les identifiants et le chemin au format JSON.\nUne branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.\nworktree delete ferme ses terminaux et efface son dossier ; par défaut, la branche et ses commits restent dans le dépôt.\nAvec --delete-branch, la branche est aussi supprimée si elle est fusionnée dans la branche principale du dépôt ; sinon, rien n’est supprimé. Ajoutez --force-branch pour la supprimer même si elle ne l’est pas, en perdant ses commits non fusionnés.\nLa branche principale du dépôt et une branche utilisée ailleurs ne sont jamais supprimées.\nSans --force, un worktree avec des modifications non commitées ou des fichiers non suivis est conservé ; --force ne supprime jamais une branche non fusionnée.\nLe dossier principal d’un projet et le worktree du terminal courant ne peuvent pas être supprimés.\nterminal send tape TEXTE dans un autre terminal, ou l’entrée standard avec --stdin. Avec --enter, le texte est envoyé en un seul message, comme avec la touche Retour ; --enter seul appuie juste sur Retour.\nterminal read renvoie dans output les dernières lignes d’un terminal (50 par défaut, 10 000 au maximum).\nterminal wait rend la main quand le terminal n’a rien affiché pendant --idle SECONDES (5 par défaut), ou quand sa commande s’est terminée avec --exit. Il abandonne après --timeout SECONDES (120 par défaut, 3 600 au maximum) avec ok: false.\nLeurs réponses incluent running, exitCode et, pour un agent reconnu, agent et status (working, ready ou waitingForInput).\nLe terminal courant ne peut ni s’envoyer de texte ni s’attendre lui-même."
+            "value" : "agentui — organiser les terminaux et worktrees de l’application ouverte\n\nagentui list\nagentui project add /chemin/du/projet\nagentui terminal create [--name NOM] [--project UUID] [--worktree UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree create --branch BRANCHE [--name NOM] [--project UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]\nagentui terminal send --terminal UUID [--enter] (-- TEXTE… | --stdin)\nagentui terminal send --terminal UUID --key TOUCHE [--key TOUCHE…]\nagentui terminal read --terminal UUID [--lines N | --reply | --messages N]\nagentui terminal wait --terminal UUID [--idle SECONDES | --exit] [--timeout SECONDES]\nagentui terminal close --terminal UUID [--force]\n\nDepuis un terminal AgentUI, le projet et le worktree sont implicites.\nAilleurs, ils sont déduits du dossier courant s’il appartient à un projet ouvert dans AgentUI.\nLes commandes enfant sont passées comme arguments, sans interprétation shell.\nExemples :\n  agentui terminal create --name Review -- claude \"Relis les modifications\"\n  agentui worktree create --branch feature/tests -- codex \"Ajoute les tests\"\nChaque création renvoie les identifiants et le chemin au format JSON.\nUne branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.\nworktree delete ferme ses terminaux et efface son dossier ; par défaut, la branche et ses commits restent dans le dépôt.\nAvec --delete-branch, la branche est aussi supprimée si elle est fusionnée dans la branche principale du dépôt ; sinon, rien n’est supprimé. Ajoutez --force-branch pour la supprimer même si elle ne l’est pas, en perdant ses commits non fusionnés.\nLa branche principale du dépôt et une branche utilisée ailleurs ne sont jamais supprimées.\nSans --force, un worktree avec des modifications non commitées ou des fichiers non suivis est conservé ; --force ne supprime jamais une branche non fusionnée.\nLe dossier principal d’un projet et le worktree du terminal courant ne peuvent pas être supprimés.\nterminal send tape TEXTE dans un autre terminal, ou l’entrée standard avec --stdin. Avec --enter, le texte est envoyé en un seul message, comme avec la touche Retour ; --enter seul appuie juste sur Retour.\n--key appuie sur les touches l’une après l’autre, dans l’ordre : enter, escape, tab, shift-tab, backspace, delete, space, up, down, left, right, home, end, page-up, page-down, ctrl-a … ctrl-z.\nterminal read renvoie dans output les dernières lignes d’un terminal (50 par défaut, 10 000 au maximum).\nPour Claude, Codex et Copilot, --reply renvoie plutôt dans output la réponse de l’agent au dernier message, et --messages N les N derniers messages de sa conversation (200 au maximum) dans messages.\nterminal wait rend la main quand le terminal n’a rien affiché pendant --idle SECONDES (5 par défaut), ou quand sa commande s’est terminée avec --exit. Il abandonne après --timeout SECONDES (120 par défaut, 3 600 au maximum) avec ok: false.\nLeurs réponses incluent running, exitCode et, pour un agent reconnu, agent et status (working, ready ou waitingForInput).\nterminal close arrête les processus du terminal et le retire. Sans --force, il refuse tant que son agent travaille.\nLe terminal courant ne peut ni s’envoyer de texte, ni s’attendre, ni se fermer lui-même."
           }
         }
       }
@@ -644,6 +664,16 @@
         }
       }
     },
+    "No Claude, Codex or Copilot conversation found in this terminal. Read its screen instead, without --reply or --messages." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune conversation Claude, Codex ou Copilot trouvée dans ce terminal. Lis plutôt son écran, sans --reply ni --messages."
+          }
+        }
+      }
+    },
     "No merge request for this branch." : {
       "localizations" : {
         "fr" : {
@@ -684,12 +714,12 @@
         }
       }
     },
-    "Nothing to send: add the text after --, or --stdin, or --enter." : {
+    "Nothing to send: add the text after --, --stdin, --enter or --key." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rien à envoyer : ajoute le texte après --, ou --stdin, ou --enter."
+            "value" : "Rien à envoyer : ajoute le texte après --, --stdin, --enter ou --key."
           }
         }
       }
@@ -964,6 +994,16 @@
         }
       }
     },
+    "The agent in this terminal is working. Wait for it with agentui terminal wait, or run again with --force to stop it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’agent de ce terminal travaille. Attends-le avec agentui terminal wait, ou relance avec --force pour l’arrêter."
+          }
+        }
+      }
+    },
     "The branch “%@” changed after it was checked." : {
       "localizations" : {
         "fr" : {
@@ -1164,6 +1204,36 @@
         }
       }
     },
+    "This terminal isn’t running." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce terminal n’est pas lancé."
+          }
+        }
+      }
+    },
+    "Too many keys: %lld at most." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trop de touches : %lld au maximum."
+          }
+        }
+      }
+    },
+    "Unknown key: %@. Use %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touche inconnue : %@. Utilise %@."
+          }
+        }
+      }
+    },
     "Unstage" : {
       "localizations" : {
         "fr" : {
@@ -1210,6 +1280,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Utilise soit --stdin, soit un texte après --, pas les deux."
+          }
+        }
+      }
+    },
+    "Use only one of --lines, --reply and --messages." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilise une seule option parmi --lines, --reply et --messages."
           }
         }
       }

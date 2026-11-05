@@ -95,6 +95,7 @@ import AppKit
             let project = try store.addProject(URL(fileURLWithPath: path))
             return BridgeResponse(ok: true, projectID: project.id, worktreeID: project.worktrees[0].id, path: project.path)
         }
+        if request.action == "terminal.close" { return try await closeTerminal(request) }
         let location = location(of: request.directory)
         if request.action == "worktree.delete" { return try await deleteWorktree(request, currentLocation: location) }
         let request = resolvingContext(of: request, location: location)
@@ -152,14 +153,47 @@ import AppKit
         let id = try existingTerminal(request.terminalID)
         guard let context = store.startableContext(for: id) else { throw WorkspaceError(message: String(localized: "This worktree is being deleted.")) }
         let session = store.sessions.start(context)
-        try await session.type(request.text ?? "", submitting: request.pressesEnter == true, from: .remote)
+        if let keys = request.keys {
+            try await session.press(keys.compactMap(TerminalKey.init(name:)), from: .remote)
+        } else {
+            try await session.type(request.text ?? "", submitting: request.pressesEnter == true, from: .remote)
+        }
         return await state(of: id)
     }
 
     private func readOutput(_ request: BridgeRequest) async throws -> BridgeResponse {
         let id = try existingTerminal(request.terminalID)
         var response = await state(of: id)
-        response.output = store.sessions.session(id)?.recentLines(request.lines ?? TerminalWait.defaultLines) ?? ""
+        let session = store.sessions.session(id)
+        guard request.reply == true || request.messages != nil else {
+            response.output = session?.recentLines(request.lines ?? TerminalWait.defaultLines) ?? ""
+            return response
+        }
+        guard let session else { throw WorkspaceError(message: String(localized: "This terminal isn’t running.")) }
+        let conversation = try await session.conversation()
+        if let count = request.messages {
+            response.messages = Array(conversation.suffix(count))
+        } else {
+            response.output = Self.reply(in: conversation)
+        }
+        return response
+    }
+
+    private static func reply(in conversation: [SessionMessage]) -> String {
+        let start = conversation.lastIndex { $0.kind == .input }.map { $0 + 1 } ?? conversation.startIndex
+        return conversation[start...].filter { $0.kind == .assistant }.map(\.text).joined(separator: "\n\n")
+    }
+
+    private func closeTerminal(_ request: BridgeRequest) async throws -> BridgeResponse {
+        let id = try existingTerminal(request.terminalID)
+        guard store.startableContext(for: id) != nil else { throw WorkspaceError(message: String(localized: "This worktree is being deleted.")) }
+        var response = await state(of: id)
+        if request.force != true, response.status == AgentStatus.working.identifier {
+            throw WorkspaceError(message: String(localized: "The agent in this terminal is working. Wait for it with agentui terminal wait, or run again with --force to stop it."))
+        }
+        store.closeTerminal(id)
+        response.running = false
+        response.removed = true
         return response
     }
 

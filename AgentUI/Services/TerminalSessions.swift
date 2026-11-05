@@ -156,6 +156,20 @@ import Observation
         try await send(Data((text + "\r").utf8), message: message, from: origin)
     }
 
+    func press(_ keys: [TerminalKey], from origin: InputOrigin) async throws {
+        for (index, key) in keys.enumerated() {
+            if index > 0 { try await Task.sleep(for: .milliseconds(50)) }
+            try await send(Data(key.bytes(applicationCursor: view.getTerminal().applicationCursor)), from: origin)
+        }
+    }
+
+    func conversation() async throws -> [SessionMessage] {
+        guard let journal = agent?.journal else {
+            throw WorkspaceError(message: String(localized: "No Claude, Codex or Copilot conversation found in this terminal. Read its screen instead, without --reply or --messages."))
+        }
+        return await journal.makeReader()(journal.url)
+    }
+
     private func pasted(_ text: String) -> Data {
         guard text.contains(where: \.isNewline), view.getTerminal().bracketedPasteMode else { return Data(text.utf8) }
         return Data(("\u{1b}[200~" + text + "\u{1b}[201~").utf8)

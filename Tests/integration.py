@@ -146,6 +146,10 @@ try:
     assert json.loads(piped.stdout)['ok'], piped
     wait_for(lambda: cli('terminal','read','--terminal',echo_id,'--lines','1')['output'] == '> ', 'stdin message answered')
     assert 'got: from stdin' in cli('terminal','read','--terminal',echo_id,'--lines','3')['output']
+    cli('terminal','send','--terminal',echo_id,'--','abcX')
+    cli('terminal','send','--terminal',echo_id,'--key','backspace','--key','enter')
+    wait_for(lambda: 'got: abc\n' in cli('terminal','read','--terminal',echo_id)['output'], 'keys pressed in order')
+    assert 'conversation' in cli('terminal','read','--terminal',echo_id,'--reply',ok=False)['message']
     still = cli('terminal','wait','--terminal',echo_id,'--exit','--timeout','1',ok=False)
     assert still['running'] and 'still running' in still['message'], still
     cli('terminal','send','--terminal',echo_id,'--',ok=False)
@@ -156,7 +160,13 @@ try:
     assert not exited['running'] and exited['exitCode'] == 3, exited
     assert 'ended' in cli('terminal','send','--terminal',echo_id,'--enter','--','again',ok=False)['message']
     assert 'not found' in cli('terminal','read','--terminal',str(uuid.uuid4()),ok=False)['message']
-    print('PASS an agent sends input to another terminal, reads its output and waits for it', flush=True)
+    closable = cli('terminal','create','--project',pid,'--worktree',wid,'--name','À fermer')
+    cli('terminal','close','--terminal',closable['terminalID'],ok=False,extra_env={'AGENTUI_TERMINAL_ID': closable['terminalID']})
+    closed = cli('terminal','close','--terminal',closable['terminalID'])
+    assert closed['removed'] and not closed['running'], closed
+    assert closable['terminalID'] not in [t['id'] for p in cli('list')['workspace']['projects'] for w in p['worktrees'] for t in w['terminals']]
+    cli('terminal','close','--terminal',closable['terminalID'],ok=False)
+    print('PASS an agent sends input to another terminal, presses keys, reads its output, waits for it and closes it', flush=True)
 
     worktree = cli('worktree','create','--project',pid,'--branch','feature/native-sidebar','--name','Interface')
     assert pathlib.Path(worktree['path']).is_dir() and git('branch','--show-current') == 'main'

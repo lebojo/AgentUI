@@ -181,7 +181,32 @@ import Foundation
             do { _ = try AgentCLI.parse(arguments, environment: callerEnv); throw WorkspaceError(message: "FAIL: \(arguments) accepted") }
             catch let error as WorkspaceError { try require(!error.message.hasPrefix("FAIL") && error.message.contains(expected), "Refuse \(arguments): \(error.message)") }
         }
-        print("PASS terminal send, read and wait arguments")
+        let pressed = try AgentCLI.parse(["terminal", "send", "--terminal", childID.uuidString, "--key", "down", "--key", "Ctrl-C", "--key", "enter"], environment: callerEnv)
+        try require(pressed.keys == ["down", "Ctrl-C", "enter"] && pressed.text == nil, "--key is repeatable and keeps the order")
+        let keys = ["down", "Ctrl-C", "enter", "shift-tab", "escape"].compactMap(TerminalKey.init(name:))
+        try require(keys.map { $0.bytes(applicationCursor: false) } == [[27, 91, 66], [3], [13], [27, 91, 90], [27]]
+                    && TerminalKey.down.bytes(applicationCursor: true) == [27, 79, 66], "Keys follow the terminal's cursor mode")
+        try require(["ctrl-1", "ctrl-", "ctrl-ab", "f13", "ctrl-é"].allSatisfy { TerminalKey(name: $0) == nil }, "Unknown keys are refused")
+        let reply = try AgentCLI.parse(["terminal", "read", "--terminal", childID.uuidString, "--reply"], environment: callerEnv)
+        let history = try AgentCLI.parse(["terminal", "read", "--terminal", childID.uuidString, "--messages", "5"], environment: callerEnv)
+        try require(reply.reply == true && history.messages == 5, "terminal read --reply and --messages")
+        let close = try AgentCLI.parse(["terminal", "close", "--terminal", childID.uuidString, "--force"], environment: callerEnv)
+        try require(close.action == "terminal.close" && close.force == true && close.terminalID == childID, "terminal close --force")
+        let refusedTerminalOptions: [([String], String)] = [
+            (["terminal", "send", "--terminal", childID.uuidString, "--key", "f13"], "Unknown key"),
+            (["terminal", "send", "--terminal", childID.uuidString, "--key", "up", "--enter"], "--key"),
+            (["terminal", "send", "--terminal", childID.uuidString, "--key", "up", "--", "text"], "--key"),
+            (["terminal", "send", "--terminal", childID.uuidString] + Array(repeating: ["--key", "up"], count: 51).flatMap { $0 }, "Too many keys"),
+            (["terminal", "read", "--terminal", childID.uuidString, "--reply", "--lines", "3"], "only one"),
+            (["terminal", "read", "--terminal", childID.uuidString, "--messages", "201"], "--messages"),
+            (["terminal", "close", "--terminal", callerID.uuidString], "current terminal"),
+            (["terminal", "close", "--terminal", childID.uuidString, "--enter"], "--enter"),
+        ]
+        for (arguments, expected) in refusedTerminalOptions {
+            do { _ = try AgentCLI.parse(arguments, environment: callerEnv); throw WorkspaceError(message: "FAIL: \(arguments) accepted") }
+            catch let error as WorkspaceError { try require(!error.message.hasPrefix("FAIL") && error.message.contains(expected), "Refuse \(arguments): \(error.message)") }
+        }
+        print("PASS terminal send, read, wait and close arguments")
         let mainID = UUID(), featureID = UUID()
         var locatedProject = Project(url: URL(fileURLWithPath: "/work/app"))
         locatedProject.worktrees = [

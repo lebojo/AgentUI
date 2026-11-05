@@ -16,6 +16,9 @@ struct BridgeRequest: Codable, Sendable {
     var terminalID: UUID?
     var text: String?
     var pressesEnter: Bool?
+    var keys: [String]?
+    var reply: Bool?
+    var messages: Int?
     var lines: Int?
     var idleSeconds: Double?
     var waitsForExit: Bool?
@@ -54,6 +57,7 @@ struct BridgeResponse: Codable, Sendable {
     var exitCode: Int32?
     var agent: ConversationAgent?
     var status: String?
+    var messages: [SessionMessage]?
 }
 
 extension BridgeResponse {
@@ -69,4 +73,5 @@ enum TerminalWait {
     static let maximumTimeout: Double = 3600
     static let defaultLines = 50
     static let maximumLines = 10_000
+    static let maximumMessages = 200
 }
