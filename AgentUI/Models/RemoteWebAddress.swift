@@ -1,6 +1,6 @@
 import Foundation
 
-struct RemoteWebAddress: Equatable, Sendable {
+struct RemoteWebAddress: Codable, Equatable, Sendable {
     private static let webSchemes = ["https", "http"]
     private static let gitSchemes = ["ssh", "git", "git+ssh", "ssh+git"]
     private static let queryCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~/")

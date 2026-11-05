@@ -1,21 +1,22 @@
 import SwiftUI
 
 struct WorkingTreeChanges: View {
-    let local: LocalGitSnapshot
+    let root: String
     let trees: GitChangeTrees
+    let hasChanges: Bool
+    let omitted: Int
+    let push: GitAction?
     let context: TerminalContext
     let source: any InspectorSource
 
     var body: some View {
-        Group {
-            if source.canWriteRepository {
-                GitCommitComposer(root: local.root, hasStagedChanges: !trees.staged.isEmpty, hasChanges: !local.changes.isEmpty,
-                                  push: local.push, context: context, source: source)
-            }
-            if !trees.staged.isEmpty {
-                GitChangeList(root: local.root, scope: .staged, tree: trees.staged, omitted: 0, source: source)
-            }
-            GitChangeList(root: local.root, scope: .unstaged, tree: trees.unstaged, omitted: local.omittedChanges, source: source)
+        if source.canWriteRepository {
+            GitCommitComposer(root: root, hasStagedChanges: !trees.staged.isEmpty, hasChanges: hasChanges,
+                              push: push, context: context, source: source)
         }
+        if !trees.staged.isEmpty {
+            GitChangeList(root: root, scope: .staged, outline: trees.staged, omitted: 0, source: source)
+        }
+        GitChangeList(root: root, scope: .unstaged, outline: trees.unstaged, omitted: omitted, source: source)
     }
 }

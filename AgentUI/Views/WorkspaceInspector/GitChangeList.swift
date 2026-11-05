@@ -5,25 +5,25 @@ struct GitChangeList: View {
 
     let root: String
     let scope: GitChangeScope
-    let tree: GitChangeFolder
+    let outline: GitChangeOutline
     let omitted: Int
     let source: any InspectorSource
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: Spacing.xs) {
             HStack {
-                Text(scope.title(count: tree.count + omitted)).font(Typography.sectionTitle)
+                Text(scope.title(count: outline.count + omitted)).font(Typography.sectionTitle)
                 Spacer(minLength: Spacing.xs)
-                if source.canWriteRepository, !tree.isEmpty, let action = scope.bulkAction {
+                if source.canWriteRepository, !outline.isEmpty, let action = scope.bulkAction {
                     GitActionButton(action: action, root: root, source: source)
                         .labelStyle(.titleOnly).buttonStyle(.borderless).font(Typography.caption)
                 }
             }
             .padding(.bottom, Spacing.xs)
-            if tree.isEmpty {
+            if outline.isEmpty {
                 Label(scope.emptyTitle, systemImage: "checkmark.circle").foregroundStyle(Palette.textSecondary).font(Typography.body)
             }
-            ForEach(tree.rows(collapsing: collapsed)) { row in
+            ForEach(outline.rows(collapsing: collapsed)) { row in
                 Group {
                     switch row.content {
                     case .folder(let path, let name): GitChangeFolderRow(isCollapsed: $collapsed[contains: path], name: name, path: path)

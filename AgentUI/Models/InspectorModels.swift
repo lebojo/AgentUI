@@ -48,14 +48,6 @@ struct GitChange: Codable, Identifiable, Equatable, Sendable {
     var isStaged: Bool { !isUntracked && !isConflicted && indexStatus != " " }
     var isUnstaged: Bool { isUntracked || isConflicted || worktreeStatus != " " }
     var status: String { isUntracked ? "?" : [indexStatus, worktreeStatus].filter { $0 != " " }.joined() }
-    var description: String {
-        if isUntracked { return String(localized: "Untracked") }
-        if isConflicted { return String(localized: "Conflict") }
-        if status.contains("R") { return String(localized: "Renamed") }
-        if status.contains("D") { return String(localized: "Deleted") }
-        if status.contains("A") { return String(localized: "Added") }
-        return String(localized: "Modified")
-    }
 
     static func parsePorcelain(_ data: Data) -> [GitChange] {
         let fields = String(decoding: data, as: UTF8.self).components(separatedBy: "\0")
@@ -148,7 +140,7 @@ enum GitChangeScope: Hashable, Sendable {
     var emptyTitle: String {
         switch self {
         case .staged: String(localized: "No Staged Changes")
-        case .unstaged: String(localized: "No Local Changes")
+        case .unstaged: String(localized: "No Unstaged Changes")
         case .branch(let base): String(localized: "No differences with \(base.name)")
         }
     }
@@ -200,11 +192,13 @@ struct GitTracking: Codable, Equatable, Sendable {
     var ahead = 0
     var remote: String?
     var tracksSameBranch: Bool?
+    var goneUpstream: String?
 
     var isPublished: Bool { upstream != nil && tracksSameBranch == true }
     var hasUnpushedCommits: Bool { isPublished && ahead > 0 }
 
     func push(branch: String) -> GitAction? {
+        guard goneUpstream == nil else { return nil }
         guard isPublished else { return remote.map { .publish(remote: $0, branch: branch) } }
         return ahead > 0 ? .push : nil
     }
@@ -218,7 +212,8 @@ struct GitTracking: Codable, Equatable, Sendable {
         guard let reference = parts.first else { return nil }
         let details = parts.count > 1 ? String(parts[1]) : ""
         let names = reference.components(separatedBy: "...")
-        guard names.count == 2, !details.contains("[gone]") else { return GitTracking(upstream: nil) }
+        guard names.count == 2 else { return GitTracking(upstream: nil) }
+        guard !details.contains("[gone]") else { return GitTracking(upstream: nil, goneUpstream: names[1]) }
         let ahead = details.firstRange(of: "ahead ").flatMap { Int(details[$0.upperBound...].prefix(while: \.isNumber)) } ?? 0
         return GitTracking(upstream: names[1], ahead: ahead)
     }
@@ -230,21 +225,19 @@ struct GitRemote: Equatable, Sendable {
 }
 
 struct GitRemoteConfiguration: Equatable, Sendable {
-    static let pattern = "^(remote\\..+\\.url|remote\\.pushdefault|branch\\..+\\.(remote|pushremote|merge))$"
+    static let keyPattern = "remote\\..+\\.url|remote\\.pushdefault|branch\\..+\\.(remote|pushremote|merge)"
 
     private(set) var remotes: [GitRemote] = []
     private var values: [String: String] = [:]
 
     var primaryURL: String? { (remotes.first { $0.name == "origin" } ?? remotes.first)?.url }
 
-    init(_ data: Data) {
-        for entry in String(decoding: data, as: UTF8.self).split(separator: "\0") {
-            let parts = entry.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
-            guard parts.count == 2 else { continue }
-            if let name = Self.remoteName(fromURLKey: parts[0]) {
-                if !remotes.contains(where: { $0.name == name }) { remotes.append(GitRemote(name: name, url: parts[1])) }
+    init(entries: [(key: String, value: String)] = []) {
+        for (key, value) in entries {
+            if let name = Self.remoteName(fromURLKey: key) {
+                if !remotes.contains(where: { $0.name == name }) { remotes.append(GitRemote(name: name, url: value)) }
             } else {
-                values[parts[0]] = parts[1]
+                values[key] = value
             }
         }
     }
@@ -314,6 +307,7 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
     let changes: [GitChange]
     var omittedChanges = 0
     var tracking: GitTracking?
+    var webAddress: RemoteWebAddress?
 
     var stagedChanges: [GitChange] { changes.filter(\.isStaged) }
     var unstagedChanges: [GitChange] { changes.filter(\.isUnstaged) }

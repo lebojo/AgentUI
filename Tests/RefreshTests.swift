@@ -83,8 +83,8 @@ import Foundation
         }
         let results = await [first.value, second.value, third.value]
         try CoreTests.require(performed == ["start a", "end a", "run b", "run c"] && results == [false, true, true]
-                              && queue.pendingAction == nil && queue.actionError == "first failed",
-                              "Git actions clicked while another runs are queued in order, and a failure stays visible")
+                              && queue.pendingAction == nil && queue.actionError == nil,
+                              "Git actions clicked while another runs are queued in order, and a later success clears the earlier failure")
         print("PASS queued Git actions")
 
         let listings = Counter()
@@ -119,6 +119,29 @@ import Foundation
         let afterSwitch = await listings.value
         try CoreTests.require(afterSwitch == beforeSwitch + 1, "A branch change lists configuration again for onbranch includes")
         print("PASS git config is listed only when a configuration file, include target or HEAD changes")
+
+        let remoteListings = Counter()
+        let remotes = GitRemoteConfigurationCache { root in
+            await remoteListings.increment()
+            return try? await ReadCommand.run(URL(fileURLWithPath: "/usr/bin/git"), GitRemoteConfigurationCache.arguments, at: root)
+        }
+        try await Task.sleep(for: .milliseconds(20))
+        let empty = await remotes.configuration(at: repository.path)
+        _ = await remotes.configuration(at: repository.path)
+        let cachedRemotes = await remoteListings.value
+        try CoreTests.require(empty.primaryURL == nil && cachedRemotes == 1, "Unchanged remotes are not listed again on each refresh")
+        _ = try await GitService.run(["remote", "add", "origin", "git@github.com:fixture/app.git"], at: repository.path)
+        let addedRemote = await remotes.configuration(at: repository.path)
+        let afterRemote = await remoteListings.value
+        try CoreTests.require(addedRemote.primaryURL == "git@github.com:fixture/app.git" && afterRemote == 2, "A remote added to .git/config is read on the next refresh")
+        _ = try await GitService.run(["config", "--add", "include.path", "../remotes.cfg"], at: repository.path)
+        try await Task.sleep(for: .milliseconds(20))
+        _ = await remotes.configuration(at: repository.path)
+        try "[remote \"fork\"]\n\turl = git@github.com:me/app.git\n".write(to: repository.appendingPathComponent("remotes.cfg"), atomically: true, encoding: .utf8)
+        let includedRemote = await remotes.configuration(at: repository.path)
+        try CoreTests.require(includedRemote.remotes.map(\.name).contains("fork"), "A remote defined by an include target created later is read")
+        _ = try await GitService.run(["remote", "remove", "origin"], at: repository.path)
+        print("PASS remote configuration is listed only when a configuration file changes")
     }
 
     private static func wait(until condition: () async -> Bool, _ message: String, timeout: Duration = .seconds(5)) async throws {

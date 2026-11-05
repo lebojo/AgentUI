@@ -7,6 +7,8 @@ import Observation
     }
 
     var comparisonBase: ComparisonBranch?
+    var commitTitle = ""
+    var commitMessage = ""
     private(set) var local: LocalGitSnapshot?
     private(set) var changeTrees = GitChangeTrees()
     private(set) var remote: RemoteSnapshot?
@@ -53,6 +55,7 @@ import Observation
             changeTrees = GitChangeTrees()
             remoteKey = nil; remoteDate = nil
             lacksChangeRequest = false; comparisonBase = nil
+            commitTitle = ""; commitMessage = ""
         }
         localLoading = false; remoteLoading = false
         if forceRemote { remoteKey = nil }
@@ -97,6 +100,7 @@ import Observation
         guard !Task.isCancelled else { return false }
         do {
             try await run(action, root)
+            actionError = nil
             return true
         } catch is CancellationError {
             return false

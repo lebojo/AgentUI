@@ -1,16 +1,18 @@
 import Foundation
 
-struct GitChangeFolder: Identifiable, Equatable, Sendable {
-    static let empty = GitChangeFolder(path: "", name: "")
-
+struct GitChangeFolder: Equatable, Sendable {
     let path: String
     let name: String
     let folders: [GitChangeFolder]
     let files: [GitChange]
     let count: Int
 
-    var id: String { path }
-    var isEmpty: Bool { count == 0 }
+    var rows: [GitChangeTreeRow] {
+        var rows: [GitChangeTreeRow] = []
+        rows.reserveCapacity(count)
+        appendRows(to: &rows, depth: 0)
+        return rows
+    }
 
     init(path: String, name: String, folders: [GitChangeFolder] = [], files: [GitChange] = []) {
         self.path = path
@@ -26,21 +28,10 @@ struct GitChangeFolder: Identifiable, Equatable, Sendable {
         self = root.folder(path: "", name: "")
     }
 
-    @concurrent static func build(_ changes: [GitChange]) async -> GitChangeFolder {
-        GitChangeFolder(changes: changes)
-    }
-
-    func rows(collapsing collapsed: Set<String>) -> [GitChangeTreeRow] {
-        var rows: [GitChangeTreeRow] = []
-        rows.reserveCapacity(count)
-        appendRows(to: &rows, depth: 0, collapsed: collapsed)
-        return rows
-    }
-
-    private func appendRows(to rows: inout [GitChangeTreeRow], depth: Int, collapsed: Set<String>) {
+    private func appendRows(to rows: inout [GitChangeTreeRow], depth: Int) {
         for folder in folders {
             rows.append(GitChangeTreeRow(content: .folder(path: folder.path, name: folder.name), depth: depth))
-            if !collapsed.contains(folder.path) { folder.appendRows(to: &rows, depth: depth + 1, collapsed: collapsed) }
+            folder.appendRows(to: &rows, depth: depth + 1)
         }
         rows.append(contentsOf: files.map { GitChangeTreeRow(content: .file($0), depth: depth) })
     }
@@ -82,22 +73,63 @@ struct GitChangeTreeRow: Identifiable, Equatable, Sendable {
         case file(GitChange)
     }
 
+    enum ID: Hashable, Sendable {
+        case folder(String)
+        case file(String)
+    }
+
     let content: Content
     let depth: Int
 
-    var id: String {
+    var id: ID {
         switch content {
-        case .folder(let path, _): "folder:" + path
-        case .file(let change): "file:" + change.path
+        case .folder(let path, _): .folder(path)
+        case .file(let change): .file(change.path)
         }
+    }
+
+    var folderPath: String? {
+        guard case .folder(let path, _) = content else { return nil }
+        return path
+    }
+}
+
+struct GitChangeOutline: Equatable, Sendable {
+    static let empty = GitChangeOutline(changes: [])
+
+    let rows: [GitChangeTreeRow]
+    let count: Int
+
+    var isEmpty: Bool { count == 0 }
+
+    init(changes: [GitChange]) {
+        let tree = GitChangeFolder(changes: changes)
+        rows = tree.rows
+        count = tree.count
+    }
+
+    @concurrent static func build(_ changes: [GitChange]) async -> GitChangeOutline {
+        GitChangeOutline(changes: changes)
+    }
+
+    func rows(collapsing collapsed: Set<String>) -> [GitChangeTreeRow] {
+        guard !collapsed.isEmpty else { return rows }
+        var visible: [GitChangeTreeRow] = []
+        var collapsedDepth: Int?
+        for row in rows {
+            if let depth = collapsedDepth, row.depth > depth { continue }
+            visible.append(row)
+            collapsedDepth = row.folderPath.flatMap { collapsed.contains($0) ? row.depth : nil }
+        }
+        return visible
     }
 }
 
 struct GitChangeTrees: Equatable, Sendable {
-    var staged = GitChangeFolder.empty
-    var unstaged = GitChangeFolder.empty
+    var staged = GitChangeOutline.empty
+    var unstaged = GitChangeOutline.empty
 
     @concurrent static func build(_ snapshot: LocalGitSnapshot) async -> GitChangeTrees {
-        GitChangeTrees(staged: GitChangeFolder(changes: snapshot.stagedChanges), unstaged: GitChangeFolder(changes: snapshot.unstagedChanges))
+        GitChangeTrees(staged: GitChangeOutline(changes: snapshot.stagedChanges), unstaged: GitChangeOutline(changes: snapshot.unstagedChanges))
     }
 }

@@ -52,16 +52,18 @@ enum InspectorService {
         async let configuration = paths == nil ? remoteConfiguration(at: root) : nil
         let branch = GitRepository.containing(root)?.branch
         let output = try await changes
+        let remotes = await configuration
         var tracking = GitTracking.parse(output)
-        if let branch, !branch.isDetached, tracking != nil, let configuration = await configuration {
-            tracking?.tracksSameBranch = configuration.tracksSameBranch(branch.name)
-            if tracking?.isPublished == false { tracking?.remote = configuration.pushRemote(for: branch.name) }
+        if let branch, !branch.isDetached, tracking != nil, let remotes {
+            tracking?.tracksSameBranch = remotes.tracksSameBranch(branch.name)
+            if tracking?.isPublished == false { tracking?.remote = remotes.pushRemote(for: branch.name) }
         }
         let all = GitChange.parsePorcelain(output)
         let shown = Array(all.prefix(LocalGitSnapshot.changeLimit))
         return LocalGitSnapshot(root: root, branch: branch,
                                 headSHA: await head.map { String(decoding: $0, as: UTF8.self).trimmingCharacters(in: .newlines) },
-                                changes: shown, omittedChanges: all.count - shown.count, tracking: tracking)
+                                changes: shown, omittedChanges: all.count - shown.count, tracking: tracking,
+                                webAddress: remotes?.primaryURL.flatMap(RemoteWebAddress.init(remoteURL:)))
     }
 
     @concurrent static func perform(_ action: GitAction, at root: String) async throws {
@@ -160,17 +162,11 @@ enum InspectorService {
     }
 
     @concurrent static func hosting(at root: String) async -> GitHosting {
-        await remoteURL(at: root).map(GitHosting.init(remoteURL:)) ?? .github
-    }
-
-    @concurrent static func remoteURL(at root: String) async -> String? {
-        await remoteConfiguration(at: root).primaryURL
+        await remoteConfiguration(at: root).primaryURL.map(GitHosting.init(remoteURL:)) ?? .github
     }
 
     @concurrent static func remoteConfiguration(at root: String) async -> GitRemoteConfiguration {
-        let git = URL(fileURLWithPath: "/usr/bin/git")
-        let data = try? await ReadCommand.run(git, ["config", "--null", "--get-regexp", GitRemoteConfiguration.pattern], at: root)
-        return GitRemoteConfiguration(data ?? Data())
+        await GitRemoteConfigurationCache.shared.configuration(at: root)
     }
 
     @concurrent static func gitlab(at path: String, branch: GitBranch?, headSHA: String?, executable override: URL? = nil) async throws -> RemoteSnapshot {

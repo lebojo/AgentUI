@@ -228,15 +228,21 @@ enum InspectorTests {
         try require(tests.files.map(\.name) == ["z.swift"] && tests.folders.map(\.path) == ["Tests/unit"]
                     && tests.folders[0].files.map(\.name) == ["file2.swift", "file10.swift"],
                     "A folder with files is not compacted and names sort naturally")
-        try require(GitChangeFolder(changes: []) == .empty && GitChangeFolder.empty.isEmpty && tree.count == 7, "No changes build an empty tree and counts include nested files")
-        let rows = tree.rows(collapsing: [])
-        try require(rows.count == 11 && rows.map(\.depth) == [0, 1, 0, 1, 1, 0, 1, 2, 2, 1, 0]
-                    && rows.first?.id == "folder:a/b/c" && rows.last?.id == "file:README.md",
+        try require(GitChangeFolder(changes: []).count == 0 && GitChangeOutline(changes: []) == .empty && GitChangeOutline.empty.isEmpty && tree.count == 7,
+                    "No changes build an empty tree and counts include nested files")
+        let outline = GitChangeOutline(changes: [change("Sources/App/Views/B.swift"), change("README.md"), change("Sources/App/Views/A.swift"),
+                                                 change("Tests/unit/file10.swift"), change("Tests/unit/file2.swift"), change("Tests/z.swift"),
+                                                 change("a/b/c/d.txt")])
+        let rows = outline.rows(collapsing: [])
+        try require(rows == tree.rows && outline.count == 7 && rows.count == 11 && rows.map(\.depth) == [0, 1, 0, 1, 1, 0, 1, 2, 2, 1, 0]
+                    && rows.first?.id == .folder("a/b/c") && rows.last?.id == .file("README.md"),
                     "Expanded folders flatten into rows with their depth, folders before files")
-        let collapsedRows = tree.rows(collapsing: ["Tests", "a/b/c"])
-        try require(collapsedRows.map(\.id) == ["folder:a/b/c", "folder:Sources/App/Views", "file:Sources/App/Views/A.swift",
-                                                "file:Sources/App/Views/B.swift", "folder:Tests", "file:README.md"],
+        let collapsedRows = outline.rows(collapsing: ["Tests", "a/b/c"])
+        try require(collapsedRows.map(\.id) == [.folder("a/b/c"), .folder("Sources/App/Views"), .file("Sources/App/Views/A.swift"),
+                                                .file("Sources/App/Views/B.swift"), .folder("Tests"), .file("README.md")],
                     "Collapsed folders hide their rows but keep their own row")
+        try require(outline.rows(collapsing: ["Tests/unit"]).map(\.id).suffix(4) == [.folder("Tests"), .folder("Tests/unit"), .file("Tests/z.swift"), .file("README.md")],
+                    "Collapsing a nested folder keeps the files of its parent")
 
         let both = change("both", "M", "M"), staged = change("staged", "A", " "), untracked = change("new", "?", "?"),
             conflict = change("conflict", "U", "U"), deleted = change("gone", " ", "D")
@@ -256,7 +262,7 @@ enum InspectorTests {
         let header = { (line: String) in GitTracking.parse(Data((line + "\0 M file\0").utf8)) }
         try require(header("## main...origin/main [ahead 2, behind 1]") == GitTracking(upstream: "origin/main", ahead: 2)
                     && header("## feature/x...origin/feature/x") == GitTracking(upstream: "origin/feature/x", ahead: 0)
-                    && header("## main") == GitTracking(upstream: nil) && header("## main...origin/main [gone]") == GitTracking(upstream: nil)
+                    && header("## main") == GitTracking(upstream: nil) && header("## main...origin/main [gone]") == GitTracking(upstream: nil, goneUpstream: "origin/main")
                     && header("## No commits yet on main") == nil && header("## HEAD (no branch)") == nil && header(" M file") == nil,
                     "Parse the porcelain branch header")
         let parsed = GitChange.parsePorcelain(Data("## main...origin/main [ahead 1]\0 M file\0".utf8))
@@ -264,10 +270,11 @@ enum InspectorTests {
         try require(snapshot.push == .push && GitTracking(upstream: "origin/main", tracksSameBranch: true).push(branch: "main") == nil
                     && GitTracking(upstream: nil).push(branch: "main") == nil
                     && GitTracking(upstream: nil, remote: "fork").push(branch: "main") == .publish(remote: "fork", branch: "main")
+                    && GitTracking(upstream: nil, remote: "origin", goneUpstream: "origin/main").push(branch: "main") == nil
                     && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "abc", isDetached: true), headSHA: "abc", changes: [],
                                         tracking: GitTracking(upstream: nil)).push == nil
                     && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "main"), headSHA: nil, changes: [], tracking: GitTracking(upstream: nil)).push == nil,
-                    "Offer push only for commits ahead or a branch without upstream that has a remote")
+                    "Offer push only for commits ahead or a branch without upstream that has a remote, never to recreate a deleted upstream")
         let foreign = GitTracking(upstream: "origin/main", ahead: 3, remote: "origin", tracksSameBranch: false)
         try require(!foreign.isPublished && !foreign.hasUnpushedCommits && foreign.push(branch: "feature") == .publish(remote: "origin", branch: "feature")
                     && GitTracking(upstream: "origin/main", ahead: 3).push(branch: "feature") == nil
@@ -276,7 +283,7 @@ enum InspectorTests {
                     && !GitTracking(upstream: nil, tracksSameBranch: true).isPublished,
                     "A branch tracking a differently named upstream is published to its own name, never pushed onto the upstream")
         func remotes(_ entries: [(String, String)]) -> GitRemoteConfiguration {
-            GitRemoteConfiguration(Data(entries.map { $0.0 + "\n" + $0.1 + "\0" }.joined().utf8))
+            GitRemoteConfiguration(entries: entries.map { (key: $0.0, value: $0.1) })
         }
         let forkAndOrigin = remotes([("remote.fork.url", "git@github.com:me/app.git"), ("remote.origin.url", "git@gitlab.com:team/app.git")])
         try require(remotes([]).pushRemote(for: "main") == nil && remotes([]).primaryURL == nil
@@ -417,7 +424,7 @@ enum InspectorTests {
         let require = CoreTests.require
         let parsed = GitChange.parseNameStatus(Data("M\0edited file\0R087\0old name\0new name\0D\0gone\0".utf8))
         try require(parsed.map(\.path) == ["edited file", "new name", "gone"] && parsed[1].originalPath == "old name"
-                    && parsed.map(\.description) == ["Modified", "Renamed", "Deleted"], "Name-status parsing keeps renames and statuses")
+                    && parsed.map { GitChangeScope.branch(ComparisonBranch(reference: "refs/heads/main")).kind(of: $0) } == [.modified, .renamed, .deleted], "Name-status parsing keeps renames and statuses")
 
         let repository = root.appendingPathComponent("comparison repository")
         try FileManager.default.createDirectory(at: repository, withIntermediateDirectories: true)

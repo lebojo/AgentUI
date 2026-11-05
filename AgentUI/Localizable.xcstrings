@@ -234,6 +234,16 @@
         }
       }
     },
+    "No Unstaged Changes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune modification non indexée"
+          }
+        }
+      }
+    },
     "Open a terminal where the default agent commits the changes" : {
       "localizations" : {
         "fr" : {
@@ -3783,16 +3793,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune limite communiquée pour ce compte."
-          }
-        }
-      }
-    },
-    "No Local Changes" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune modification locale"
           }
         }
       }

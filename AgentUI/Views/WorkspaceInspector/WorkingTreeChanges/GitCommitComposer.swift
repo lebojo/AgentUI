@@ -3,9 +3,6 @@ import SwiftUI
 struct GitCommitComposer: View {
     @Environment(InspectorStore.self) private var model
 
-    @State private var title = ""
-    @State private var message = ""
-
     let root: String
     let hasStagedChanges: Bool
     let hasChanges: Bool
@@ -14,13 +11,18 @@ struct GitCommitComposer: View {
     let source: any InspectorSource
 
     private var commit: GitAction? {
-        hasStagedChanges ? GitAction.commit(title: title, description: message) : nil
+        hasStagedChanges ? draft : nil
+    }
+
+    private var draft: GitAction? {
+        GitAction.commit(title: model.commitTitle, description: model.commitMessage)
     }
 
     var body: some View {
+        @Bindable var model = model
         VStack(alignment: .leading, spacing: Spacing.s) {
-            TextField("Commit Title", text: $title).onSubmit(commitChanges)
-            TextField("Description", text: $message, axis: .vertical).lineLimit(2...6)
+            TextField("Commit Title", text: $model.commitTitle).onSubmit(commitChanges)
+            TextField("Description", text: $model.commitMessage, axis: .vertical).lineLimit(2...6)
             HStack(spacing: Spacing.s) {
                 Button("Commit", action: commitChanges)
                     .buttonStyle(.borderedProminent)
@@ -50,11 +52,11 @@ struct GitCommitComposer: View {
     }
 
     private func commitChanges() {
-        guard let commit else { return }
+        guard let commit, model.pendingAction == nil else { return }
         Task {
-            guard await model.perform(commit, at: root, with: source) else { return }
-            title = ""
-            message = ""
+            guard await model.perform(commit, at: root, with: source), draft == commit else { return }
+            model.commitTitle = ""
+            model.commitMessage = ""
         }
     }
 }
