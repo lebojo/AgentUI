@@ -334,6 +334,8 @@ private final class ChangeFlag: @unchecked Sendable {
                     "An agent status change updates the cached work in progress")
         split.rename(splitTerminal.id, to: "Renamed Again")
         try require(split.workInProgress[0].items.map(\.name) == ["Renamed Again"], "Renaming a terminal running an agent updates work in progress")
+        try require(split.workInProgressRows == split.workInProgress.flatMap(\.rows) && split.workInProgressRows.count == 2,
+                    "The cached work in progress rows follow the groups")
         var renamedProject = busy
         renamedProject.name = "elsewhere"
         var movedTerminal = busy

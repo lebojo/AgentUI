@@ -6,7 +6,7 @@ struct TerminalDropDelegate: DropDelegate {
 
     let store: WorkspaceStore
     let terminalID: UUID
-    let size: CGSize
+    let geometry: PaneGeometry
 
     func validateDrop(info: DropInfo) -> Bool {
         guard info.hasItemsConforming(to: [.agentUITerminal]), let dragged = store.draggedTerminal else { return false }
@@ -14,7 +14,7 @@ struct TerminalDropDelegate: DropDelegate {
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        let current = DropEdge(location: info.location, in: size)
+        let current = DropEdge(location: info.location, in: geometry.size)
         if edge != current { edge = current }
         return DropProposal(operation: .move)
     }
@@ -27,7 +27,7 @@ struct TerminalDropDelegate: DropDelegate {
         edge = nil
         store.endDragging()
         let providers = info.itemProviders(for: [.agentUITerminal])
-        let edge = DropEdge(location: info.location, in: size)
+        let edge = DropEdge(location: info.location, in: geometry.size)
         Task {
             guard let dragged = await TerminalDragItem.terminalID(in: providers) else { return }
             store.moveTerminal(dragged, beside: terminalID, edge: edge)

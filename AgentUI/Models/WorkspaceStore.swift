@@ -40,6 +40,7 @@ import Observation
     var busyProjects: Set<UUID> = []
     private(set) var orphanWorktrees: [DiscoveredWorktree] = []
     private(set) var workInProgress: [WorkInProgressGroup] = []
+    private(set) var workInProgressRows: [WorkInProgressRow] = []
     @ObservationIgnored private var orphanScan: UInt64 = 0
     private(set) var isImporting = false
     var pendingImport: RepositoryImport?
@@ -81,6 +82,7 @@ import Observation
         let groups = WorkInProgress.groups(in: projects, statuses: sessions.agentStatuses, agents: sessions.runningAgents)
         guard workInProgress != groups else { return }
         workInProgress = groups
+        workInProgressRows = groups.flatMap(\.rows)
     }
 
     private func refreshSelectedSubagent() {
