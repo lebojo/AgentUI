@@ -338,9 +338,10 @@ enum InspectorTests {
         var prompts = AgentPrompts()
         prompts.changeRequest = "Open the PR."
         try require(AgentRequest.changeRequest(base: ComparisonBranch(reference: "refs/remotes/origin/develop")).prompt(from: prompts)
-                        == "Open the PR.\n\nBase branch: origin/develop"
+                        == "Open the PR.\n\nBase branch: develop"
+                    && AgentRequest.changeRequest(base: ComparisonBranch(reference: "refs/heads/release/1.0")).prompt(from: prompts).hasSuffix("Base branch: release/1.0")
                     && AgentRequest.commit.prompt(from: prompts) == prompts.commit,
-                    "Asking the agent for a change request names the base chosen in Branch Comparison after the user's prompt")
+                    "Asking the agent for a change request names the base chosen in Branch Comparison, without its remote, after the user's prompt")
         try require(String(localized: GitActionFailure(action: .stage(["docs/README.md"]), error: "boom").message) == "Couldn’t stage README.md: boom"
                     && String(localized: GitAction.stage(["a"]).accessibilityLabel(for: "a.txt")) == "Stage a.txt"
                     && String(localized: GitAction.stageAll.accessibilityLabel(for: "a.txt")) == "Stage All"
@@ -374,7 +375,7 @@ enum InspectorTests {
                     && remotes([("remote.--upload-pack=x.url", "v")]).pushRemote(for: "main") == nil,
                     "Publish to the configured push remote, else origin, else the only remote, never an option-like name")
         let optionLike = remotes([("remote.--upload-pack=x.url", "v"), ("branch.fix.remote", "--upload-pack=x"), ("branch.fix.merge", "refs/heads/bugfix")])
-        try require(optionLike.upstream(of: "fix") == nil && optionLike.url(ofRemote: "--upload-pack=x") == nil
+        try require(optionLike.upstream(of: "fix") == nil && optionLike.pushRemote(for: "fix") == nil
                     && remotes([("remote.origin.url", "v"), ("branch.fix.remote", "origin"), ("branch.fix.merge", "refs/heads/bugfix")]).upstream(of: "fix")
                         == GitUpstream(remote: "origin", branch: "bugfix")
                     && GitAction.pushUpstream(GitUpstream(remote: "-x", branch: "b")).arguments == ["push", "--", "-x", "HEAD:refs/heads/b"],
@@ -751,8 +752,8 @@ enum InspectorTests {
         let forkRemotes = GitRemoteConfiguration(entries: [(key: "remote.origin.url", value: "git@github.com:team/app.git"),
                                                            (key: "remote.fork.url", value: "git@github.com:me/app.git"),
                                                            (key: "branch.x.pushremote", value: "fork")])
-        try require(forkRemotes.pushURL(for: "x") == "git@github.com:me/app.git" && forkRemotes.pushURL(for: "y") == "git@github.com:team/app.git",
-                    "The push URL follows the remote Git pushes the branch to")
+        try require(forkRemotes.pushRemote(for: "x") == "fork" && forkRemotes.pushRemote(for: "y") == "origin",
+                    "A branch is pushed to its push remote, else origin")
         try require(ComparisonBranch(reference: "refs/remotes/origin/release/1.0").hostedName == "release/1.0"
                     && ComparisonBranch(reference: "refs/heads/feature/x").hostedName == "feature/x",
                     "Target the branch name without its remote")

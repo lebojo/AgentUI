@@ -7,7 +7,7 @@ enum AgentRequest: Hashable, Sendable {
     func prompt(from prompts: AgentPrompts) -> String {
         switch self {
         case .commit: prompts.commit
-        case .changeRequest(let base): prompts.changeRequest + "\n\nBase branch: \(base.name)"
+        case .changeRequest(let base): prompts.changeRequest + "\n\nBase branch: \(base.hostedName)"
         }
     }
 }

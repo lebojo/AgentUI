@@ -211,14 +211,6 @@ struct GitRemoteConfiguration: Equatable, Sendable {
 
     private var primaryRemote: GitRemote? { remotes.first { $0.name == "origin" } ?? remotes.first }
 
-    func pushURL(for branch: String) -> String? {
-        pushRemote(for: branch).flatMap(url(ofRemote:))
-    }
-
-    func url(ofRemote name: String) -> String? {
-        Self.isSafeRemoteName(name) ? remotes.first { $0.name == name }?.url : nil
-    }
-
     func upstream(of branch: String) -> GitUpstream? {
         let prefix = "refs/heads/"
         guard let remote = values["branch.\(branch).remote"], Self.isSafeRemoteName(remote), remotes.contains(where: { $0.name == remote }),
