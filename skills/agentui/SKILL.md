@@ -1,8 +1,8 @@
 ---
 name: agentui
-description: Drive the AgentUI macOS app with the `agentui` CLI. Use when the AGENTUI_INSTANCE environment variable is set (you are in an AgentUI terminal), or when the user asks to use AgentUI from another terminal. Use it to start another agent in parallel on its own branch (`agentui worktree create`), to ask another agent for a review or a second opinion in the same worktree (`agentui terminal create`), to run a long process such as a dev server or watcher in a visible terminal, to add a project to the sidebar, to list projects, worktrees and terminals, or to delete a worktree once its branch is merged into the main branch. Prefer it over raw `git worktree add`, background jobs or a new shell when AgentUI is running.
+description: Drive the AgentUI macOS app with the `agentui` CLI. Use when the AGENTUI_INSTANCE environment variable is set (you are in an AgentUI terminal), or when the user asks to use AgentUI from another terminal. Use it to start another agent in parallel on its own branch (`agentui worktree create`), to ask another agent for a review or a second opinion in the same worktree (`agentui terminal create`), to run a long process such as a dev server or watcher in a visible terminal, to send a message to another agent's terminal, read its output or wait for it to finish (`agentui terminal send`, `read`, `wait`), to add a project to the sidebar, to list projects, worktrees and terminals, or to delete a worktree once its branch is merged into the main branch. Prefer it over raw `git worktree add`, background jobs or a new shell when AgentUI is running.
 metadata:
-  version: "9"
+  version: "10"
 ---
 
 # AgentUI CLI
@@ -27,6 +27,7 @@ This skill may be newer or older than the installed app. `agentui --help` is the
 
 - **Parallel work on another branch.** A self-contained task that should not touch the current working tree: `agentui worktree create --branch <branch> -- <agent> "<prompt>"`.
 - **Review or second opinion.** Another agent reads the current worktree: `agentui terminal create --name Review -- <agent> "<prompt>"`.
+- **Follow-up with a child.** Reply to a child that waits for input, ask it to fix its findings, or collect its result: `agentui terminal send`, `wait` and `read` with the `terminalID` returned at creation.
 - **Long-running process.** A dev server, test watcher or log tail that the user should see: `agentui terminal create --name "Dev server" -- npm run dev`, instead of a background job in your own shell.
 - **Cleanup.** Delete a worktree whose branch is merged into the main branch, after the user agrees.
 
@@ -34,7 +35,7 @@ This skill may be newer or older than the installed app. `agentui --help` is the
 
 - The task is small enough to do yourself. Each child agent costs the user attention and usage.
 - The user did not ask for parallel work and the task is not clearly separable. Propose it first.
-- You would need the child's output to continue: see the limits below.
+- The child would only do a few seconds of work: doing it yourself is faster than sending, waiting and reading.
 
 ## Commands
 
@@ -44,6 +45,9 @@ agentui project add /path/to/project
 agentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGS…]
 agentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGS…]
 agentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]
+agentui terminal send --terminal UUID [--enter] (-- TEXT… | --stdin)
+agentui terminal read --terminal UUID [--lines N]
+agentui terminal wait --terminal UUID [--idle SECONDS | --exit] [--timeout SECONDS]
 ```
 
 - Without `--project` or `--worktree`, commands target the current project and worktree. `--project` alone targets that project's main folder; `--worktree` alone finds its project.
@@ -65,9 +69,28 @@ agentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--fo
 - A branch already checked out elsewhere is refused.
 - Worktrees share the repository, so you can follow the child's work with `git log <branch>` or `git -C <path> status` and `git -C <path> diff`, using the `path` returned at creation.
 
+## Talking to another terminal
+
+Address a terminal with the `terminalID` returned by `terminal create` or `worktree create`, or found in `agentui list`. These commands work on any terminal of the workspace, not only the ones you created, but never on your own (`AGENTUI_TERMINAL_ID`).
+
+```sh
+agentui terminal send --terminal "$CHILD" --enter -- "Fix the findings of your review, then commit."
+agentui terminal wait --terminal "$CHILD" --idle 10 --timeout 110
+agentui terminal read --terminal "$CHILD" --lines 80
+```
+
+- `send` types the text into the terminal, as if on its keyboard. With `--enter`, it is submitted as one message, multi-line text included, like pressing Return in Claude, Codex, Copilot or OpenCode. Without `--enter`, the text is typed but not submitted. `--enter` alone presses Return, for example to accept a default choice. The text after `--` is joined with spaces and sent verbatim; for a long or multi-line message, pipe it with `--stdin` (`agentui terminal send --terminal "$CHILD" --enter --stdin < prompt.md`). 64 KB at most.
+- `wait` returns once the terminal has printed nothing for `--idle` seconds (5 by default), counted from the call, or with `--exit` once its command has exited. An agent that works shows a spinner or a timer, so a quiet terminal usually means it finished or waits for an answer. It gives up after `--timeout` seconds (120 by default, 3600 at most) with `ok: false` and the current state. Keep `--timeout` below the time limit of your own shell tool, and call `wait` again if needed.
+- `read` returns the last `--lines` lines of the terminal (50 by default, 10,000 at most) in `output`, wrapped lines joined. For a full-screen program, it is what the screen shows. Read before answering: a child may wait for a permission prompt rather than for a new message.
+- Each reply includes `running`, `exitCode` once the command has exited and, for a recognized agent, `agent` and `status` (`working`, `ready` or `waitingForInput`).
+- Typical loop: `send --enter`, `wait --idle 10`, `read`, decide. Check `status` and the output before sending again: a message typed while the child is working is queued or mixed with its input, depending on the agent.
+- Only send what the user asked for or what the task clearly calls for. Never approve a child's permission prompt, or answer for the user, unless they asked you to; report the prompt to them instead.
+- To send the same message to several children, run `send` once per terminal.
+- Sending to a terminal that has exited fails: create a new one, or resume the agent there.
+
 ## Limits
 
-- You cannot read a child terminal's output, send it input or wait for it to finish. Coordinate through Git (commits on the child's branch) or files in its worktree, or let the user follow it on screen.
+- The output read is the terminal's text, not the agent's structured conversation. For a result to reuse, ask the child to commit it or write it to a file in its worktree.
 - `agentui` only works while AgentUI is running.
 
 ## Deleting a worktree

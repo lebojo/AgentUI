@@ -161,9 +161,16 @@ agentui worktree delete --worktree UUID
 
 # Delete a worktree and its branch if it is merged into the main branch (with --force-branch, even if it is not)
 agentui worktree delete --worktree UUID --delete-branch
+
+# Talk to another terminal (terminalID returned at creation or by agentui list)
+agentui terminal send --terminal UUID --enter -- "Fix the findings of your review"
+agentui terminal wait --terminal UUID --idle 10
+agentui terminal read --terminal UUID --lines 80
 ```
 
 Commands return JSON with `ok`, `projectID`, `worktreeID`, `terminalID` and `path`. A failure returns a non-zero exit code. Programs after `--` receive their arguments verbatim, without shell interpolation. Creations requested by an agent do not change the terminal selected on screen.
+
+`terminal send` types text into another terminal, as if on its keyboard, from the arguments after `--` or with `--stdin`; with `--enter` it is submitted as one message, multi-line text included (bracketed paste when the program supports it), and `--enter` alone presses Return. `terminal read` returns the last `--lines` lines (50 by default, 10,000 at most) in `output`. `terminal wait` returns once the terminal has printed nothing for `--idle` seconds (5 by default) or, with `--exit`, once its command has exited, and gives up after `--timeout` seconds (120 by default, 3,600 at most) with `ok: false`. Their replies add `running`, `exitCode` and, for a recognized agent, `agent` and `status` (`working`, `ready` or `waitingForInput`). A terminal can't send to or wait for itself. A message submitted to an agent this way appears in its chat view like one typed in the app.
 
 `worktree delete` closes the worktree's terminals and removes its folder, like **Delete Worktree…** in the sidebar; by default, the branch and its commits stay in the repository. It always needs an explicit `--worktree`, refuses the project's main folder and the worktree of the calling terminal, and keeps a worktree with uncommitted changes or untracked files unless `--force` is given.
 

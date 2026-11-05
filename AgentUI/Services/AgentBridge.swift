@@ -66,7 +66,7 @@ import AppKit
             let request = try await BridgeMailbox.request(at: file)
             guard request.id == id else { throw WorkspaceError(message: String(localized: "Invalid request ID.")) }
             var result = try await execute(request)
-            if request.action != "list" && !request.action.hasPrefix("debug.") {
+            if !Self.leavesWorkspaceUnchanged(request.action) {
                 do { try await store.flushPersistence() }
                 catch { result.ok = false; result.message = error.localizedDescription }
             }
@@ -84,6 +84,12 @@ import AppKit
         }
         #endif
         if request.action == "list" { return BridgeResponse(ok: true, workspace: store.state) }
+        switch request.action {
+        case "terminal.send": return try await sendInput(request)
+        case "terminal.read": return try await readOutput(request)
+        case "terminal.wait": return try await waitForTerminal(request)
+        default: break
+        }
         guard !store.isReadOnly else { throw WorkspaceError(message: String(localized: "The saved organization is unreadable. Fix it, then use Retry in the app before creating terminals.")) }
         if request.action == "project.add", let path = request.path {
             let project = try store.addProject(URL(fileURLWithPath: path))
@@ -136,6 +142,61 @@ import AppKit
             throw WorkspaceError(message: String(localized: "\(error.localizedDescription) Run again with --force-branch to delete it anyway, or without --delete-branch to keep it."))
         }
         return BridgeResponse(deleting: worktree, of: project.id, cleanup: cleanup)
+    }
+
+    private static func leavesWorkspaceUnchanged(_ action: String) -> Bool {
+        ["list", "terminal.send", "terminal.read", "terminal.wait"].contains(action) || action.hasPrefix("debug.")
+    }
+
+    private func sendInput(_ request: BridgeRequest) async throws -> BridgeResponse {
+        let id = try existingTerminal(request.terminalID)
+        guard let context = store.startableContext(for: id) else { throw WorkspaceError(message: String(localized: "This worktree is being deleted.")) }
+        let session = store.sessions.start(context)
+        try await session.type(request.text ?? "", submitting: request.pressesEnter == true, from: .remote)
+        return await state(of: id)
+    }
+
+    private func readOutput(_ request: BridgeRequest) async throws -> BridgeResponse {
+        let id = try existingTerminal(request.terminalID)
+        var response = await state(of: id)
+        response.output = store.sessions.session(id)?.recentLines(request.lines ?? TerminalWait.defaultLines) ?? ""
+        return response
+    }
+
+    private func waitForTerminal(_ request: BridgeRequest) async throws -> BridgeResponse {
+        let id = try existingTerminal(request.terminalID)
+        let timeout = request.timeoutSeconds ?? TerminalWait.defaultTimeout
+        let idle = request.waitsForExit == true ? nil : request.idleSeconds ?? TerminalWait.defaultIdle
+        let start = Date.now
+        while let session = store.sessions.session(id), !session.hasExited {
+            if let idle, Date.now.timeIntervalSince(max(session.lastOutput, start)) >= idle { break }
+            guard Date.now.timeIntervalSince(start) < timeout else {
+                var response = await state(of: id)
+                response.ok = false
+                response.message = idle == nil
+                    ? String(localized: "The terminal’s command is still running after \(Int(timeout)) seconds.")
+                    : String(localized: "The terminal is still printing output after \(Int(timeout)) seconds.")
+                return response
+            }
+            try await Task.sleep(for: .milliseconds(200))
+        }
+        return await state(of: id)
+    }
+
+    private func existingTerminal(_ id: UUID?) throws -> UUID {
+        guard let id, let context = store.context(for: id), !context.isFloating else {
+            throw WorkspaceError(message: String(localized: "Terminal not found. Get its UUID with agentui list."))
+        }
+        return id
+    }
+
+    private func state(of id: UUID) async -> BridgeResponse {
+        await store.sessions.refreshAgents()
+        let context = store.context(for: id)
+        let session = store.sessions.session(id)
+        return BridgeResponse(ok: true, projectID: context?.project.id, worktreeID: context?.worktree.id, terminalID: id,
+                              path: context?.worktree.path, running: session.map { !$0.hasExited } ?? false,
+                              exitCode: session?.exitCode, agent: session?.agentKind, status: session?.agentStatus?.identifier)
     }
 
     private static func installLauncher(at url: URL) throws {

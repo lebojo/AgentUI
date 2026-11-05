@@ -133,6 +133,31 @@ try:
     assert spawned['ok'] and spawned['worktreeID'] == wid
     print('PASS agent-created sibling from inside a live terminal', flush=True)
 
+    echo = cli('terminal','create','--project',pid,'--worktree',wid,'--name','Écho','--','/usr/bin/python3','-c',
+               'import sys\nwhile True:\n    line = input("> ")\n    if line == "quit": sys.exit(3)\n    print("got: " + line, flush=True)')
+    echo_id = echo['terminalID']
+    wait_for(lambda: '>' in cli('terminal','read','--terminal',echo_id)['output'], 'child prompt')
+    sent = cli('terminal','send','--terminal',echo_id,'--enter','--','hello',"$(literal) world")
+    assert sent['running'] and sent['terminalID'] == echo_id and sent['worktreeID'] == wid, sent
+    cli('terminal','wait','--terminal',echo_id,'--idle','0.5','--timeout','10')
+    assert 'got: hello $(literal) world' in cli('terminal','read','--terminal',echo_id)['output']
+    piped = subprocess.run([str(instance/'bin/agentui'),'terminal','send','--terminal',echo_id,'--enter','--stdin'], input='from stdin\n',
+                           env=os.environ | {'AGENTUI_INSTANCE': str(instance)}, capture_output=True, text=True, timeout=30)
+    assert json.loads(piped.stdout)['ok'], piped
+    wait_for(lambda: cli('terminal','read','--terminal',echo_id,'--lines','1')['output'] == '> ', 'stdin message answered')
+    assert 'got: from stdin' in cli('terminal','read','--terminal',echo_id,'--lines','3')['output']
+    still = cli('terminal','wait','--terminal',echo_id,'--exit','--timeout','1',ok=False)
+    assert still['running'] and 'still running' in still['message'], still
+    cli('terminal','send','--terminal',echo_id,'--',ok=False)
+    cli('terminal','send','--terminal',echo_id,'--','x',ok=False,extra_env={'AGENTUI_TERMINAL_ID': echo_id})
+    cli('terminal','send','--terminal',echo_id,'--','quit')
+    cli('terminal','send','--terminal',echo_id,'--enter')
+    exited = cli('terminal','wait','--terminal',echo_id,'--exit','--timeout','10')
+    assert not exited['running'] and exited['exitCode'] == 3, exited
+    assert 'ended' in cli('terminal','send','--terminal',echo_id,'--enter','--','again',ok=False)['message']
+    assert 'not found' in cli('terminal','read','--terminal',str(uuid.uuid4()),ok=False)['message']
+    print('PASS an agent sends input to another terminal, reads its output and waits for it', flush=True)
+
     worktree = cli('worktree','create','--project',pid,'--branch','feature/native-sidebar','--name','Interface')
     assert pathlib.Path(worktree['path']).is_dir() and git('branch','--show-current') == 'main'
     cli('worktree','create','--project',pid,'--branch','feature/native-sidebar',ok=False)

@@ -13,6 +13,17 @@ struct BridgeRequest: Codable, Sendable {
     var force: Bool?
     var deleteBranch: Bool?
     var forceBranch: Bool?
+    var terminalID: UUID?
+    var text: String?
+    var pressesEnter: Bool?
+    var lines: Int?
+    var idleSeconds: Double?
+    var waitsForExit: Bool?
+    var timeoutSeconds: Double?
+
+    var responseTimeout: Double {
+        action == "terminal.wait" ? (timeoutSeconds ?? TerminalWait.defaultTimeout) + 30 : 120
+    }
 
     var branchRemoval: BranchRemoval {
         get throws {
@@ -38,6 +49,11 @@ struct BridgeResponse: Codable, Sendable {
     var removed: Bool?
     var branch: String?
     var branchDeleted: Bool?
+    var output: String?
+    var running: Bool?
+    var exitCode: Int32?
+    var agent: ConversationAgent?
+    var status: String?
 }
 
 extension BridgeResponse {
@@ -45,4 +61,12 @@ extension BridgeResponse {
         self.init(ok: true, message: cleanup.failure ?? cleanup.notice, projectID: projectID, worktreeID: worktree.id,
                   path: worktree.path, removed: true, branch: cleanup.branch, branchDeleted: cleanup.reportedDeletion)
     }
+}
+
+enum TerminalWait {
+    static let defaultIdle: Double = 5
+    static let defaultTimeout: Double = 120
+    static let maximumTimeout: Double = 3600
+    static let defaultLines = 50
+    static let maximumLines = 10_000
 }

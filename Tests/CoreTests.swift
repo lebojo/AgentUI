@@ -147,6 +147,41 @@ import Foundation
         try require(foreignDeletion.projectID == nil, "Deleting another project's worktree ignores the terminal's project")
         let outside = try AgentCLI.parse(["terminal", "create"], environment: [:], currentDirectory: "/work/app/Sources")
         try require(outside.projectID == nil && outside.directory == "/work/app/Sources", "Outside AgentUI, the current directory is sent")
+        let callerID = UUID(), childID = UUID()
+        let callerEnv = env.merging(["AGENTUI_TERMINAL_ID": callerID.uuidString]) { $1 }
+        let sent = try AgentCLI.parse(["terminal", "send", "--terminal", childID.uuidString, "--enter", "--", "Fix", prompt], environment: callerEnv)
+        try require(sent.action == "terminal.send" && sent.terminalID == childID && sent.text == "Fix " + prompt && sent.pressesEnter == true
+                    && sent.projectID == nil && sent.worktreeID == nil, "terminal send keeps the text verbatim and ignores the caller's context")
+        let enterOnly = try AgentCLI.parse(["terminal", "send", "--enter", "--terminal", childID.uuidString], environment: callerEnv)
+        try require(enterOnly.text == nil && enterOnly.pressesEnter == true, "--enter alone presses Return")
+        let piped = try AgentCLI.parse(["terminal", "send", "--terminal", childID.uuidString, "--stdin"], environment: callerEnv)
+        try require(piped.text == nil && piped.pressesEnter == nil, "--stdin leaves the text to the standard input")
+        let read = try AgentCLI.parse(["terminal", "read", "--terminal", callerID.uuidString, "--lines", "200"], environment: callerEnv)
+        try require(read.action == "terminal.read" && read.lines == 200 && read.responseTimeout == 120, "A terminal can read itself")
+        let idle = try AgentCLI.parse(["terminal", "wait", "--terminal", childID.uuidString, "--idle", "2.5", "--timeout", "600"], environment: callerEnv)
+        try require(idle.idleSeconds == 2.5 && idle.timeoutSeconds == 600 && idle.waitsForExit == nil && idle.responseTimeout == 630,
+                    "terminal wait gives the CLI time to receive the reply after its own timeout")
+        let exit = try AgentCLI.parse(["terminal", "wait", "--terminal", childID.uuidString, "--exit"], environment: callerEnv)
+        try require(exit.waitsForExit == true && exit.responseTimeout == TerminalWait.defaultTimeout + 30, "terminal wait --exit")
+        let refusedTerminalCommands: [([String], String)] = [
+            (["terminal", "send", "--terminal", childID.uuidString], "Nothing to send"),
+            (["terminal", "send", "--terminal", childID.uuidString, "--stdin", "--", "text"], "--stdin"),
+            (["terminal", "send", "--terminal", callerID.uuidString, "--", "loop"], "current terminal"),
+            (["terminal", "wait", "--terminal", callerID.uuidString], "current terminal"),
+            (["terminal", "send", "--", "text"], "--terminal UUID"),
+            (["terminal", "read", "--terminal", "bad"], "Invalid terminal UUID"),
+            (["terminal", "read", "--terminal", childID.uuidString, "--lines", "0"], "--lines"),
+            (["terminal", "read", "--terminal", childID.uuidString, "--enter"], "--enter"),
+            (["terminal", "wait", "--terminal", childID.uuidString, "--idle", "3", "--exit"], "--idle"),
+            (["terminal", "wait", "--terminal", childID.uuidString, "--timeout", "7200"], "--timeout"),
+            (["terminal", "wait", "--terminal", childID.uuidString, "--idle", "nan"], "--idle"),
+            (["terminal", "wait", "--terminal", childID.uuidString, "--lines", "5"], "--lines"),
+        ]
+        for (arguments, expected) in refusedTerminalCommands {
+            do { _ = try AgentCLI.parse(arguments, environment: callerEnv); throw WorkspaceError(message: "FAIL: \(arguments) accepted") }
+            catch let error as WorkspaceError { try require(!error.message.hasPrefix("FAIL") && error.message.contains(expected), "Refuse \(arguments): \(error.message)") }
+        }
+        print("PASS terminal send, read and wait arguments")
         let mainID = UUID(), featureID = UUID()
         var locatedProject = Project(url: URL(fileURLWithPath: "/work/app"))
         locatedProject.worktrees = [

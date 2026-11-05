@@ -39,6 +39,14 @@ enum AgentStatus: Equatable, Sendable {
         }
     }
 
+    var identifier: String {
+        switch self {
+        case .working: "working"
+        case .ready: "ready"
+        case .waitingForInput: "waitingForInput"
+        }
+    }
+
     var title: String {
         switch self {
         case .working: String(localized: "Working")

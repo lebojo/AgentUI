@@ -192,4 +192,21 @@ extension Terminal {
         }
         return lines.reversed().joined(separator: "\n")
     }
+    func recentLines(_ count: Int) -> String {
+        var lines: [String] = []
+        var continuation = ""
+        var row = liveLineEnd - 1
+        while row >= buffer.totalLinesTrimmed, lines.count < count, let line = getScrollInvariantLine(row: row) {
+            row -= 1
+            let segment = line.translateToString(trimRight: continuation.isEmpty) + continuation
+            if line.isWrapped {
+                continuation = segment
+                continue
+            }
+            continuation = ""
+            if !lines.isEmpty || !segment.isEmpty { lines.append(segment) }
+        }
+        if !continuation.isEmpty, lines.count < count { lines.append(continuation) }
+        return lines.reversed().joined(separator: "\n")
+    }
 }

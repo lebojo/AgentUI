@@ -141,6 +141,26 @@ import Observation
         try await next.value
     }
 
+    var lastOutput: Date { view.lastOutput }
+
+    func recentLines(_ count: Int) -> String {
+        view.getTerminal().recentLines(count)
+    }
+
+    func type(_ text: String, submitting: Bool, from origin: InputOrigin) async throws {
+        guard submitting else {
+            try await send(pasted(text), from: origin)
+            return
+        }
+        let message = text.isEmpty || isShellInForeground ? nil : text
+        try await send(Data((text + "\r").utf8), message: message, from: origin)
+    }
+
+    private func pasted(_ text: String) -> Data {
+        guard text.contains(where: \.isNewline), view.getTerminal().bracketedPasteMode else { return Data(text.utf8) }
+        return Data(("\u{1b}[200~" + text + "\u{1b}[201~").utf8)
+    }
+
     func launch(_ agent: ConversationAgent, skippingPermissions: Bool, from origin: InputOrigin) async throws {
         guard self.agent == nil, !isLaunchingAgent, isShellInForeground else {
             throw WorkspaceError(message: String(localized: "The terminal isn’t at the shell prompt. Finish the current command before launching an agent."))

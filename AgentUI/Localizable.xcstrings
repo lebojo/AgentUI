@@ -4,6 +4,16 @@
     " M " : {
       "shouldTranslate" : false
     },
+    "%@ must be a number of seconds greater than 0 and at most %lld." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ doit être un nombre de secondes supérieur à 0 et au plus %lld."
+          }
+        }
+      }
+    },
     "%@ Nothing was removed." : {
       "localizations" : {
         "fr" : {
@@ -164,6 +174,16 @@
         }
       }
     },
+    "--lines must be a whole number from 1 to %lld." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--lines doit être un nombre entier de 1 à %lld."
+          }
+        }
+      }
+    },
     "A Git action is still running and will be interrupted." : {
       "localizations" : {
         "fr" : {
@@ -184,12 +204,22 @@
         }
       }
     },
-    "agentui — organize the terminals and worktrees of the running app\n\nagentui list\nagentui project add /path/to/project\nagentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]\n\nFrom an AgentUI terminal, the project and worktree are implicit.\nElsewhere, they are inferred from the current folder if it belongs to a project open in AgentUI.\nChild commands are passed as arguments, without shell interpretation.\nExamples:\n  agentui terminal create --name Review -- claude \"Review the changes\"\n  agentui worktree create --branch feature/tests -- codex \"Add the tests\"\nEach creation returns the identifiers and path as JSON.\nAn existing branch is opened as is; otherwise it is created from the project’s HEAD.\nworktree delete closes its terminals and erases its folder; by default, the branch and its commits stay in the repository.\nWith --delete-branch, the branch is deleted too if it’s merged into the repository’s main branch; otherwise nothing is removed. Add --force-branch to delete it even if it isn’t, losing its unmerged commits.\nThe repository’s main branch and a branch checked out elsewhere are never deleted.\nWithout --force, a worktree with uncommitted changes or untracked files is kept; --force never deletes an unmerged branch.\nA project’s main folder and the current terminal’s worktree can’t be deleted." : {
+    "AgentUI didn’t respond within %lld seconds. The operation may still be running; check agentui list before trying again." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "agentui — organiser les terminaux et worktrees de l’application ouverte\n\nagentui list\nagentui project add /chemin/du/projet\nagentui terminal create [--name NOM] [--project UUID] [--worktree UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree create --branch BRANCHE [--name NOM] [--project UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]\n\nDepuis un terminal AgentUI, le projet et le worktree sont implicites.\nAilleurs, ils sont déduits du dossier courant s’il appartient à un projet ouvert dans AgentUI.\nLes commandes enfant sont passées comme arguments, sans interprétation shell.\nExemples :\n  agentui terminal create --name Review -- claude \"Relis les modifications\"\n  agentui worktree create --branch feature/tests -- codex \"Ajoute les tests\"\nChaque création renvoie les identifiants et le chemin au format JSON.\nUne branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.\nworktree delete ferme ses terminaux et efface son dossier ; par défaut, la branche et ses commits restent dans le dépôt.\nAvec --delete-branch, la branche est aussi supprimée si elle est fusionnée dans la branche principale du dépôt ; sinon, rien n’est supprimé. Ajoutez --force-branch pour la supprimer même si elle ne l’est pas, en perdant ses commits non fusionnés.\nLa branche principale du dépôt et une branche utilisée ailleurs ne sont jamais supprimées.\nSans --force, un worktree avec des modifications non commitées ou des fichiers non suivis est conservé ; --force ne supprime jamais une branche non fusionnée.\nLe dossier principal d’un projet et le worktree du terminal courant ne peuvent pas être supprimés."
+            "value" : "AgentUI n’a pas répondu sous %lld secondes. L’opération peut continuer ; vérifie agentui list avant de réessayer."
+          }
+        }
+      }
+    },
+    "agentui — organize the terminals and worktrees of the running app\n\nagentui list\nagentui project add /path/to/project\nagentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]\nagentui terminal send --terminal UUID [--enter] (-- TEXT… | --stdin)\nagentui terminal read --terminal UUID [--lines N]\nagentui terminal wait --terminal UUID [--idle SECONDS | --exit] [--timeout SECONDS]\n\nFrom an AgentUI terminal, the project and worktree are implicit.\nElsewhere, they are inferred from the current folder if it belongs to a project open in AgentUI.\nChild commands are passed as arguments, without shell interpretation.\nExamples:\n  agentui terminal create --name Review -- claude \"Review the changes\"\n  agentui worktree create --branch feature/tests -- codex \"Add the tests\"\nEach creation returns the identifiers and path as JSON.\nAn existing branch is opened as is; otherwise it is created from the project’s HEAD.\nworktree delete closes its terminals and erases its folder; by default, the branch and its commits stay in the repository.\nWith --delete-branch, the branch is deleted too if it’s merged into the repository’s main branch; otherwise nothing is removed. Add --force-branch to delete it even if it isn’t, losing its unmerged commits.\nThe repository’s main branch and a branch checked out elsewhere are never deleted.\nWithout --force, a worktree with uncommitted changes or untracked files is kept; --force never deletes an unmerged branch.\nA project’s main folder and the current terminal’s worktree can’t be deleted.\nterminal send types TEXT into another terminal, or the standard input with --stdin. With --enter, the text is submitted as one message, like pressing Return; --enter alone just presses Return.\nterminal read prints the last lines of a terminal (50 by default, 10,000 at most) as output.\nterminal wait returns once the terminal has printed nothing for --idle SECONDS (5 by default), or once its command has exited with --exit. It gives up after --timeout SECONDS (120 by default, 3,600 at most) with ok: false.\nTheir replies include running, exitCode and, for a recognized agent, agent and status (working, ready or waitingForInput).\nThe current terminal can’t send to or wait for itself." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "agentui — organiser les terminaux et worktrees de l’application ouverte\n\nagentui list\nagentui project add /chemin/du/projet\nagentui terminal create [--name NOM] [--project UUID] [--worktree UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree create --branch BRANCHE [--name NOM] [--project UUID] [-- COMMANDE ARGUMENTS…]\nagentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]\nagentui terminal send --terminal UUID [--enter] (-- TEXTE… | --stdin)\nagentui terminal read --terminal UUID [--lines N]\nagentui terminal wait --terminal UUID [--idle SECONDES | --exit] [--timeout SECONDES]\n\nDepuis un terminal AgentUI, le projet et le worktree sont implicites.\nAilleurs, ils sont déduits du dossier courant s’il appartient à un projet ouvert dans AgentUI.\nLes commandes enfant sont passées comme arguments, sans interprétation shell.\nExemples :\n  agentui terminal create --name Review -- claude \"Relis les modifications\"\n  agentui worktree create --branch feature/tests -- codex \"Ajoute les tests\"\nChaque création renvoie les identifiants et le chemin au format JSON.\nUne branche existante est ouverte telle quelle ; sinon elle est créée depuis le HEAD du projet.\nworktree delete ferme ses terminaux et efface son dossier ; par défaut, la branche et ses commits restent dans le dépôt.\nAvec --delete-branch, la branche est aussi supprimée si elle est fusionnée dans la branche principale du dépôt ; sinon, rien n’est supprimé. Ajoutez --force-branch pour la supprimer même si elle ne l’est pas, en perdant ses commits non fusionnés.\nLa branche principale du dépôt et une branche utilisée ailleurs ne sont jamais supprimées.\nSans --force, un worktree avec des modifications non commitées ou des fichiers non suivis est conservé ; --force ne supprime jamais une branche non fusionnée.\nLe dossier principal d’un projet et le worktree du terminal courant ne peuvent pas être supprimés.\nterminal send tape TEXTE dans un autre terminal, ou l’entrée standard avec --stdin. Avec --enter, le texte est envoyé en un seul message, comme avec la touche Retour ; --enter seul appuie juste sur Retour.\nterminal read renvoie dans output les dernières lignes d’un terminal (50 par défaut, 10 000 au maximum).\nterminal wait rend la main quand le terminal n’a rien affiché pendant --idle SECONDES (5 par défaut), ou quand sa commande s’est terminée avec --exit. Il abandonne après --timeout SECONDES (120 par défaut, 3 600 au maximum) avec ok: false.\nLeurs réponses incluent running, exitCode et, pour un agent reconnu, agent et status (working, ready ou waitingForInput).\nLe terminal courant ne peut ni s’envoyer de texte ni s’attendre lui-même."
           }
         }
       }
@@ -564,6 +594,16 @@
         }
       }
     },
+    "Invalid terminal UUID." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UUID de terminal invalide."
+          }
+        }
+      }
+    },
     "Its terminals will be closed and its folder will be erased from disk, including uncommitted changes. This can’t be undone. You can keep the branch “%@” and its commits in the repository, or delete it too if it’s merged into the main branch." : {
       "localizations" : {
         "fr" : {
@@ -640,6 +680,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune modification non indexée"
+          }
+        }
+      }
+    },
+    "Nothing to send: add the text after --, or --stdin, or --enter." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien à envoyer : ajoute le texte après --, ou --stdin, ou --enter."
           }
         }
       }
@@ -814,6 +864,16 @@
         }
       }
     },
+    "Specify the terminal: --terminal UUID (see agentui list)." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indique le terminal : --terminal UUID (voir agentui list)."
+          }
+        }
+      }
+    },
     "Split view" : {
       "localizations" : {
         "fr" : {
@@ -880,6 +940,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arrêter la commande Git en cours et abandonner celles en attente"
+          }
+        }
+      }
+    },
+    "Terminal not found. Get its UUID with agentui list." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal introuvable. Récupère son UUID avec agentui list."
           }
         }
       }
@@ -974,6 +1044,36 @@
         }
       }
     },
+    "The standard input isn’t UTF-8 text." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’entrée standard n’est pas du texte UTF-8."
+          }
+        }
+      }
+    },
+    "The terminal is still printing output after %lld seconds." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le terminal affiche encore du texte après %lld secondes."
+          }
+        }
+      }
+    },
+    "The terminal’s command is still running after %lld seconds." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La commande du terminal tourne encore après %lld secondes."
+          }
+        }
+      }
+    },
     "The worktree had left the branch “%@” since you confirmed." : {
       "localizations" : {
         "fr" : {
@@ -1044,6 +1144,16 @@
         }
       }
     },
+    "This is the current terminal. Pass the UUID of another terminal." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "C’est le terminal courant. Indique l’UUID d’un autre terminal."
+          }
+        }
+      }
+    },
     "This terminal is on a different branch from its worktree" : {
       "localizations" : {
         "fr" : {
@@ -1080,6 +1190,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tout désindexer"
+          }
+        }
+      }
+    },
+    "Use either --idle or --exit, not both." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilise soit --idle, soit --exit, pas les deux."
+          }
+        }
+      }
+    },
+    "Use either --stdin or text after --, not both." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilise soit --stdin, soit un texte après --, pas les deux."
           }
         }
       }
@@ -2052,16 +2182,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Commande agentui"
-          }
-        }
-      }
-    },
-    "AgentUI didn’t respond within 120 seconds. The operation may still be running; check agentui list before trying again." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AgentUI n’a pas répondu sous 120 secondes. L’opération peut continuer ; vérifie agentui list avant de réessayer."
           }
         }
       }
