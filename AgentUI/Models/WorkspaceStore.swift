@@ -6,7 +6,7 @@ import Observation
     private(set) var projects: [Project] = [] {
         didSet {
             updateSelectedContext()
-            updateTerminalBlocks()
+            updateTerminalBlocks(previous: oldValue)
             if !WorkInProgress.listsSameTerminals(oldValue, projects) { updateWorkInProgress() }
         }
     }
@@ -87,10 +87,18 @@ import Observation
         workInProgressRows = groups.flatMap(\.rows)
     }
 
-    private func updateTerminalBlocks() {
-        terminalBlocksByWorktree = projects.flatMap(\.worktrees).reduce(into: [:]) { blocks, worktree in
-            if blocks[worktree.id] == nil { blocks[worktree.id] = worktree.terminalBlocks(showing: worktree.terminals) }
+    private func updateTerminalBlocks(previous: [Project]) {
+        let previousWorktrees = Dictionary(previous.flatMap(\.worktrees).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let blocks = projects.flatMap(\.worktrees).reduce(into: [UUID: [SidebarTerminalBlock]]()) { blocks, worktree in
+            guard blocks[worktree.id] == nil else { return }
+            let old = previousWorktrees[worktree.id]
+            if let cached = terminalBlocksByWorktree[worktree.id], old?.terminals == worktree.terminals, old?.layouts == worktree.layouts {
+                blocks[worktree.id] = cached
+            } else {
+                blocks[worktree.id] = worktree.terminalBlocks(showing: worktree.terminals)
+            }
         }
+        if blocks != terminalBlocksByWorktree { terminalBlocksByWorktree = blocks }
     }
 
     private func refreshSelectedSubagent() {

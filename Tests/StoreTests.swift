@@ -269,6 +269,14 @@ private final class ChangeFlag: @unchecked Sendable {
             try require(split.terminalBlocks(in: worktreeID, matching: "") == blocks() && split.terminalBlocks(in: worktreeID, matching: "b").map(\.terminalIDs) == [[b]]
                             && split.terminalBlocks(in: UUID(), matching: "").isEmpty,
                         "The store keeps each worktree's blocks and filters them only for a search")
+            let blocksChanged = ChangeFlag()
+            withObservationTracking { _ = split.terminalBlocks(in: worktreeID, matching: "") } onChange: { blocksChanged.mark() }
+            split.rename(splitProject.id, to: "Renamed Blocks")
+            try require(!blocksChanged.value && split.terminalBlocks(in: worktreeID, matching: "") == blocks(),
+                        "Project edits that leave terminals and splits alone keep the cached blocks")
+            split.rename(d, to: "Renamed d")
+            try require(blocksChanged.value && split.terminalBlocks(in: worktreeID, matching: "") == blocks(),
+                        "Renaming a terminal rebuilds its worktree's blocks")
             let leadingRoot = root.appendingPathComponent("blocks-leading")
             try fm.createDirectory(at: leadingRoot, withIntermediateDirectories: true)
             let leadingProject = try split.addProject(leadingRoot)

@@ -8,37 +8,41 @@ struct SidebarWorktreeLabel: View {
 
     let projectID: UUID
     let worktreeGroups: [WorktreeGroup]
-    let worktree: Worktree
+    let worktreeID: UUID
+    let name: String
+    let displayName: String
+    let path: String
+    let groupID: UUID?
 
-    private var branch: GitBranch? { store.sessions.branch(at: worktree.path) }
-    private var worktreeRemoval: Removal { .worktree(projectID: projectID, worktreeID: worktree.id, name: worktree.displayName) }
+    private var branch: GitBranch? { store.sessions.branch(at: path) }
+    private var worktreeRemoval: Removal { .worktree(projectID: projectID, worktreeID: worktreeID, name: displayName) }
 
     var body: some View {
         HStack(spacing: Spacing.s) {
             Image(systemName: "arrow.triangle.branch").foregroundStyle(Palette.textSecondary)
-            Text(worktree.displayName).lineLimit(1).layoutPriority(1)
-            if let branch, branch.name != worktree.name {
+            Text(displayName).lineLimit(1).layoutPriority(1)
+            if let branch, branch.name != name {
                 SidebarBranchName(branch: branch, color: Palette.textSecondary)
             }
             Spacer(minLength: Spacing.xxs)
             Button { openTerminal() } label: { Image(systemName: "plus").font(Typography.xs.weight(.semibold)) }
-                .buttonStyle(.borderless).help("New terminal in \(worktree.displayName)")
-                .accessibilityLabel("New terminal in \(worktree.displayName)")
+                .buttonStyle(.borderless).help("New terminal in \(displayName)")
+                .accessibilityLabel("New terminal in \(displayName)")
         }
-        .help(worktree.path)
-        .draggable(worktree.id.uuidString)
+        .help(path)
+        .draggable(worktreeID.uuidString)
         .contextMenu {
             Button("New Terminal", systemImage: "terminal") { openTerminal() }
-            Button("Show in Finder", systemImage: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: worktree.path) }
+            Button("Show in Finder", systemImage: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path) }
             Menu("Group", systemImage: "rectangle.stack") {
-                Button("No Group") { store.moveWorktree(worktree.id, to: nil) }
-                    .disabled(worktree.groupID == nil)
+                Button("No Group") { store.moveWorktree(worktreeID, to: nil) }
+                    .disabled(groupID == nil)
                 ForEach(worktreeGroups) { group in
-                    Button(group.name) { store.moveWorktree(worktree.id, to: group.id) }
-                        .disabled(worktree.groupID == group.id)
+                    Button(group.name) { store.moveWorktree(worktreeID, to: group.id) }
+                        .disabled(groupID == group.id)
                 }
                 Divider()
-                Button("New Group…") { presentation.sheet = .worktreeGroup(projectID: projectID, worktreeID: worktree.id) }
+                Button("New Group…") { presentation.sheet = .worktreeGroup(projectID: projectID, worktreeID: worktreeID) }
             }
             Divider()
             RemovalButton(removal: worktreeRemoval, placement: .menu)
@@ -48,5 +52,5 @@ struct SidebarWorktreeLabel: View {
         }
     }
 
-    private func openTerminal() { store.openTerminal(projectID: projectID, worktreeID: worktree.id, launch: settings.agentLaunch) }
+    private func openTerminal() { store.openTerminal(projectID: projectID, worktreeID: worktreeID, launch: settings.agentLaunch) }
 }

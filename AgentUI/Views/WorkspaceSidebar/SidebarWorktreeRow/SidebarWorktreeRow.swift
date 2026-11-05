@@ -28,7 +28,8 @@ struct SidebarWorktreeRow: View {
                     .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
             }
         } label: {
-            SidebarWorktreeLabel(projectID: projectID, worktreeGroups: worktreeGroups, worktree: worktree)
+            SidebarWorktreeLabel(projectID: projectID, worktreeGroups: worktreeGroups, worktreeID: worktree.id, name: worktree.name,
+                                 displayName: worktree.displayName, path: worktree.path, groupID: worktree.groupID)
         }
         .task { isInserted = true }
     }
