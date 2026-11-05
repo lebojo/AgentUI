@@ -41,9 +41,9 @@ enum ConversationAgent: String, Codable, CaseIterable, Identifiable, Sendable {
 
     func promptCommand(_ prompt: String, skippingPermissions: Bool) -> [String] {
         let promptArguments = switch self {
-        case .claude, .codex: [prompt]
+        case .claude, .codex: ["--", prompt]
         case .copilot: ["-i", prompt]
-        case .openCode: ["--prompt", prompt]
+        case .openCode: ["--prompt=" + prompt]
         }
         return launchCommand(skippingPermissions: skippingPermissions) + promptArguments
     }

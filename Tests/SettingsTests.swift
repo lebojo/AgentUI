@@ -14,6 +14,13 @@ enum SettingsTests {
         try CoreTests.require(launch.command(on: .newTerminal) == ["codex", "--dangerously-bypass-approvals-and-sandbox"], "Codex permission bypass flag")
         let decodedLaunch = try JSONDecoder().decode(AgentLaunch.self, from: JSONEncoder().encode(launch))
         try CoreTests.require(decodedLaunch == launch, "Agent launch round-trips")
+        let prompt = "--resume and commit"
+        try CoreTests.require(ConversationAgent.claude.promptCommand(prompt, skippingPermissions: false) == ["claude", "--", prompt]
+                                && ConversationAgent.codex.promptCommand(prompt, skippingPermissions: true) == ["codex", "--dangerously-bypass-approvals-and-sandbox", "--", prompt],
+                              "A positional prompt follows the end of options")
+        try CoreTests.require(ConversationAgent.copilot.promptCommand(prompt, skippingPermissions: false) == ["copilot", "-i", prompt]
+                                && ConversationAgent.openCode.promptCommand(prompt, skippingPermissions: false) == ["opencode", "--prompt=" + prompt],
+                              "An option prompt stays the option's value")
         print("PASS agent launch settings")
 
         let suite = "AgentUI.SettingsTests.\(UUID().uuidString)"
