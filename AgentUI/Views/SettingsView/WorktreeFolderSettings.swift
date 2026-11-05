@@ -7,7 +7,7 @@ struct WorktreeFolderSettings: View {
     var body: some View {
         Section {
             LabeledContent("Creation Folder") {
-                Text(abbreviated(settings.creationWorktreesDirectory)).font(Typography.code).textSelection(.enabled)
+                Text(settings.creationWorktreesDirectory.path.abbreviatingHome).font(Typography.code).textSelection(.enabled)
             }
             HStack {
                 Spacer()
@@ -26,7 +26,7 @@ struct WorktreeFolderSettings: View {
         Section {
             ForEach(settings.scannedWorktreesDirectories, id: \.path) { directory in
                 HStack {
-                    Text(abbreviated(directory)).font(Typography.code).textSelection(.enabled)
+                    Text(directory.path.abbreviatingHome).font(Typography.code).textSelection(.enabled)
                     Spacer()
                     Button("Remove", systemImage: "minus.circle") { settings.scannedWorktreesDirectories.removeAll { $0.path == directory.path } }
                         .labelStyle(.iconOnly).buttonStyle(.borderless)
@@ -45,10 +45,6 @@ struct WorktreeFolderSettings: View {
             Text("The worktrees in these folders also appear in the sidebar. AgentUI never creates worktrees there.")
                 .font(Typography.caption).foregroundStyle(Palette.textSecondary)
         }
-    }
-
-    private func abbreviated(_ url: URL) -> String {
-        (url.path as NSString).abbreviatingWithTildeInPath
     }
 
     private func chooseFolder(message: String, completion: @escaping (URL) -> Void) {

@@ -54,6 +54,16 @@
         }
       }
     },
+    "Actions" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actions"
+          }
+        }
+      }
+    },
     "agentui — organize the terminals and worktrees of the running app\n\nagentui list\nagentui project add /path/to/project\nagentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]\nagentui worktree delete --worktree UUID [--delete-branch] [--force]\n\nFrom an AgentUI terminal, the project and worktree are implicit.\nElsewhere, they are inferred from the current folder if it belongs to a project open in AgentUI.\nChild commands are passed as arguments, without shell interpretation.\nExamples:\n  agentui terminal create --name Review -- claude \"Review the changes\"\n  agentui worktree create --branch feature/tests -- codex \"Add the tests\"\nEach creation returns the identifiers and path as JSON.\nAn existing branch is opened as is; otherwise it is created from the project’s HEAD.\nworktree delete closes its terminals and erases its folder; by default, the branch and its commits stay in the repository.\nWith --delete-branch, the branch is deleted too if it’s merged into the repository’s main branch; add --force to delete it even if it isn’t.\nThe repository’s main branch and a branch checked out elsewhere are never deleted.\nWithout --force, a worktree with uncommitted changes or untracked files is kept.\nA project’s main folder and the current terminal’s worktree can’t be deleted." : {
       "localizations" : {
         "fr" : {
@@ -390,6 +400,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ouvrir dans le navigateur"
+          }
+        }
+      }
+    },
+    "Pipelines" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pipelines"
           }
         }
       }

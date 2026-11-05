@@ -331,8 +331,8 @@ enum GitHosting: String, Codable, Sendable {
 
     var runsTitle: String {
         switch self {
-        case .github: "Actions"
-        case .gitlab: "Pipelines"
+        case .github: String(localized: "Actions")
+        case .gitlab: String(localized: "Pipelines")
         }
     }
 
