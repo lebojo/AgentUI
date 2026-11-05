@@ -22,7 +22,7 @@ struct BridgeRequest: Codable, Sendable {
                 }
                 return .keep
             }
-            return forceBranch == true ? .force : .merged
+            return forceBranch == true ? .force : .merged(confirmed: nil)
         }
     }
 }
@@ -35,7 +35,14 @@ struct BridgeResponse: Codable, Sendable {
     var terminalID: UUID?
     var path: String?
     var workspace: Workspace?
+    var removed: Bool?
     var branch: String?
     var branchDeleted: Bool?
 }
 
+extension BridgeResponse {
+    init(deleting worktree: Worktree, of projectID: UUID, cleanup: BranchCleanup) {
+        self.init(ok: true, message: cleanup.failure ?? cleanup.notice, projectID: projectID, worktreeID: worktree.id,
+                  path: worktree.path, removed: true, branch: cleanup.branch, branchDeleted: cleanup.reportedDeletion)
+    }
+}

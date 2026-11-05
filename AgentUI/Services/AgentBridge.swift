@@ -135,8 +135,7 @@ import AppKit
         } catch let error as UnmergedBranchError {
             throw WorkspaceError(message: String(localized: "\(error.localizedDescription) Run again with --force-branch to delete it anyway, or without --delete-branch to keep it."))
         }
-        return BridgeResponse(ok: cleanup.failure == nil, message: cleanup.failure ?? cleanup.notice, projectID: project.id, worktreeID: worktreeID,
-                              path: worktree.path, branch: cleanup.branch, branchDeleted: cleanup.reportedDeletion)
+        return BridgeResponse(deleting: worktree, of: project.id, cleanup: cleanup)
     }
 
     private static func installLauncher(at url: URL) throws {

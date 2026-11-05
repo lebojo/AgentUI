@@ -448,7 +448,7 @@ import Observation
         return await GitBranchProtection.report(at: worktree.path, in: project.path, checkedOutElsewhere: Set(elsewhere))
     }
 
-    func remove(_ removal: Removal, branch: BranchRemoval = .keep, confirmedBranch: String? = nil) {
+    func remove(_ removal: Removal, branch: BranchRemoval = .keep) {
         guard !isBusy(removal) else {
             errorMessage = String(localized: "A Git operation is in progress on this project. Try again when it’s finished.")
             return
@@ -459,7 +459,7 @@ import Observation
         case .worktree(let projectID, let worktreeID, _):
             Task {
                 do {
-                    let cleanup = try await deleteWorktree(projectID: projectID, worktreeID: worktreeID, branch: branch, confirmedBranch: confirmedBranch)
+                    let cleanup = try await deleteWorktree(projectID: projectID, worktreeID: worktreeID, branch: branch)
                     if let failure = cleanup.failure { errorMessage = failure }
                 } catch let error as UnmergedBranchError {
                     unmergedRemoval = UnmergedRemoval(removal: removal, error: error)
@@ -635,8 +635,7 @@ import Observation
         try await GitService.fetchRemotes(project: project)
     }
 
-    @discardableResult func deleteWorktree(projectID: UUID, worktreeID: UUID, branch removal: BranchRemoval = .keep,
-                                           confirmedBranch confirmed: String? = nil) async throws -> BranchCleanup {
+    @discardableResult func deleteWorktree(projectID: UUID, worktreeID: UUID, branch removal: BranchRemoval = .keep) async throws -> BranchCleanup {
         guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: String(localized: "A Git operation is already in progress on this project.")) }
         guard let project = projects.first(where: { $0.id == projectID }),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }) else {
@@ -651,11 +650,9 @@ import Observation
         }
         let protection = removal == .keep ? BranchProtectionReport(branch: .none, mergeCandidates: [])
             : await branchProtection(of: worktree, in: project)
-        let keptBranch = removal == .keep ? nil : confirmed.flatMap(protection.branch.cleanup(confirming:))
-        if confirmed == nil, let refusal = protection.branch.refusal { throw WorkspaceError(message: refusal) }
-        if keptBranch == nil, removal.requiresMerge, let name = protection.branch.deletableName {
-            try await GitService.requireMerged(name, into: protection.mergeCandidates, at: project.path)
-        }
+        let keptBranch = removal.confirmedBranch.flatMap(protection.branch.cleanup(confirming:))
+        if removal.confirmedBranch == nil, let refusal = protection.branch.refusal { throw WorkspaceError(message: refusal) }
+        let deletion = keptBranch == nil ? try await branchDeletion(protection, removal, at: project.path) : nil
         let started = worktree.terminals.filter { sessions.isRunning($0.id) }
         for terminal in started { sessions.close(terminal.id) }
         do {
@@ -666,7 +663,14 @@ import Observation
         }
         forgetWorktree(worktreeID, of: projectID)
         if let keptBranch { return keptBranch }
-        return await deleteBranch(protection, removal, of: project)
+        guard removal != .keep else { return .notRequested }
+        guard let deletion else { return .untouched }
+        return await deleteBranch(deletion, of: project)
+    }
+
+    private func branchDeletion(_ protection: BranchProtectionReport, _ removal: BranchRemoval, at path: String) async throws -> BranchDeletion? {
+        guard let name = protection.branch.deletableName else { return nil }
+        return try await GitService.deletion(of: name, removal, mergeCandidates: protection.mergeCandidates, at: path)
     }
 
     private func forgetWorktree(_ worktreeID: UUID, of projectID: UUID) {
@@ -681,14 +685,12 @@ import Observation
         save()
     }
 
-    private func deleteBranch(_ protection: BranchProtectionReport, _ removal: BranchRemoval, of project: Project) async -> BranchCleanup {
-        guard removal != .keep else { return .notRequested }
-        guard let name = protection.branch.deletableName else { return .untouched }
+    private func deleteBranch(_ deletion: BranchDeletion, of project: Project) async -> BranchCleanup {
         do {
-            try await GitService.deleteBranch(name, removal, project: project)
-            return .deleted(name)
+            try await GitService.deleteBranch(deletion, at: project.path)
+            return .deleted(deletion.name)
         } catch {
-            return .kept(name, reason: error.localizedDescription)
+            return .kept(deletion.name, reason: error.localizedDescription)
         }
     }
 

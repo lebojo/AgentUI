@@ -35,25 +35,26 @@ struct RemovalConfirmation: View {
 
     private func present(_ removal: Removal) async {
         let store = store
-        let (lookups, continuation) = AsyncStream.makeStream(of: BranchLookup.self)
-        Task { continuation.yield(.found(await store.deletableBranch(for: removal))) }
+        let (lookups, continuation) = AsyncStream.makeStream(of: String?.self)
+        let lookup = Task { continuation.yield(await store.deletableBranch(for: removal)) }
         let deadline = Task {
             try? await Task.sleep(for: Removal.branchLookupDeadline)
-            continuation.yield(.timedOut)
+            continuation.yield(nil)
         }
         var iterator = lookups.makeAsyncIterator()
         let first = await iterator.next()
+        lookup.cancel()
         deadline.cancel()
         continuation.finish()
         guard !Task.isCancelled, let first else { return }
-        prompt = Prompt(removal: removal, deletableBranch: first.branch)
+        prompt = Prompt(removal: removal, deletableBranch: first)
     }
 
     private func dialog(allowingSkip: Bool) -> some View {
         Color.clear.confirmationDialog(removal?.title ?? "", isPresented: isPresented(allowingSkip: allowingSkip), titleVisibility: .visible) {
             Button(role: .destructive) { confirm(.keep) } label: { Text(removal?.confirmation(deletableBranch: branch) ?? "") }
             if branch != nil {
-                Button("Delete Worktree and Branch", role: .destructive) { confirm(.merged) }
+                Button("Delete Worktree and Branch", role: .destructive) { confirm(.merged(confirmed: branch)) }
             }
         } message: { Text(removal?.message(deletableBranch: branch) ?? "") }
     }
@@ -70,20 +71,12 @@ struct RemovalConfirmation: View {
     private func confirm(_ branchRemoval: BranchRemoval) {
         guard let removal else { return }
         if skipsConfirmation { settings.confirmations.skip(removal) }
-        store.remove(removal, branch: branchRemoval, confirmedBranch: branch)
+        store.remove(removal, branch: branchRemoval)
         presentation.removal = nil
     }
 
     private struct Prompt: Equatable {
         let removal: Removal
         let deletableBranch: String?
-    }
-
-    private enum BranchLookup: Sendable {
-        case found(String?), timedOut
-
-        var branch: String? {
-            if case .found(let branch) = self { branch } else { nil }
-        }
     }
 }

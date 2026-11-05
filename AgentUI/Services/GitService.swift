@@ -56,15 +56,31 @@ enum GitService {
         return entries
     }
 
-    @concurrent static func deleteBranch(_ branch: String, _ removal: BranchRemoval, project: Project) async throws {
-        guard let arguments = removal.arguments(for: branch) else { return }
-        _ = try await run(arguments, at: project.path, timeout: 20)
+    @concurrent static func deletion(of branch: String, _ removal: BranchRemoval, mergeCandidates: [String], at path: String) async throws -> BranchDeletion? {
+        switch removal {
+        case .keep: nil
+        case .force: .forced(branch)
+        case .merged: .unchanged(branch, tip: try await requireMerged(branch, into: mergeCandidates, at: path))
+        }
     }
 
-    @concurrent static func requireMerged(_ branch: String, into candidates: [String], at path: String) async throws {
+    @concurrent static func deleteBranch(_ deletion: BranchDeletion, at path: String) async throws {
+        do {
+            _ = try await run(deletion.arguments, at: path, timeout: 20)
+        } catch {
+            guard case .unchanged(let name, let tip) = deletion, await self.tip(of: name, at: path) != tip else { throw error }
+            throw WorkspaceError(message: String(localized: "The branch “\(name)” changed after it was checked."))
+        }
+        if case .unchanged(let name, _) = deletion {
+            _ = try? await run(["config", "--remove-section", "branch." + name], at: path, timeout: 10)
+        }
+    }
+
+    private static func requireMerged(_ branch: String, into candidates: [String], at path: String) async throws -> String {
         let targets = try await mergeTargets(among: candidates, at: path)
         guard !targets.isEmpty else { throw UnmergedBranchError(branch: branch, hasMainBranch: false) }
-        guard try await isMerged(branch, into: targets, at: path) else { throw UnmergedBranchError(branch: branch, hasMainBranch: true) }
+        guard let tip = try await mergedTip(of: branch, into: targets, at: path) else { throw UnmergedBranchError(branch: branch, hasMainBranch: true) }
+        return tip
     }
 
     static func mergeTargets(among candidates: [String], at path: String) async throws -> [String] {
@@ -73,9 +89,22 @@ enum GitService {
     }
 
     static func isMerged(_ branch: String, into targets: [String], at path: String) async throws -> Bool {
+        try await mergedTip(of: branch, into: targets, at: path) != nil
+    }
+
+    private static func mergedTip(of branch: String, into targets: [String], at path: String) async throws -> String? {
         let reference = "refs/heads/" + branch
-        let merged = try await run(["for-each-ref", "--format=%(refname)"] + targets.map { "--merged=" + $0 } + [reference], at: path, timeout: 20)
-        return merged.split(whereSeparator: \.isNewline).contains { $0 == reference }
+        let merged = try await run(["for-each-ref", "--format=%(refname)%09%(objectname)"] + targets.map { "--merged=" + $0 } + [reference], at: path, timeout: 20)
+        return listedTip(of: reference, in: merged)
+    }
+
+    static func listedTip(of reference: String, in listing: String) -> String? {
+        let prefix = reference + "\t"
+        return listing.split(whereSeparator: \.isNewline).first { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }
+    }
+
+    private static func tip(of branch: String, at path: String) async -> String? {
+        try? await run(["rev-parse", "--verify", "--quiet", "refs/heads/" + branch], at: path, timeout: 10)
     }
 
     static func hasLocalChanges(at path: String) async throws -> Bool {

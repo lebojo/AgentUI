@@ -864,6 +864,16 @@
         }
       }
     },
+    "The branch “%@” changed after it was checked." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La branche « %@ » a changé après sa vérification."
+          }
+        }
+      }
+    },
     "The branch “%@” is checked out in another worktree." : {
       "localizations" : {
         "fr" : {

@@ -459,13 +459,13 @@ private final class ChangeFlag: @unchecked Sendable {
         try require(reviewBranch == "review/one", "The removal dialog offers to delete a worktree's branch")
         let mainBranch = await groups.deletableBranch(for: .worktree(projectID: grouped.id, worktreeID: groupedProject().worktrees[0].id, name: "Main"))
         try require(mainBranch == nil, "The main folder never offers to delete its branch")
-        let reviewCleanup = try await groups.deleteWorktree(projectID: grouped.id, worktreeID: review.id, branch: .merged)
+        let reviewCleanup = try await groups.deleteWorktree(projectID: grouped.id, worktreeID: review.id, branch: .merged(confirmed: nil))
         let reviewLeft = try await GitService.run(["branch", "--list", "review/one"], at: gitRoot.path)
         try require(reviewCleanup == .deleted("review/one") && reviewLeft.isEmpty && !groupedProject().worktrees.contains { $0.id == review.id },
                     "Deleting a worktree with its merged branch removes both")
         _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Work"], at: other.path)
         do {
-            try await groups.deleteWorktree(projectID: grouped.id, worktreeID: other.id, branch: .merged)
+            try await groups.deleteWorktree(projectID: grouped.id, worktreeID: other.id, branch: .merged(confirmed: nil))
             throw WorkspaceError(message: "FAIL: unmerged worktree deleted")
         } catch let error as UnmergedBranchError {
             try require(error == UnmergedBranchError(branch: "feature/two", hasMainBranch: true) && fm.fileExists(atPath: other.path)
@@ -479,7 +479,7 @@ private final class ChangeFlag: @unchecked Sendable {
                     "Deleting the worktree only, after the refusal, keeps its unmerged branch")
         _ = try await GitService.run(["checkout", "-q", "-b", "adopt/switched"], at: adoptable.path)
         let switchedCleanup = try await groups.deleteWorktree(projectID: grouped.id, worktreeID: groupedProject().worktrees.first { $0.path == adoptable.path }!.id,
-                                                              branch: .merged, confirmedBranch: "adopt/me")
+                                                              branch: .merged(confirmed: "adopt/me"))
         let adoptLeft = try await GitService.run(["branch", "--list", "adopt/me", "adopt/switched"], at: gitRoot.path)
         try require(switchedCleanup.branch == "adopt/me" && !switchedCleanup.isDeleted && switchedCleanup.failure?.contains("had left the branch") == true
                         && adoptLeft.contains("adopt/me") && adoptLeft.contains("adopt/switched") && !fm.fileExists(atPath: adoptable.path),
@@ -501,7 +501,7 @@ private final class ChangeFlag: @unchecked Sendable {
                             && groups.projects.contains { $0.worktrees.contains { $0.id == onMain.id } },
                         "Forcing the deletion of a worktree on main in a local-only repository is refused before removing anything")
         }
-        let keptMain = try await groups.deleteWorktree(projectID: lonelyProject.id, worktreeID: onMain.id, branch: .merged, confirmedBranch: "main")
+        let keptMain = try await groups.deleteWorktree(projectID: lonelyProject.id, worktreeID: onMain.id, branch: .merged(confirmed: "main"))
         let mainLeft = try await GitService.run(["branch", "--list", "main"], at: lonelyRoot.path)
         try require(keptMain.branch == "main" && !keptMain.isDeleted && keptMain.failure?.contains("main branch") == true
                         && !mainLeft.isEmpty && !fm.fileExists(atPath: extra.path)

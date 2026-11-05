@@ -31,7 +31,7 @@ enum WorktreeBranch: Equatable, Sendable {
     }
 
     var refusal: String? {
-        keptReason.map { String(localized: "\(String(localized: $0)) Nothing was removed.") }
+        keptReason.map { String(localized: "\($0) Nothing was removed.") }
     }
 
     func cleanup(confirming confirmed: String) -> BranchCleanup? {
@@ -45,13 +45,28 @@ enum WorktreeBranch: Equatable, Sendable {
     }
 }
 
-enum BranchRemoval: Sendable {
-    case keep, merged, force
+enum BranchRemoval: Equatable, Sendable {
+    case keep, merged(confirmed: String?), force
 
-    var requiresMerge: Bool { self == .merged }
+    var confirmedBranch: String? {
+        if case .merged(let confirmed) = self { confirmed } else { nil }
+    }
+}
 
-    func arguments(for branch: String) -> [String]? {
-        self == .keep ? nil : ["branch", "-D", "--", branch]
+enum BranchDeletion: Equatable, Sendable {
+    case forced(String), unchanged(String, tip: String)
+
+    var name: String {
+        switch self {
+        case .forced(let name), .unchanged(let name, _): name
+        }
+    }
+
+    var arguments: [String] {
+        switch self {
+        case .forced(let name): ["branch", "-D", "--", name]
+        case .unchanged(let name, let tip): ["update-ref", "-d", "refs/heads/" + name, tip]
+        }
     }
 }
 
@@ -64,7 +79,7 @@ struct UnmergedBranchError: LocalizedError, Equatable, Sendable {
             : "The repository’s main branch couldn’t be found, so the branch “\(branch)” can’t be checked."
     }
 
-    var errorDescription: String? { String(localized: "\(String(localized: reason)) Nothing was removed.") }
+    var errorDescription: String? { String(localized: "\(reason) Nothing was removed.") }
 }
 
 enum BranchCleanup: Equatable, Sendable {
