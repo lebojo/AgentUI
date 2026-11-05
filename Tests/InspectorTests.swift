@@ -3,8 +3,15 @@ import Foundation
 enum InspectorTests {
     static func run(root: URL, repository: URL, unborn: URL) async throws {
         let require = CoreTests.require
-        let renamed = GitChange.parsePorcelain(Data("R  renamed file\0original\nfile\0 M café.swift\0?? untracked\0".utf8))
-        try require(renamed.count == 3 && renamed[0].originalPath == "original\nfile" && renamed[1].path == "café.swift" && renamed[2].isUntracked, "NUL status parsing preserves renames, spaces, Unicode and newlines")
+        let status = GitStatus.parse(Data(["# branch.oid 1234", "# branch.head main",
+                                           porcelainEntry("2", "R.", 9, "renamed file"), "original\nfile", porcelainEntry("1", ".M", 8, "café.swift"), "? untracked",
+                                           porcelainEntry("2", "CM", 9, " spaced  name"), "copied from", porcelainEntry("u", "UU", 10, "conflict"),
+                                           porcelainEntry("1", "A.", 8, "\u{301}accent"), "! ignored", ""].joined(separator: "\0").utf8))
+        try require(status.headSHA == "1234" && status.changes.map(\.path) == ["renamed file", "café.swift", "untracked", " spaced  name", "conflict", "\u{301}accent"]
+                    && status.changes[0].originalPath == "original\nfile" && status.changes[0].status == "R" && status.changes[1].status == "M"
+                    && status.changes[2].isUntracked && status.changes[3].originalPath == "copied from" && status.changes[3].status == "CM"
+                    && status.changes[4].isConflicted && status.changes[5].isStaged && !status.changes[5].isUnstaged,
+                    "Porcelain v2 parsing preserves renames, copies, conflicts, spaces, Unicode and newlines")
         let file = repository.appendingPathComponent("tracked file.txt")
         try "before\n".write(to: file, atomically: true, encoding: .utf8)
         _ = try await GitService.run(["add", "--", "tracked file.txt"], at: repository.path)
@@ -33,7 +40,8 @@ enum InspectorTests {
         try require(headOnly.changes.isEmpty && headOnly.headSHA == local.headSHA && single.changes.map(\.path) == ["tracked file.txt"],
                     "Remote checks skip git status and remote diffs only check the requested path")
         let empty = try await InspectorService.localGit(at: unborn.path)
-        try require(empty.headSHA == nil && empty.branch?.name == "develop", "Inspector supports unborn HEAD")
+        try require(empty.headSHA == nil && empty.tracking == nil && empty.branch?.name == "develop" && empty.changes.allSatisfy(\.isUntracked),
+                    "Inspector supports unborn HEAD")
         print("PASS inspector status and real staged/unstaged diffs")
 
         let shell = URL(fileURLWithPath: "/bin/sh")
@@ -57,6 +65,7 @@ enum InspectorTests {
         try changeTree()
         try await workingTreeActions(root: root)
         try await publishing(root: root)
+        try await porcelainStatus(root: root)
 
         let patch = "diff --git a/f b/f\nindex 1..2 100644\n--- a/f\n+++ b/f\n@@ -3,4 +3,4 @@ func\n keep\n--- old\n-gone\n++++ new\n+\tadded\n same\n\\ No newline at end of file\n"
         let lines = GitDiffLine.parse(patch)
@@ -212,6 +221,10 @@ enum InspectorTests {
         print("PASS query cancellation, timeout and live output limit")
     }
 
+    private static func porcelainEntry(_ kind: String, _ codes: String, _ fields: Int, _ path: String) -> String {
+        ([kind, codes] + Array(repeating: "x", count: fields - 2) + [path]).joined(separator: " ")
+    }
+
     private static func changeTree() throws {
         let require = CoreTests.require
         func change(_ path: String, _ x: String = " ", _ y: String = "M") -> GitChange {
@@ -259,14 +272,16 @@ enum InspectorTests {
                     && GitChangeScope.branch(ComparisonBranch(reference: "refs/heads/main")).action(for: renamed) == nil,
                     "Unstaging a rename restores both paths and branch rows have no action")
 
-        let header = { (line: String) in GitTracking.parse(Data((line + "\0 M file\0").utf8)) }
-        try require(header("## main...origin/main [ahead 2, behind 1]") == GitTracking(upstream: "origin/main", ahead: 2)
-                    && header("## feature/x...origin/feature/x") == GitTracking(upstream: "origin/feature/x", ahead: 0)
-                    && header("## main") == GitTracking(upstream: nil) && header("## main...origin/main [gone]") == GitTracking(upstream: nil, goneUpstream: "origin/main")
-                    && header("## No commits yet on main") == nil && header("## HEAD (no branch)") == nil && header(" M file") == nil,
-                    "Parse the porcelain branch header")
-        let parsed = GitChange.parsePorcelain(Data("## main...origin/main [ahead 1]\0 M file\0".utf8))
-        try require(parsed.map(\.path) == ["file"], "The branch header is not a change")
+        let header = { (lines: [String]) in GitStatus.parse(Data((lines + [porcelainEntry("1", ".M", 8, "file"), ""]).joined(separator: "\0").utf8)) }
+        let oid = "# branch.oid abc"
+        try require(header([oid, "# branch.head main", "# branch.upstream origin/main", "# branch.ab +2 -1"]).tracking == GitTracking(upstream: "origin/main", ahead: 2)
+                    && header([oid, "# branch.head feature/x", "# branch.upstream origin/feature/x", "# branch.ab +0 -0"]).tracking == GitTracking(upstream: "origin/feature/x", ahead: 0)
+                    && header([oid, "# branch.head main"]).tracking == GitTracking(upstream: nil)
+                    && header([oid, "# branch.head main", "# branch.upstream origin/main"]).tracking == GitTracking(upstream: nil, goneUpstream: "origin/main")
+                    && header(["# branch.oid (initial)", "# branch.head main", "# branch.upstream origin/main"]) == GitStatus(changes: [GitChange(path: "file", originalPath: nil, indexStatus: " ", worktreeStatus: "M")])
+                    && header([oid, "# branch.head (detached)"]).tracking == nil && header([oid, "# branch.head (detached)"]).headSHA == "abc"
+                    && header([]).tracking == nil && header([]).changes.map(\.path) == ["file"],
+                    "Parse the porcelain v2 branch headers, never as changes")
         try require(snapshot.push == .push && GitTracking(upstream: "origin/main", tracksSameBranch: true).push(branch: "main") == nil
                     && GitTracking(upstream: nil).push(branch: "main") == nil
                     && GitTracking(upstream: nil, remote: "fork").push(branch: "main") == .publish(remote: "fork", branch: "main")
@@ -275,6 +290,10 @@ enum InspectorTests {
                                         tracking: GitTracking(upstream: nil)).push == nil
                     && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "main"), headSHA: nil, changes: [], tracking: GitTracking(upstream: nil)).push == nil,
                     "Offer push only for commits ahead or a branch without upstream that has a remote, never to recreate a deleted upstream")
+        try require(GitActionFailure(action: .stage(["docs/README.md"]), error: "boom").message == "Couldn’t stage README.md: boom"
+                    && GitAction.stage(["a"]).retries(.stage(["a"])) && !GitAction.stage(["b"]).retries(.stage(["a"]))
+                    && !GitAction.stageAll.retries(.stage(["a"])) && GitAction.commit(title: "b", message: "").retries(.commit(title: "a", message: "")),
+                    "A Git failure names its action and only the same action retried clears it")
         let foreign = GitTracking(upstream: "origin/main", ahead: 3, remote: "origin", tracksSameBranch: false)
         try require(!foreign.isPublished && !foreign.hasUnpushedCommits && foreign.push(branch: "feature") == .publish(remote: "origin", branch: "feature")
                     && GitTracking(upstream: "origin/main", ahead: 3).push(branch: "feature") == nil
@@ -417,7 +436,58 @@ enum InspectorTests {
         try await InspectorService.perform(.commit(title: "More", message: ""), at: repository.path)
         local = try await InspectorService.localGit(at: repository.path)
         try require(local.push == .push && local.tracking?.hasUnpushedCommits == true, "Later commits use a plain push to the same-named upstream")
+        _ = try await GitService.run(["push", "-q", "origin", "--delete", "feature"], at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(local.tracking?.goneUpstream == "origin/feature" && local.tracking?.upstream == nil && local.push == nil,
+                    "A deleted upstream is reported as gone and never recreated")
+        _ = try await GitService.run(["checkout", "-q", "--detach"], at: repository.path)
+        let detachedHead = try await GitService.run(["rev-parse", "HEAD"], at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(local.branch?.isDetached == true && local.headSHA == detachedHead && local.tracking == nil && local.push == nil,
+                    "A detached HEAD keeps its commit and offers no push")
         print("PASS publish a branch whose upstream has another name")
+    }
+
+    private static func porcelainStatus(root: URL) async throws {
+        let require = CoreTests.require
+        let repository = root.appendingPathComponent("porcelain repository")
+        try FileManager.default.createDirectory(at: repository, withIntermediateDirectories: true)
+        _ = try await GitService.run(["init", "-q", "-b", "main"], at: repository.path)
+        _ = try await GitService.run(["config", "user.name", "AgentUI Tests"], at: repository.path)
+        _ = try await GitService.run(["config", "user.email", "tests@example.invalid"], at: repository.path)
+        _ = try await GitService.run(["config", "status.renames", "copies"], at: repository.path)
+        let lines = (1...20).map { "line \($0)\n" }.joined()
+        for name in ["source.txt", "old name.txt", "conflict.txt", "removed.txt"] {
+            try (name + "\n" + lines).write(to: repository.appendingPathComponent(name), atomically: true, encoding: .utf8)
+        }
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.commit(title: "Base", message: ""), at: repository.path)
+        _ = try await GitService.run(["switch", "-q", "-c", "other"], at: repository.path)
+        try "other\n".write(to: repository.appendingPathComponent("conflict.txt"), atomically: true, encoding: .utf8)
+        _ = try await GitService.run(["commit", "-q", "-am", "Other"], at: repository.path)
+        _ = try await GitService.run(["switch", "-q", "main"], at: repository.path)
+        try "main\n".write(to: repository.appendingPathComponent("conflict.txt"), atomically: true, encoding: .utf8)
+        _ = try await GitService.run(["commit", "-q", "-am", "Main"], at: repository.path)
+        _ = try? await GitService.run(["merge", "-q", "other"], at: repository.path)
+        _ = try await GitService.run(["mv", "old name.txt", "new\tname.txt"], at: repository.path)
+        try ("source.txt\n" + lines + "more\n").write(to: repository.appendingPathComponent("source.txt"), atomically: true, encoding: .utf8)
+        try ("source.txt\n" + lines).write(to: repository.appendingPathComponent("café copy.txt"), atomically: true, encoding: .utf8)
+        _ = try await GitService.run(["add", "--", "source.txt", "café copy.txt"], at: repository.path)
+        try "edited\n".write(to: repository.appendingPathComponent("café copy.txt"), atomically: true, encoding: .utf8)
+        try FileManager.default.removeItem(at: repository.appendingPathComponent("removed.txt"))
+        try "new\n".write(to: repository.appendingPathComponent(" untracked file"), atomically: true, encoding: .utf8)
+        let local = try await InspectorService.localGit(at: repository.path)
+        let changes = Dictionary(uniqueKeysWithValues: local.changes.map { ($0.path, $0) })
+        let head = try await GitService.run(["rev-parse", "HEAD"], at: repository.path)
+        try require(local.headSHA == head && local.tracking == GitTracking(upstream: nil, tracksSameBranch: false)
+                    && changes["new\tname.txt"]?.originalPath == "old name.txt" && changes["new\tname.txt"]?.status == "R"
+                    && changes["café copy.txt"]?.originalPath == "source.txt" && changes["café copy.txt"]?.status == "CM"
+                    && changes["source.txt"]?.status == "M" && changes["source.txt"]?.isStaged == true
+                    && changes["conflict.txt"]?.isConflicted == true && changes["conflict.txt"]?.status == "UU"
+                    && changes["removed.txt"]?.status == "D" && changes["removed.txt"]?.isUnstaged == true && changes["removed.txt"]?.isStaged == false
+                    && changes[" untracked file"]?.isUntracked == true && local.changes.count == 6,
+                    "Real porcelain v2 status reports renames, copies, conflicts, deletions, untracked files and HEAD")
+        print("PASS porcelain v2 status on a real repository")
     }
 
     private static func branchComparison(root: URL) async throws {
@@ -491,6 +561,19 @@ enum InspectorTests {
         try require(addresses[4]?.newChangeRequestURL(branch: "x", base: "main")?.absoluteString.hasPrefix("http://gitlab.local:8080/group/project/-/") == true
                     && RemoteWebAddress(remoteURL: "git@bitbucket.org:team/app.git")?.newChangeRequestURL(branch: "x", base: "main") == nil,
                     "Keep HTTP ports and skip unknown providers")
+        let upstream = RemoteWebAddress(remoteURL: "git@github.com:team/app.git"), fork = RemoteWebAddress(remoteURL: "git@github.com:me/app.git")
+        let renamedFork = RemoteWebAddress(remoteURL: "https://github.com/me/app-fork.git")
+        let gitlabUpstream = RemoteWebAddress(remoteURL: "git@gitlab.com:team/app.git"), gitlabFork = RemoteWebAddress(remoteURL: "git@gitlab.com:me/app.git")
+        try require(upstream?.newChangeRequestURL(branch: "x", base: "main", from: fork)?.absoluteString == "https://github.com/team/app/compare/main...me:x?expand=1"
+                    && upstream?.newChangeRequestURL(branch: "x", base: "main", from: renamedFork)?.absoluteString == "https://github.com/team/app/compare/main...me:app-fork:x?expand=1"
+                    && upstream?.newChangeRequestURL(branch: "x", base: "main", from: upstream)?.absoluteString == "https://github.com/team/app/compare/main...x?expand=1"
+                    && gitlabUpstream?.newChangeRequestURL(branch: "x", base: "main", from: gitlabFork)?.absoluteString.hasPrefix("https://gitlab.com/me/app/-/merge_requests/new?") == true,
+                    "A branch pushed to a fork opens a cross-repository compare on GitHub and the fork's merge request page on GitLab")
+        let forkRemotes = GitRemoteConfiguration(entries: [(key: "remote.origin.url", value: "git@github.com:team/app.git"),
+                                                           (key: "remote.fork.url", value: "git@github.com:me/app.git"),
+                                                           (key: "branch.x.pushremote", value: "fork")])
+        try require(forkRemotes.pushURL(for: "x") == "git@github.com:me/app.git" && forkRemotes.pushURL(for: "y") == "git@github.com:team/app.git",
+                    "The push URL follows the remote Git pushes the branch to")
         try require(ComparisonBranch(reference: "refs/remotes/origin/release/1.0").hostedName == "release/1.0"
                     && ComparisonBranch(reference: "refs/heads/feature/x").hostedName == "feature/x",
                     "Target the branch name without its remote")

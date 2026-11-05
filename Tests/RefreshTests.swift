@@ -54,11 +54,12 @@ import Foundation
         try await Task.sleep(for: .seconds(1.5))
         let beforeAction = await reads.value
         let failed = await model.perform(.stageAll, at: repository.path) { _, _ in throw ReadCommandError(message: "boom") }
-        try CoreTests.require(!failed && model.actionError == "boom" && model.pendingAction == nil, "A failed Git action is reported inline")
+        try CoreTests.require(!failed && model.actionFailure == GitActionFailure(action: .stageAll, error: "boom") && model.pendingAction == nil,
+                              "A failed Git action is reported inline with the action")
         try await wait(until: { await reads.value > beforeAction }, "A Git action reloads the status without waiting for file events")
         try "three\n".write(to: repository.appendingPathComponent("tracked.txt"), atomically: true, encoding: .utf8)
         let staged = await model.perform(.stageAll, at: repository.path) { try await InspectorService.perform($0, at: $1) }
-        try CoreTests.require(staged && model.actionError == nil, "A successful Git action clears the previous error")
+        try CoreTests.require(staged && model.actionFailure == nil, "Retrying the failed Git action successfully clears its error")
         try await wait(until: { model.local?.stagedChanges.map(\.path) == ["tracked.txt"] }, "Staging refreshes the sections")
         monitoring.cancel()
         await monitoring.value
@@ -83,8 +84,16 @@ import Foundation
         }
         let results = await [first.value, second.value, third.value]
         try CoreTests.require(performed == ["start a", "end a", "run b", "run c"] && results == [false, true, true]
-                              && queue.pendingAction == nil && queue.actionError == nil,
-                              "Git actions clicked while another runs are queued in order, and a later success clears the earlier failure")
+                              && queue.pendingAction == nil && queue.actionFailure == GitActionFailure(action: .stage(["a"]), error: "first failed"),
+                              "Git actions clicked while another runs are queued in order, and other successes keep the earlier failure")
+        await queue.perform(.stage(["a"]), at: repository.path) { _, _ in }
+        try CoreTests.require(queue.actionFailure == nil, "Staging the same file again successfully clears its failure")
+        await queue.perform(.publish(remote: "origin", branch: "main"), at: repository.path) { _, _ in throw ReadCommandError(message: "denied") }
+        await queue.perform(.commit(title: "t", message: ""), at: repository.path) { _, _ in }
+        let pushFailure = queue.actionFailure
+        await queue.perform(.push, at: repository.path) { _, _ in }
+        try CoreTests.require(pushFailure?.action == .publish(remote: "origin", branch: "main") && queue.actionFailure == nil,
+                              "A commit keeps a push failure and a later successful push clears it")
         print("PASS queued Git actions")
 
         let listings = Counter()
@@ -100,7 +109,7 @@ import Foundation
         _ = try await GitService.run(["config", "filter.added.clean", "cat"], at: repository.path)
         let added = try await guardian.configuration(at: repository.path)
         let afterAdd = await listings.value
-        try CoreTests.require(afterAdd == 2 && added["filter.added.clean"] == "", "A filter added to .git/config is disabled on the next read")
+        try CoreTests.require(afterAdd == 2 && added.overrides["filter.added.clean"] == "", "A filter added to .git/config is disabled on the next read")
         _ = try await GitService.run(["config", "include.path", "../later.cfg"], at: repository.path)
         try await Task.sleep(for: .milliseconds(20))
         _ = try await guardian.configuration(at: repository.path)
@@ -109,7 +118,7 @@ import Foundation
         try "[filter \"late\"]\n\tclean = cat\n".write(to: repository.appendingPathComponent("later.cfg"), atomically: true, encoding: .utf8)
         let included = try await guardian.configuration(at: repository.path)
         let afterInclude = await listings.value
-        try CoreTests.require(afterInclude == beforeInclude + 1 && included["filter.late.clean"] == "",
+        try CoreTests.require(afterInclude == beforeInclude + 1 && included.overrides["filter.late.clean"] == "",
                               "A filter defined by an include target created later is disabled")
         try await Task.sleep(for: .milliseconds(20))
         _ = try await guardian.configuration(at: repository.path)
@@ -120,28 +129,22 @@ import Foundation
         try CoreTests.require(afterSwitch == beforeSwitch + 1, "A branch change lists configuration again for onbranch includes")
         print("PASS git config is listed only when a configuration file, include target or HEAD changes")
 
-        let remoteListings = Counter()
-        let remotes = GitRemoteConfigurationCache { root in
-            await remoteListings.increment()
-            return try? await ReadCommand.run(URL(fileURLWithPath: "/usr/bin/git"), GitRemoteConfigurationCache.arguments, at: root)
-        }
         try await Task.sleep(for: .milliseconds(20))
-        let empty = await remotes.configuration(at: repository.path)
-        _ = await remotes.configuration(at: repository.path)
-        let cachedRemotes = await remoteListings.value
-        try CoreTests.require(empty.primaryURL == nil && cachedRemotes == 1, "Unchanged remotes are not listed again on each refresh")
+        let empty = try await guardian.configuration(at: repository.path).remotes
+        let beforeRemote = await listings.value
         _ = try await GitService.run(["remote", "add", "origin", "git@github.com:fixture/app.git"], at: repository.path)
-        let addedRemote = await remotes.configuration(at: repository.path)
-        let afterRemote = await remoteListings.value
-        try CoreTests.require(addedRemote.primaryURL == "git@github.com:fixture/app.git" && afterRemote == 2, "A remote added to .git/config is read on the next refresh")
+        let addedRemote = try await guardian.configuration(at: repository.path).remotes
+        let afterRemote = await listings.value
+        try CoreTests.require(empty.primaryURL == nil && addedRemote.primaryURL == "git@github.com:fixture/app.git" && afterRemote == beforeRemote + 1,
+                              "A remote added to .git/config is read from the same single listing")
         _ = try await GitService.run(["config", "--add", "include.path", "../remotes.cfg"], at: repository.path)
         try await Task.sleep(for: .milliseconds(20))
-        _ = await remotes.configuration(at: repository.path)
+        _ = try await guardian.configuration(at: repository.path)
         try "[remote \"fork\"]\n\turl = git@github.com:me/app.git\n".write(to: repository.appendingPathComponent("remotes.cfg"), atomically: true, encoding: .utf8)
-        let includedRemote = await remotes.configuration(at: repository.path)
+        let includedRemote = try await guardian.configuration(at: repository.path).remotes
         try CoreTests.require(includedRemote.remotes.map(\.name).contains("fork"), "A remote defined by an include target created later is read")
         _ = try await GitService.run(["remote", "remove", "origin"], at: repository.path)
-        print("PASS remote configuration is listed only when a configuration file changes")
+        print("PASS remote configuration comes from the cached filter guard listing")
     }
 
     private static func wait(until condition: () async -> Bool, _ message: String, timeout: Duration = .seconds(5)) async throws {

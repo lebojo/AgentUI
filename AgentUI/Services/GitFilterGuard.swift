@@ -27,11 +27,23 @@ struct FileStamp: Equatable, Sendable {
 actor GitFilterGuard {
     typealias Listing = @Sendable (String) async throws -> Data
 
+    struct Configuration: Sendable {
+        let overrides: [String: String]
+        let remotes: GitRemoteConfiguration
+
+        init(entries: [GitConfiguration.Entry]) {
+            overrides = GitConfiguration.disabling(filterDrivers: GitConfiguration.untrustedFilterDrivers(in: entries))
+            remotes = GitRemoteConfiguration(entries: entries.compactMap { entry in
+                entry.value.map { (key: String(entry.key), value: String($0)) }
+            })
+        }
+    }
+
     static let shared = GitFilterGuard()
 
     private struct Snapshot {
         let stamps: [String: FileStamp]
-        let configuration: [String: String]
+        let configuration: Configuration
     }
 
     private let list: Listing
@@ -41,25 +53,36 @@ actor GitFilterGuard {
         self.list = list
     }
 
-    func configuration(at root: String) async throws -> [String: String] {
+    func configuration(at root: String) async throws -> Configuration {
         if let snapshot = snapshots[root], snapshot.stamps.allSatisfy({ FileStamp($0.key) == $0.value }) {
             return snapshot.configuration
         }
         let started = Int64(Date().timeIntervalSince1970 * 1_000_000_000)
         let entries = GitConfiguration.entries(in: try await list(root))
-        let configuration = GitConfiguration.disabling(filterDrivers: GitConfiguration.untrustedFilterDrivers(in: entries))
-        var files = GitConfiguration.files(in: entries, root: root)
-        if let repository = GitRepository.containing(root) {
-            files.formUnion([repository.commonDirectory.appendingPathComponent("config").path,
-                             repository.gitDirectory.appendingPathComponent("config.worktree").path,
-                             repository.gitDirectory.appendingPathComponent("HEAD").path])
-        }
-        let stamps = Dictionary(uniqueKeysWithValues: files.map { ($0, FileStamp($0)) })
+        let configuration = Configuration(entries: entries)
+        let stamps = Dictionary(uniqueKeysWithValues: Self.files(in: entries, root: root).map { ($0, FileStamp($0)) })
         if stamps.values.allSatisfy({ $0.changed < started }) {
             snapshots[root] = Snapshot(stamps: stamps, configuration: configuration)
         } else {
             snapshots.removeValue(forKey: root)
         }
         return configuration
+    }
+
+    private static func files(in entries: [GitConfiguration.Entry], root: String) -> Set<String> {
+        var files = GitConfiguration.files(in: entries, root: root).union(globalFiles)
+        if let repository = GitRepository.containing(root) {
+            files.formUnion([repository.commonDirectory.appendingPathComponent("config").path,
+                             repository.gitDirectory.appendingPathComponent("config.worktree").path,
+                             repository.gitDirectory.appendingPathComponent("HEAD").path])
+        }
+        return files
+    }
+
+    private static var globalFiles: [String] {
+        let environment = ProcessInfo.processInfo.environment
+        let home = NSHomeDirectory()
+        let xdg = environment["XDG_CONFIG_HOME"].flatMap { $0.isEmpty ? nil : $0 } ?? home + "/.config"
+        return [environment["GIT_CONFIG_GLOBAL"] ?? home + "/.gitconfig", xdg + "/git/config"]
     }
 }

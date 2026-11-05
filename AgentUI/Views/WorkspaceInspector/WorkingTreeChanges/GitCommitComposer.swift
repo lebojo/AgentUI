@@ -43,8 +43,8 @@ struct GitCommitComposer: View {
             .buttonStyle(.bordered)
             .disabled(!hasChanges || model.pendingAction != nil)
             .help("Open a terminal where the default agent commits the changes")
-            if let error = model.actionError {
-                InspectorNotice(title: "Git Action Failed", message: error)
+            if let failure = model.actionFailure {
+                GitActionFailureNotice(message: failure.message)
             }
         }
         .controlSize(.small)

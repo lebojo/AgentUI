@@ -434,10 +434,10 @@ import Foundation
         try require(DefaultBranch.references(remoteHeads: heads.reversed()).prefix(4)
                         == ["refs/remotes/origin/develop", "refs/remotes/gh/team/trunk", "refs/heads/develop", "refs/heads/trunk"],
                     "origin's HEAD comes first, then other remotes' HEADs and their local branches")
-        try require(DefaultBranch.preferredReferences(remoteHead: "refs/remotes/origin/develop")
-                        == DefaultBranch.references(remoteHeads: [DefaultBranch.RemoteHead(name: "develop", reference: "refs/remotes/origin/develop")])
-                        && DefaultBranch.preferredReferences(remoteHead: nil) == ["refs/heads/main", "refs/heads/master", "refs/remotes/origin/main", "refs/remotes/origin/master"],
-                    "The inspector's compare base follows the same main branch rule")
+        let others = [DefaultBranch.RemoteHead(name: "b", reference: "refs/remotes/zeta/b"), DefaultBranch.RemoteHead(name: "a", reference: "refs/remotes/alpha/a")]
+        try require(DefaultBranch.references(remoteHeads: others) == DefaultBranch.references(remoteHeads: others.reversed())
+                        && DefaultBranch.references(remoteHeads: []) == ["refs/heads/main", "refs/heads/master", "refs/remotes/origin/main", "refs/remotes/origin/master"],
+                    "Remote HEADs other than origin's are ordered by name, whatever order Git lists them in")
         let targets = DefaultBranch.mergeTargets(in: """
         refs/heads/main\trefs/remotes/origin/main\t
         refs/heads/main/old\t\t

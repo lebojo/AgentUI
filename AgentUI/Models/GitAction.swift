@@ -33,6 +33,18 @@ enum GitAction: Equatable, Sendable {
         }
     }
 
+    var failureTitle: String {
+        switch self {
+        case .stage(let paths): String(localized: "Couldn’t stage \(Self.fileName(paths))")
+        case .unstage(let paths): String(localized: "Couldn’t unstage \(Self.fileName(paths))")
+        case .stageAll: String(localized: "Couldn’t stage all changes")
+        case .unstageAll: String(localized: "Couldn’t unstage all changes")
+        case .commit: String(localized: "Couldn’t commit")
+        case .push: String(localized: "Couldn’t push")
+        case .publish(_, let branch): String(localized: "Couldn’t publish \(branch)")
+        }
+    }
+
     var symbol: String {
         switch self {
         case .stage, .stageAll: "plus"
@@ -57,9 +69,27 @@ enum GitAction: Equatable, Sendable {
         }
     }
 
+    func retries(_ failed: GitAction) -> Bool {
+        switch (self, failed) {
+        case (.commit, .commit), (.push, .push), (.push, .publish), (.publish, .push), (.publish, .publish): true
+        default: self == failed
+        }
+    }
+
     static func commit(title: String, description: String) -> GitAction? {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return nil }
         return .commit(title: title, message: description.trimmingCharacters(in: .whitespacesAndNewlines))
     }
+
+    private static func fileName(_ paths: [String]) -> String {
+        paths.first.map { ($0 as NSString).lastPathComponent } ?? ""
+    }
+}
+
+struct GitActionFailure: Equatable, Sendable {
+    let action: GitAction
+    let error: String
+
+    var message: String { String(localized: "\(action.failureTitle): \(error)") }
 }

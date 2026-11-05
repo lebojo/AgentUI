@@ -8,9 +8,9 @@ extension WorkspaceStore {
         catch { errorMessage = error.localizedDescription }
     }
 
-    func runAgent(prompt: String, name: String, in project: Project, _ worktree: Worktree, launch: AgentLaunch) {
+    func runAgent(prompt: String, name: String, projectID: UUID, worktreeID: UUID, launch: AgentLaunch) {
         do {
-            _ = try addTerminal(projectID: project.id, worktreeID: worktree.id, name: name, command: launch.command(prompt: prompt))
+            _ = try addTerminal(projectID: projectID, worktreeID: worktreeID, name: name, command: launch.command(prompt: prompt))
         }
         catch { errorMessage = error.localizedDescription }
     }

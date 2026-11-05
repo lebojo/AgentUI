@@ -49,27 +49,6 @@ struct GitChange: Codable, Identifiable, Equatable, Sendable {
     var isUnstaged: Bool { isUntracked || isConflicted || worktreeStatus != " " }
     var status: String { isUntracked ? "?" : [indexStatus, worktreeStatus].filter { $0 != " " }.joined() }
 
-    static func parsePorcelain(_ data: Data) -> [GitChange] {
-        let fields = String(decoding: data, as: UTF8.self).components(separatedBy: "\0")
-        var result: [GitChange] = []
-        var index = 0
-        while index < fields.count {
-            let entry = fields[index]
-            index += 1
-            guard entry.count >= 4, !entry.hasPrefix(GitTracking.headerPrefix) else { continue }
-            let x = String(entry.prefix(1))
-            let y = String(entry.dropFirst().prefix(1))
-            let path = String(entry.dropFirst(3))
-            var original: String?
-            if [x, y].contains(where: { $0 == "R" || $0 == "C" }), index < fields.count {
-                original = fields[index]
-                index += 1
-            }
-            result.append(GitChange(path: path, originalPath: original, indexStatus: x, worktreeStatus: y))
-        }
-        return result
-    }
-
     static func parseNameStatus(_ data: Data) -> [GitChange] {
         let fields = String(decoding: data, as: UTF8.self).components(separatedBy: "\0")
         var result: [GitChange] = []
@@ -160,14 +139,6 @@ enum GitChangeScope: Hashable, Sendable {
         }
     }
 
-    func includes(_ change: GitChange) -> Bool {
-        switch self {
-        case .staged: change.isStaged
-        case .unstaged: change.isUnstaged
-        case .branch: true
-        }
-    }
-
     func kind(of change: GitChange) -> GitChangeKind {
         switch self {
         case .unstaged where change.isConflicted: .conflicted
@@ -186,8 +157,6 @@ enum GitChangeScope: Hashable, Sendable {
 }
 
 struct GitTracking: Codable, Equatable, Sendable {
-    static let headerPrefix = "## "
-
     let upstream: String?
     var ahead = 0
     var remote: String?
@@ -202,21 +171,6 @@ struct GitTracking: Codable, Equatable, Sendable {
         guard isPublished else { return remote.map { .publish(remote: $0, branch: branch) } }
         return ahead > 0 ? .push : nil
     }
-
-    static func parse(_ data: Data) -> GitTracking? {
-        let header = String(decoding: data.prefix { $0 != 0 }, as: UTF8.self)
-        guard header.hasPrefix(headerPrefix) else { return nil }
-        let line = header.dropFirst(headerPrefix.count)
-        guard !line.hasPrefix("No commits yet on "), !line.hasPrefix("Initial commit on "), !line.hasPrefix("HEAD (no branch)") else { return nil }
-        let parts = line.split(separator: " ", maxSplits: 1)
-        guard let reference = parts.first else { return nil }
-        let details = parts.count > 1 ? String(parts[1]) : ""
-        let names = reference.components(separatedBy: "...")
-        guard names.count == 2 else { return GitTracking(upstream: nil) }
-        guard !details.contains("[gone]") else { return GitTracking(upstream: nil, goneUpstream: names[1]) }
-        let ahead = details.firstRange(of: "ahead ").flatMap { Int(details[$0.upperBound...].prefix(while: \.isNumber)) } ?? 0
-        return GitTracking(upstream: names[1], ahead: ahead)
-    }
 }
 
 struct GitRemote: Equatable, Sendable {
@@ -225,18 +179,22 @@ struct GitRemote: Equatable, Sendable {
 }
 
 struct GitRemoteConfiguration: Equatable, Sendable {
-    static let keyPattern = "remote\\..+\\.url|remote\\.pushdefault|branch\\..+\\.(remote|pushremote|merge)"
+    private static let branchKeys = [".remote", ".pushremote", ".merge"]
 
     private(set) var remotes: [GitRemote] = []
     private var values: [String: String] = [:]
 
     var primaryURL: String? { (remotes.first { $0.name == "origin" } ?? remotes.first)?.url }
 
+    func pushURL(for branch: String) -> String? {
+        pushRemote(for: branch).flatMap { name in remotes.first { $0.name == name }?.url }
+    }
+
     init(entries: [(key: String, value: String)] = []) {
         for (key, value) in entries {
             if let name = Self.remoteName(fromURLKey: key) {
                 if !remotes.contains(where: { $0.name == name }) { remotes.append(GitRemote(name: name, url: value)) }
-            } else {
+            } else if Self.isTrackingSetting(key) {
                 values[key] = value
             }
         }
@@ -252,6 +210,10 @@ struct GitRemoteConfiguration: Equatable, Sendable {
     func tracksSameBranch(_ branch: String) -> Bool {
         guard let remote = values["branch.\(branch).remote"], remotes.contains(where: { $0.name == remote }) else { return false }
         return values["branch.\(branch).merge"] == "refs/heads/" + branch
+    }
+
+    private static func isTrackingSetting(_ key: String) -> Bool {
+        key == "remote.pushdefault" || (key.hasPrefix("branch.") && branchKeys.contains(where: key.hasSuffix))
     }
 
     private static func remoteName(fromURLKey key: String) -> String? {
@@ -304,16 +266,24 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
     let root: String
     let branch: GitBranch?
     let headSHA: String?
-    let changes: [GitChange]
+    private(set) var changes: [GitChange]
     var omittedChanges = 0
     var tracking: GitTracking?
     var webAddress: RemoteWebAddress?
+    var pushWebAddress: RemoteWebAddress?
 
     var stagedChanges: [GitChange] { changes.filter(\.isStaged) }
     var unstagedChanges: [GitChange] { changes.filter(\.isUnstaged) }
     var push: GitAction? {
         guard headSHA != nil, let branch, !branch.isDetached else { return nil }
         return tracking?.push(branch: branch.name)
+    }
+
+    func limited(to changes: [GitChange], omitting omitted: Int) -> LocalGitSnapshot {
+        var snapshot = self
+        snapshot.changes = changes
+        snapshot.omittedChanges += omitted
+        return snapshot
     }
 }
 
@@ -347,8 +317,8 @@ enum GitHosting: String, Codable, Sendable {
 
     var changeRequestTitle: String {
         switch self {
-        case .github: "Pull request"
-        case .gitlab: "Merge request"
+        case .github: String(localized: "Pull request")
+        case .gitlab: String(localized: "Merge request")
         }
     }
 

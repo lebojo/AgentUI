@@ -11,6 +11,7 @@ struct RemoteWebAddress: Codable, Equatable, Sendable {
     let path: String
 
     var hosting: GitHosting? { GitHosting(host: host) }
+    private var segments: [Substring] { path.split(separator: "/") }
 
     init?(remoteURL: String) {
         let value = remoteURL.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -42,23 +43,36 @@ struct RemoteWebAddress: Codable, Equatable, Sendable {
         self.path = path
     }
 
-    func newChangeRequestURL(branch: String, base: String) -> URL? {
+    func newChangeRequestURL(branch: String, base: String, from head: RemoteWebAddress? = nil) -> URL? {
+        let head = head ?? self
+        switch hosting {
+        case .github:
+            var components = self.components
+            components.path = "/\(path)/compare/\(base)...\(source(of: branch, from: head))"
+            components.percentEncodedQuery = "expand=1"
+            return components.url
+        case .gitlab:
+            var components = head.components
+            components.path = "/\(head.path)/-/merge_requests/new"
+            components.percentEncodedQuery = "merge_request%5Bsource_branch%5D=\(Self.queryValue(branch))"
+                + "&merge_request%5Btarget_branch%5D=\(Self.queryValue(base))"
+            return components.url
+        case nil:
+            return nil
+        }
+    }
+
+    private var components: URLComponents {
         var components = URLComponents()
         components.scheme = scheme
         components.host = host
         components.port = port
-        switch hosting {
-        case .github:
-            components.path = "/\(path)/compare/\(base)...\(branch)"
-            components.percentEncodedQuery = "expand=1"
-        case .gitlab:
-            components.path = "/\(path)/-/merge_requests/new"
-            components.percentEncodedQuery = "merge_request%5Bsource_branch%5D=\(Self.queryValue(branch))"
-                + "&merge_request%5Btarget_branch%5D=\(Self.queryValue(base))"
-        case nil:
-            return nil
-        }
-        return components.url
+        return components
+    }
+
+    private func source(of branch: String, from head: RemoteWebAddress) -> String {
+        guard head.host == host, head.path != path, let owner = head.segments.first, let name = head.segments.last else { return branch }
+        return name == segments.last ? "\(owner):\(branch)" : "\(owner):\(name):\(branch)"
     }
 
     private static func queryValue(_ value: String) -> String {

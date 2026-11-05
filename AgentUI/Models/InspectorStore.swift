@@ -19,7 +19,7 @@ import Observation
     private(set) var localError: String?
     private(set) var remoteError: String?
     private(set) var pendingAction: GitAction?
-    var actionError: String?
+    var actionFailure: GitActionFailure?
     @ObservationIgnored private var queuedActions: [CheckedContinuation<Void, Never>] = []
     @ObservationIgnored private var path: String?
     @ObservationIgnored private var reloadTrigger: AsyncStream<Void>.Continuation?
@@ -27,6 +27,7 @@ import Observation
     @ObservationIgnored private var remoteKey: String?
     @ObservationIgnored private var remoteDate: ContinuousClock.Instant?
     @ObservationIgnored private var remoteInterval: Duration = .seconds(60)
+    @ObservationIgnored private var showsNextLocalLoad = true
 
     typealias LocalQuery = @Sendable (String) async throws -> LocalGitSnapshot
     typealias RemoteQuery = @Sendable (LocalGitSnapshot) async throws -> RemoteSnapshot
@@ -58,6 +59,7 @@ import Observation
             commitTitle = ""; commitMessage = ""
         }
         localLoading = false; remoteLoading = false
+        showsNextLocalLoad = true
         if forceRemote { remoteKey = nil }
         let (triggers, trigger) = AsyncStream.makeStream(of: RemoteTrigger.self, bufferingPolicy: .bufferingNewest(1))
         let (reloads, reload) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
@@ -87,9 +89,7 @@ import Observation
     }
 
     @discardableResult func perform(_ action: GitAction, at root: String, run: GitCommand) async -> Bool {
-        if pendingAction == nil {
-            actionError = nil
-        } else {
+        if pendingAction != nil {
             await withCheckedContinuation { queuedActions.append($0) }
         }
         pendingAction = action
@@ -100,12 +100,12 @@ import Observation
         guard !Task.isCancelled else { return false }
         do {
             try await run(action, root)
-            actionError = nil
+            if let actionFailure, action.retries(actionFailure.action) { self.actionFailure = nil }
             return true
         } catch is CancellationError {
             return false
         } catch {
-            actionError = error.localizedDescription
+            actionFailure = GitActionFailure(action: action, error: error.localizedDescription)
             return false
         }
     }
@@ -114,7 +114,8 @@ import Observation
                            trigger: AsyncStream<RemoteTrigger>.Continuation, readLocal: LocalQuery) async {
         for await _ in changes {
             guard !Task.isCancelled, generation == token else { break }
-            localLoading = true
+            if showsNextLocalLoad || local == nil { localLoading = true }
+            showsNextLocalLoad = false
             do {
                 let snapshot = try await readLocal(path)
                 let trees = snapshot.changes == local?.changes ? changeTrees : await GitChangeTrees.build(snapshot)
@@ -135,7 +136,7 @@ import Observation
                 lacksChangeRequest = false
                 localError = error.localizedDescription
             }
-            localLoading = false
+            if localLoading { localLoading = false }
         }
         if generation == token { localLoading = false }
     }
@@ -145,7 +146,7 @@ import Observation
             guard !Task.isCancelled, generation == token else { break }
             guard let snapshot = local, let key = currentKey,
                   reason == .periodic || key != remoteKey || remoteIsStale else { continue }
-            remoteLoading = true
+            if key != remoteKey { remoteLoading = true }
             do {
                 let result = try await readRemote(snapshot)
                 guard !Task.isCancelled, generation == token else { break }
@@ -163,7 +164,7 @@ import Observation
                     lacksChangeRequest = true
                 }
             }
-            remoteLoading = false
+            if remoteLoading { remoteLoading = false }
         }
         if generation == token { remoteLoading = false }
     }

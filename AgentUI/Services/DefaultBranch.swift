@@ -16,14 +16,10 @@ enum DefaultBranch {
     }
 
     static func references(remoteHeads: [RemoteHead]) -> [String] {
-        let heads = remoteHeads.filter(\.isOrigin) + remoteHeads.filter { !$0.isOrigin }
+        let heads = remoteHeads.filter(\.isOrigin) + remoteHeads.filter { !$0.isOrigin }.sorted { $0.reference < $1.reference }
         let local = (heads.map(\.name) + conventionalNames).map { "refs/heads/" + $0 }
         let remote = conventionalNames.map { originPrefix + $0 }
         return unique(heads.map(\.reference) + local + remote)
-    }
-
-    static func preferredReferences(remoteHead: String?) -> [String] {
-        references(remoteHeads: remoteHeads(in: remoteHead.map { originPrefix + "HEAD\t" + $0 } ?? ""))
     }
 
     static func remoteHeads(in output: String) -> [RemoteHead] {

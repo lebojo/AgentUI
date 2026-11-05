@@ -39,8 +39,7 @@ import AppKit
     }
     func perform(_ action: GitAction, at root: String) async throws { try await InspectorService.perform(action, at: root) }
     func runAgent(prompt: KeyPath<AgentPrompts, String>, name: String, context: TerminalContext) {
-        guard let project = store.projects.first(where: { $0.id == context.project.id }),
-              let worktree = project.worktrees.first(where: { $0.id == context.worktree.id }) else { return }
-        store.runAgent(prompt: settings.prompts[keyPath: prompt], name: name, in: project, worktree, launch: settings.agentLaunch)
+        store.runAgent(prompt: settings.prompts[keyPath: prompt], name: name, projectID: context.project.id, worktreeID: context.worktree.id,
+                       launch: settings.agentLaunch)
     }
 }
