@@ -8,21 +8,21 @@ struct BranchProtectionReport: Equatable, Sendable {
 }
 
 enum GitBranchProtection {
-    @concurrent static func report(at path: String, in repositoryPath: String, checkedOutElsewhere known: Set<String>) async -> BranchProtectionReport {
+    @concurrent static func report(at path: String, in repositoryPath: String) async -> BranchProtectionReport {
         guard let repository = GitRepository.atRoot(URL(fileURLWithPath: path)) ?? GitRepository.registeredWorktree(at: path, in: repositoryPath),
               let configuration = try? await GitFilterGuard.shared.configuration(at: repositoryPath),
               let heads = remoteHeads(of: repository, in: remoteHeadFiles(in: repository.commonDirectory, remoteNames: configuration.remotes.names))
         else { return .unreadable }
         let gitDirectory = WorkspacePath.canonical(repository.gitDirectory)
-        let elsewhere = checkedOutBranches(in: repository.commonDirectory).filter { $0.key != gitDirectory }.values
+        let elsewhere = checkedOutBranches(in: repository.commonDirectory).filter { $0.key != gitDirectory }.values.joined()
         let branch = WorktreeBranch(repository.branch, defaultBranches: DefaultBranch.names(remoteHeads: heads.map(\.name)),
-                                    checkedOutElsewhere: known.union(elsewhere))
+                                    checkedOutElsewhere: Set(elsewhere))
         return BranchProtectionReport(branch: branch, mergeCandidates: DefaultBranch.references(remoteHeads: heads))
     }
 
     static func isCheckedOut(_ branch: String, inRepositoryAt path: String) -> Bool {
         guard let repository = GitRepository.containing(path) else { return false }
-        return checkedOutBranches(in: repository.commonDirectory).values.contains(branch)
+        return checkedOutBranches(in: repository.commonDirectory).values.contains { $0.contains(branch) }
     }
 
     static func mergeCandidates(of repository: GitRepository, headFiles: [String]) -> [String]? {
@@ -53,13 +53,28 @@ enum GitBranchProtection {
             && !FileManager.default.fileExists(atPath: repository.commonDirectory.appendingPathComponent("reftable").path)
     }
 
-    private static func checkedOutBranches(in commonDirectory: URL) -> [String: String] {
+    private static func checkedOutBranches(in commonDirectory: URL) -> [String: Set<String>] {
         var gitDirectories = GitRepository.linkedGitDirectories(in: commonDirectory)
         if !isBare(commonDirectory) { gitDirectories.append(commonDirectory) }
         return gitDirectories.reduce(into: [:]) { branches, gitDirectory in
-            guard let branch = GitRepository.headBranch(in: gitDirectory), !branch.isDetached else { return }
-            branches[WorkspacePath.canonical(gitDirectory)] = branch.name
+            let names = branchesInUse(in: gitDirectory)
+            if !names.isEmpty { branches[WorkspacePath.canonical(gitDirectory)] = names }
         }
+    }
+
+    private static func branchesInUse(in gitDirectory: URL) -> Set<String> {
+        let rebased = ["rebase-merge/head-name", "rebase-apply/head-name"].compactMap { file in
+            GitRepository.smallTextFile(gitDirectory.appendingPathComponent(file)).flatMap(localBranchName(of:))
+        }
+        let bisected = GitRepository.smallTextFile(gitDirectory.appendingPathComponent("BISECT_START")).flatMap { $0.isEmpty ? nil : $0 }
+        let head = GitRepository.headBranch(in: gitDirectory).flatMap { $0.isDetached ? nil : $0.name }
+        return Set(rebased + [bisected, head].compactMap { $0 })
+    }
+
+    private static func localBranchName(of reference: String) -> String? {
+        let prefix = "refs/heads/"
+        guard reference.hasPrefix(prefix), reference.count > prefix.count else { return nil }
+        return String(reference.dropFirst(prefix.count))
     }
 
     private static func isBare(_ commonDirectory: URL) -> Bool {

@@ -437,7 +437,7 @@ private final class ChangeFlag: @unchecked Sendable {
         try fm.createDirectory(at: originHead.deletingLastPathComponent(), withIntermediateDirectories: true)
         try "ref: refs/remotes/gh/team/review/one\n".write(to: originHead, atomically: true, encoding: .utf8)
         groups.sessions.readBranches(of: groups.projects)
-        let remoteDefault = await GitBranchProtection.report(at: review.path, in: gitRoot.path, checkedOutElsewhere: []).branch
+        let remoteDefault = await GitBranchProtection.report(at: review.path, in: gitRoot.path).branch
         let remoteDefaultOffer = await groups.deletableBranch(for: reviewRemoval)
         try require(remoteDefault == .protected("review/one", .defaultBranch) && remoteDefaultOffer == nil,
                     "The removal dialog never offers to delete the branch a remote HEAD points to")
@@ -446,13 +446,13 @@ private final class ChangeFlag: @unchecked Sendable {
         let hidden = root.appendingPathComponent("hidden-review")
         _ = try await GitService.run(["worktree", "add", "-q", "-f", hidden.path, "review/one"], at: gitRoot.path)
         groups.sessions.readBranches(of: groups.projects)
-        let hiddenCheckout = await GitBranchProtection.report(at: review.path, in: gitRoot.path, checkedOutElsewhere: []).branch
+        let hiddenCheckout = await GitBranchProtection.report(at: review.path, in: gitRoot.path).branch
         let hiddenCheckoutOffer = await groups.deletableBranch(for: reviewRemoval)
         try require(hiddenCheckout == .protected("review/one", .checkedOutElsewhere) && hiddenCheckoutOffer == nil,
                     "The removal dialog never offers to delete a branch checked out in a worktree AgentUI doesn't know")
         _ = try await GitService.run(["worktree", "remove", "--force", hidden.path], at: gitRoot.path)
         groups.sessions.readBranches(of: groups.projects)
-        let ownBranch = await GitBranchProtection.report(at: review.path, in: gitRoot.path, checkedOutElsewhere: []).branch
+        let ownBranch = await GitBranchProtection.report(at: review.path, in: gitRoot.path).branch
         try require(ownBranch == .deletable("review/one"), "A worktree's own branch isn't protected as checked out elsewhere")
         let reviewBranch = await groups.deletableBranch(for: reviewRemoval)
         try require(reviewBranch == "review/one", "The removal dialog offers to delete a worktree's branch")

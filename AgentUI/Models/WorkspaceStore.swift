@@ -437,13 +437,7 @@ import Observation
               let project = projects.first(where: { $0.id == projectID }),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }),
               !worktree.isPrimary else { return nil }
-        return await branchProtection(of: worktree, in: project).branch.deletableName
-    }
-
-    private func branchProtection(of worktree: Worktree, in project: Project) async -> BranchProtectionReport {
-        let branches = sessions.branchesByPath
-        let elsewhere = project.worktrees.filter { $0.id != worktree.id }.compactMap { branches[$0.path] }.filter { !$0.isDetached }.map(\.name)
-        return await GitBranchProtection.report(at: worktree.path, in: project.path, checkedOutElsewhere: Set(elsewhere))
+        return await GitBranchProtection.report(at: worktree.path, in: project.path).branch.deletableName
     }
 
     func remove(_ removal: Removal, branch: BranchRemoval = .keep) {
@@ -647,7 +641,7 @@ import Observation
             removingWorktrees.remove(worktreeID)
         }
         let protection = removal == .keep ? BranchProtectionReport(branch: .none, mergeCandidates: [])
-            : await branchProtection(of: worktree, in: project)
+            : await GitBranchProtection.report(at: worktree.path, in: project.path)
         let keptBranch = removal.confirmedBranch.flatMap(protection.branch.cleanup(confirming:))
         if removal.confirmedBranch == nil, let refusal = protection.branch.refusal { throw WorkspaceError(message: refusal) }
         let deletion = keptBranch == nil ? try await branchDeletion(protection, removal, at: project.path) : nil

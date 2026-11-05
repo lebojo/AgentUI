@@ -396,16 +396,16 @@ import Foundation
 
         let shared = root.appendingPathComponent("cleanup-shared-main")
         _ = try await GitService.run(["worktree", "add", "-q", "-f", shared.path, "main"], at: project.path)
-        let sharedBranch = await GitBranchProtection.report(at: shared.path, in: project.path, checkedOutElsewhere: []).branch
+        let sharedBranch = await GitBranchProtection.report(at: shared.path, in: project.path).branch
         try require(sharedBranch == .protected("main", .defaultBranch),
                     "The branch of the project's main folder is never deletable from another worktree")
         try await GitService.removeWorktree(project: project, path: shared.path)
         let merged = try await GitService.createWorktree(project: project, branch: "cleanup/merged", root: root)
-        let mergedBranch = await GitBranchProtection.report(at: merged.path, in: project.path, checkedOutElsewhere: []).branch
+        let mergedBranch = await GitBranchProtection.report(at: merged.path, in: project.path).branch
         try require(mergedBranch == .deletable("cleanup/merged"), "A merged worktree branch is deletable")
         _ = try await GitService.run(["update-ref", "refs/remotes/origin/cleanup/merged", "HEAD"], at: project.path)
         _ = try await GitService.run(["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/cleanup/merged"], at: project.path)
-        let remoteDefaultBranch = await GitBranchProtection.report(at: merged.path, in: project.path, checkedOutElsewhere: []).branch
+        let remoteDefaultBranch = await GitBranchProtection.report(at: merged.path, in: project.path).branch
         try require(remoteDefaultBranch == .protected("cleanup/merged", .defaultBranch), "The branch a remote HEAD points to is the default branch")
         _ = try await GitService.run(["symbolic-ref", "--delete", "refs/remotes/origin/HEAD"], at: project.path)
         _ = try await GitService.run(["update-ref", "-d", "refs/remotes/origin/cleanup/merged"], at: project.path)
@@ -429,6 +429,8 @@ import Foundation
         let movingLeft = try await GitService.run(["branch", "--list", "cleanup/moving"], at: project.path)
         try require(!movingLeft.isEmpty, "A commit made between the merge check and the deletion keeps the branch")
         _ = try await GitService.run(["branch", "-D", "cleanup/moving"], at: project.path)
+        try await GitService.deleteBranch(checked!, at: project.path)
+        print("PASS a branch deleted by someone else after its check counts as deleted")
 
         let leaving = try await GitService.createWorktree(project: project, branch: "cleanup/elsewhere", root: root)
         let leavingCheck = try await GitService.deletion(of: "cleanup/elsewhere", .merged(confirmed: nil), mergeCandidates: ["refs/heads/main"], at: project.path)
@@ -450,7 +452,7 @@ import Foundation
         let relative = URL(fileURLWithPath: WorkspacePath.canonical(root)).appendingPathComponent("cleanup-relative")
         _ = try await GitService.run(["-c", "worktree.useRelativePaths=true", "worktree", "add", "-q", "-b", "cleanup/relative", relative.path], at: project.path)
         try FileManager.default.removeItem(at: relative)
-        let relativeBranch = await GitBranchProtection.report(at: relative.path, in: project.path, checkedOutElsewhere: []).branch
+        let relativeBranch = await GitBranchProtection.report(at: relative.path, in: project.path).branch
         try require(relativeBranch == .deletable("cleanup/relative"), "A registration with a relative link finds its removed worktree")
         try await GitService.removeWorktree(project: project, path: relative.path)
         _ = try await GitService.run(["branch", "-D", "cleanup/relative"], at: project.path)
@@ -490,14 +492,14 @@ import Foundation
 
         let detached = try await GitService.createWorktree(project: project, branch: "cleanup/detached", root: root)
         _ = try await GitService.run(["checkout", "--detach"], at: detached.path)
-        let detachedBranch = await GitBranchProtection.report(at: detached.path, in: project.path, checkedOutElsewhere: []).branch
+        let detachedBranch = await GitBranchProtection.report(at: detached.path, in: project.path).branch
         try require(detachedBranch == WorktreeBranch.none, "A detached worktree has no branch to delete")
-        let missingBranch = await GitBranchProtection.report(at: root.appendingPathComponent("cleanup-missing").path, in: project.path, checkedOutElsewhere: []).branch
+        let missingBranch = await GitBranchProtection.report(at: root.appendingPathComponent("cleanup-missing").path, in: project.path).branch
         try require(missingBranch == .unreadable && missingBranch.deletableName == nil && missingBranch.refusal != nil,
                     "A branch that can't be checked is never deleted, and the deletion stops before removing anything")
         let gone = try await GitService.createWorktree(project: project, branch: "cleanup/gone", root: root)
         try FileManager.default.removeItem(atPath: gone.path)
-        let goneBranch = await GitBranchProtection.report(at: gone.path, in: project.path, checkedOutElsewhere: []).branch
+        let goneBranch = await GitBranchProtection.report(at: gone.path, in: project.path).branch
         try require(goneBranch == .deletable("cleanup/gone"), "A worktree whose folder was removed still knows its branch from its registration")
         try await GitService.removeWorktree(project: project, path: gone.path)
         try await deleteBranch("cleanup/gone", .merged(confirmed: nil), project: project)
@@ -513,26 +515,46 @@ import Foundation
         let localProject = Project(url: local)
         let linkedMain = root.appendingPathComponent("cleanup-local-main")
         _ = try await GitService.run(["worktree", "add", "-q", linkedMain.path, "main"], at: local.path)
-        let linkedMainBranch = await GitBranchProtection.report(at: linkedMain.path, in: local.path, checkedOutElsewhere: []).branch
+        let linkedMainBranch = await GitBranchProtection.report(at: linkedMain.path, in: local.path).branch
         try require(linkedMainBranch == .protected("main", .defaultBranch), "main is the default branch of a local-only repository with packed refs")
         let linkedFeature = root.appendingPathComponent("cleanup-local-feature")
         _ = try await GitService.run(["worktree", "add", "-q", "-f", linkedFeature.path, "feature"], at: local.path)
-        let linkedFeatureBranch = await GitBranchProtection.report(at: linkedFeature.path, in: local.path, checkedOutElsewhere: []).branch
+        let linkedFeatureBranch = await GitBranchProtection.report(at: linkedFeature.path, in: local.path).branch
         try require(linkedFeatureBranch == .protected("feature", .checkedOutElsewhere), "The branch of the primary folder is protected")
         let topic = try await GitService.createWorktree(project: localProject, branch: "topic", root: root)
-        let topicBranch = await GitBranchProtection.report(at: topic.path, in: local.path, checkedOutElsewhere: []).branch
+        let topicBranch = await GitBranchProtection.report(at: topic.path, in: local.path).branch
         try require(topicBranch == .deletable("topic"), "Git reports a topic branch as deletable")
         _ = try await GitService.run(["checkout", "-q", "--detach"], at: topic.path)
-        let detachedTopic = await GitBranchProtection.report(at: topic.path, in: local.path, checkedOutElsewhere: []).branch
+        let detachedTopic = await GitBranchProtection.report(at: topic.path, in: local.path).branch
         try require(detachedTopic == WorktreeBranch.none, "Git reports no branch for a detached worktree")
+        let identity = ["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid"]
+        let rebasing = root.appendingPathComponent("cleanup-rebasing")
+        _ = try await GitService.run(["worktree", "add", "-q", "-b", "rebasing", rebasing.path, "main"], at: local.path)
+        _ = try await GitService.run(identity + ["commit", "-q", "--allow-empty", "-m", "Rebased"], at: rebasing.path)
+        _ = try? await GitService.run(identity + ["rebase", "--force-rebase", "--exec", "false", "main"], at: rebasing.path)
+        let sharedRebasing = root.appendingPathComponent("cleanup-rebasing-shared")
+        _ = try await GitService.run(["worktree", "add", "-q", "-f", sharedRebasing.path, "rebasing"], at: local.path)
+        let rebasingBranch = await GitBranchProtection.report(at: sharedRebasing.path, in: local.path).branch
+        try require(GitRepository.containing(rebasing.path)?.branch.isDetached == true && GitBranchProtection.isCheckedOut("rebasing", inRepositoryAt: local.path)
+                        && rebasingBranch == .protected("rebasing", .checkedOutElsewhere),
+                    "A branch being rebased in another worktree stays protected")
+        let bisecting = root.appendingPathComponent("cleanup-bisecting")
+        _ = try await GitService.run(["worktree", "add", "-q", "-b", "bisected", bisecting.path, "main"], at: local.path)
+        _ = try await GitService.run(["bisect", "start"], at: bisecting.path)
+        _ = try await GitService.run(["checkout", "-q", "--detach"], at: bisecting.path)
+        try require(GitBranchProtection.isCheckedOut("bisected", inRepositoryAt: local.path), "A branch being bisected in another worktree stays protected")
+        _ = try await GitService.run(["rebase", "--abort"], at: rebasing.path)
+        _ = try await GitService.run(["bisect", "reset"], at: bisecting.path)
+        for worktree in [sharedRebasing, rebasing, bisecting] { _ = try await GitService.run(["worktree", "remove", "--force", worktree.path], at: local.path) }
+        _ = try await GitService.run(["branch", "-D", "rebasing", "bisected"], at: local.path)
         let nested = local.appendingPathComponent("nested-lost")
         _ = try await GitService.run(["worktree", "add", "-q", "-b", "nested", nested.path], at: local.path)
         try FileManager.default.removeItem(at: nested.appendingPathComponent(".git"))
-        let lostLink = await GitBranchProtection.report(at: WorkspacePath.canonical(nested), in: local.path, checkedOutElsewhere: []).branch
+        let lostLink = await GitBranchProtection.report(at: WorkspacePath.canonical(nested), in: local.path).branch
         try require(lostLink == .deletable("nested"), "A nested worktree that lost its Git link is judged by its own registration, not the enclosing repository")
         let plain = local.appendingPathComponent("nested-plain")
         try FileManager.default.createDirectory(at: plain, withIntermediateDirectories: true)
-        let plainBranch = await GitBranchProtection.report(at: WorkspacePath.canonical(plain), in: local.path, checkedOutElsewhere: []).branch
+        let plainBranch = await GitBranchProtection.report(at: WorkspacePath.canonical(plain), in: local.path).branch
         try require(plainBranch == .unreadable, "A folder inside a repository never takes the enclosing repository's branch")
         try FileManager.default.removeItem(at: plain)
         try FileManager.default.removeItem(at: nested)
@@ -541,7 +563,7 @@ import Foundation
         try require(DefaultBranch.names(remoteHeads: ["develop"]) == ["main", "master", "develop"], "main, master and remote HEADs are default branches")
         let reftable = local.appendingPathComponent(".git/reftable")
         try FileManager.default.createDirectory(at: reftable, withIntermediateDirectories: true)
-        let reftableBranch = await GitBranchProtection.report(at: topic.path, in: local.path, checkedOutElsewhere: [])
+        let reftableBranch = await GitBranchProtection.report(at: topic.path, in: local.path)
         let reftableCandidates = GitRepository.containing(topic.path).flatMap { GitBranchProtection.mergeCandidates(of: $0, headFiles: GitBranchProtection.remoteHeadFiles(in: $0.commonDirectory, remoteNames: [])) }
         try require(reftableBranch == .unreadable && reftableCandidates == nil,
                     "A repository whose references aren't stored in files is never judged, so its branch is never deleted")

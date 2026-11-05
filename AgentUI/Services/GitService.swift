@@ -71,8 +71,12 @@ enum GitService {
         do {
             _ = try await run(deletion.arguments, at: path, timeout: 20)
         } catch {
-            guard case .unchanged(let name, let tip) = deletion, await self.tip(of: name, at: path) != tip else { throw error }
-            throw WorkspaceError(message: String(localized: "The branch “\(name)” changed after it was checked."))
+            switch (deletion, await tip(of: deletion.name, at: path)) {
+            case (_, nil): break
+            case (.unchanged(let name, let checkedTip), let currentTip?) where currentTip != checkedTip:
+                throw WorkspaceError(message: String(localized: "The branch “\(name)” changed after it was checked."))
+            default: throw error
+            }
         }
         if case .unchanged(let name, _) = deletion {
             _ = try? await run(["config", "--remove-section", "branch." + name], at: path, timeout: 10)
