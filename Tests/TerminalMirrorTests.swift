@@ -75,10 +75,12 @@ private final class Delegate: TerminalDelegate {
         host.buffer.yDisp = 0
         sync(full: true)
         require(previous!.lines.joined().contains("LIVE"), "Mirror follows live screen even when Mac scrolls up")
+        let sentHistoryEnd = previous!.historyStart + previous!.history.count
         feed(String(repeating: "more scrollback\r\n", count: 250))
         sync()
+        let skipped = previous!.historyStart - sentHistoryEnd
         let kept = (peer.buffer.totalLinesTrimmed..<peer.liveLineEnd).compactMap { peer.getScrollInvariantLine(row: $0)?.translateToString(trimRight: true).trimmingCharacters(in: .whitespaces) }
-        require(kept.contains("scrollback") && kept.contains { $0.hasPrefix("… ") && $0.hasSuffix(" lignes non transmises") },
+        require(skipped > 0 && kept.contains("scrollback") && kept.contains("… " + String(localized: "\(skipped) lines not sent")),
                 "A large burst keeps earlier scrollback and marks the skipped lines")
         host.resize(cols: 60, rows: 15)
         peer.resize(cols: 60, rows: 15)
