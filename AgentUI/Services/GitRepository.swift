@@ -33,10 +33,7 @@ struct GitRepository: Sendable {
 
     static func registeredWorktree(at path: String, in repositoryPath: String) -> GitRepository? {
         guard let repository = containing(repositoryPath) else { return nil }
-        let registrations = repository.commonDirectory.appendingPathComponent("worktrees")
-        let names = (try? FileManager.default.contentsOfDirectory(atPath: registrations.path)) ?? []
-        for name in names {
-            let gitDirectory = registrations.appendingPathComponent(name)
+        for gitDirectory in linkedGitDirectories(in: repository.commonDirectory) {
             guard let link = smallTextFile(gitDirectory.appendingPathComponent("gitdir")), folder(ofGitLink: link) == path,
                   let branch = headBranch(in: gitDirectory) else { continue }
             return GitRepository(root: URL(fileURLWithPath: path), branch: branch,
@@ -46,13 +43,19 @@ struct GitRepository: Sendable {
         return nil
     }
 
+    static func linkedGitDirectories(in commonDirectory: URL) -> [URL] {
+        let registrations = commonDirectory.appendingPathComponent("worktrees")
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: registrations.path)) ?? []
+        return names.sorted().map { registrations.appendingPathComponent($0) }
+    }
+
     private static func folder(ofGitLink link: String) -> String {
         let folder = URL(fileURLWithPath: link).deletingLastPathComponent()
         let parent = URL(fileURLWithPath: WorkspacePath.canonical(folder.deletingLastPathComponent()))
         return parent.appendingPathComponent(folder.lastPathComponent).path
     }
 
-    private static func headBranch(in gitDirectory: URL) -> GitBranch? {
+    static func headBranch(in gitDirectory: URL) -> GitBranch? {
         guard let head = smallTextFile(gitDirectory.appendingPathComponent("HEAD")) else { return nil }
         if head.hasPrefix("ref: refs/heads/") {
             let name = String(head.dropFirst("ref: refs/heads/".count))

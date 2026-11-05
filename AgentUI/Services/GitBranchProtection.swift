@@ -49,13 +49,11 @@ enum GitBranchProtection {
     }
 
     private static func checkedOutBranches(in commonDirectory: URL) -> [String: String] {
-        let linked = commonDirectory.appendingPathComponent("worktrees")
-        var gitDirectories = childNames(of: linked).map { linked.appendingPathComponent($0) }
+        var gitDirectories = GitRepository.linkedGitDirectories(in: commonDirectory)
         if !isBare(commonDirectory) { gitDirectories.append(commonDirectory) }
         return gitDirectories.reduce(into: [:]) { branches, gitDirectory in
-            guard let reference = symbolicTarget(of: gitDirectory.appendingPathComponent("HEAD")),
-                  reference.hasPrefix("refs/heads/") else { return }
-            branches[WorkspacePath.canonical(gitDirectory)] = String(reference.dropFirst("refs/heads/".count))
+            guard let branch = GitRepository.headBranch(in: gitDirectory), !branch.isDetached else { return }
+            branches[WorkspacePath.canonical(gitDirectory)] = branch.name
         }
     }
 
