@@ -237,7 +237,7 @@ import Observation
         subagents = []
         journalMonitor.attach(nil)
         self.exitCode = exitCode.flatMap { $0 & 0x7f == 0 ? ($0 >> 8) & 0xff : nil }
-        owner?.recordAgent(nil, status: nil, of: terminalID)
+        owner?.agentStopped(in: terminalID)
     }
     func updateRepository(directory: String, branch: GitBranch?, divergentBranch: GitBranch?) {
         if currentDirectory != directory { currentDirectory = directory }
@@ -245,7 +245,7 @@ import Observation
         if self.divergentBranch != divergentBranch { self.divergentBranch = divergentBranch }
     }
 
-    func updateAgent(_ process: AgentProcess?, subagents: [Subagent]) {
+    func updateAgent(_ process: AgentProcess?, subagents: [Subagent]) -> Bool {
         let running = hasExited ? nil : process?.keepingTranscript(of: agent)
         let children = running == nil ? [] : subagents
         let status = running.map { process in
@@ -260,7 +260,7 @@ import Observation
         if self.subagents != children { self.subagents = children }
         if chatViewers > 0 || chatRelease != nil { journalMonitor.attach(running?.journal) }
         if agentChanged { scheduleTranscriptRefresh() }
-        owner?.recordAgent(agentKind, status: agentStatus, of: terminalID)
+        return owner?.recordAgent(agentKind, status: agentStatus, of: terminalID) ?? false
     }
 
     func stop() {
@@ -386,18 +386,23 @@ import Observation
             return result
         }.value
         guard !Task.isCancelled else { return }
-        for session in entries.values {
+        let changes = entries.values.map { session in
             let agent = found[session.identity]
-            session.updateAgent(agent?.process, subagents: agent?.subagents ?? [])
+            return session.updateAgent(agent?.process, subagents: agent?.subagents ?? [])
         }
+        if changes.contains(true) { delegate?.terminalSessionsDidChangeAgents() }
         delegate?.terminalSessionsDidRefreshAgents()
     }
 
-    fileprivate func recordAgent(_ agent: ConversationAgent?, status: AgentStatus?, of id: UUID) {
-        guard runningAgents[id] != agent || agentStatuses[id] != status else { return }
+    fileprivate func recordAgent(_ agent: ConversationAgent?, status: AgentStatus?, of id: UUID) -> Bool {
+        guard runningAgents[id] != agent || agentStatuses[id] != status else { return false }
         if runningAgents[id] != agent { runningAgents[id] = agent }
         if agentStatuses[id] != status { agentStatuses[id] = status }
-        delegate?.terminalSessionsDidChangeAgents()
+        return true
+    }
+
+    fileprivate func agentStopped(in id: UUID) {
+        if recordAgent(nil, status: nil, of: id) { delegate?.terminalSessionsDidChangeAgents() }
     }
 
     func agentResumes() -> [UUID: AgentResume?] {
@@ -460,7 +465,7 @@ import Observation
         guard let session = entries.removeValue(forKey: id) else { return }
         session.owner = nil
         session.stop()
-        recordAgent(nil, status: nil, of: id)
+        agentStopped(in: id)
     }
     func stopAll() {
         for session in entries.values {
