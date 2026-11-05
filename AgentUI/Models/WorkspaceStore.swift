@@ -519,13 +519,16 @@ import Observation
         draggedTerminal = terminalID
     }
 
+    func endDragging() {
+        draggedTerminal = nil
+    }
+
     func canMoveTerminal(_ id: UUID, beside target: UUID) -> Bool {
         guard !isReadOnly, id != target, let worktree = worktree(containing: id) else { return false }
         return worktree.terminals.contains { $0.id == target }
     }
 
     @discardableResult func moveTerminal(_ id: UUID, beside target: UUID, edge: DropEdge) -> Bool {
-        draggedTerminal = nil
         guard canMoveTerminal(id, beside: target), let worktree = worktree(containing: id) else { return false }
         let layouts = worktree.layouts(moving: id, beside: target, edge: edge)
         if layouts != worktree.layouts {
@@ -741,10 +744,8 @@ import Observation
         reorderTerminals(in: worktreeID) { blocks.reordering($0, from: source, to: destination) }
     }
 
-    func insertDraggedTerminal(in worktreeID: UUID, _ blocks: [SidebarTerminalBlock], at destination: Int) {
-        guard let dragged = draggedTerminal else { return }
-        draggedTerminal = nil
-        reorderTerminals(in: worktreeID) { blocks.reordering($0, moving: dragged, to: destination) }
+    func insertTerminal(_ id: UUID, in worktreeID: UUID, _ blocks: [SidebarTerminalBlock], at destination: Int) {
+        reorderTerminals(in: worktreeID) { blocks.reordering($0, moving: id, to: destination) }
     }
 
     private func reorderTerminals(in worktreeID: UUID, _ reordering: ([TerminalRecord]) -> [TerminalRecord]?) {

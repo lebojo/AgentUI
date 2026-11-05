@@ -223,6 +223,8 @@ private final class ChangeFlag: @unchecked Sendable {
                     && split.layout(for: foreign) == .terminal(foreign), "Terminals of another worktree cannot be combined")
         split.beginDragging(first)
         try require(split.draggedTerminal == first, "Remember the dragged terminal")
+        split.endDragging()
+        try require(split.draggedTerminal == nil, "A drop forgets the dragged terminal")
         try await split.flushPersistence()
         let reloadedDrops = try WorkspaceDisk.load(from: splitFile)
         try require(reloadedDrops == split.state, "Dropped layouts persist")
@@ -279,16 +281,15 @@ private final class ChangeFlag: @unchecked Sendable {
                         "Inserting a terminal after the last block moves it to the end")
             try require(blocks().reordering(terminals, moving: d, to: 1) == nil && blocks().reordering(terminals, moving: paneA, to: 0) == nil,
                         "Inserting at its own place or from another worktree changes nothing")
-            split.insertDraggedTerminal(in: worktreeID, blocks(), at: 0)
-            try require(split.worktree(containing: first)?.terminals.map(\.id) == [d, b, c, first, e], "Nothing moves without a dragged terminal")
-            split.beginDragging(paneA)
-            split.insertDraggedTerminal(in: worktreeID, blocks(), at: 0)
-            try require(split.worktree(containing: first)?.terminals.map(\.id) == [d, b, c, first, e] && split.draggedTerminal == nil,
+            split.insertTerminal(paneA, in: worktreeID, blocks(), at: 0)
+            try require(split.worktree(containing: first)?.terminals.map(\.id) == [d, b, c, first, e],
                         "A terminal dragged from another worktree is not inserted")
-            split.beginDragging(e)
-            split.insertDraggedTerminal(in: worktreeID, blocks(), at: 0)
-            try require(blocks().map { $0.terminals.map(\.id) } == [[first, e], [d], [b, c]] && split.draggedTerminal == nil,
+            split.insertTerminal(e, in: worktreeID, blocks(), at: 0)
+            try require(blocks().map { $0.terminals.map(\.id) } == [[first, e], [d], [b, c]],
                         "Dropping a dragged terminal between rows moves its block there")
+            let dropped = await TerminalDragItem.terminalID(in: [TerminalDragItem(terminalID: e).itemProvider])
+            let unrelated = await TerminalDragItem.terminalID(in: [NSItemProvider(object: "text" as NSString)])
+            try require(dropped == e && unrelated == nil, "A drop reads the dragged terminal from its own payload")
             print("PASS sidebar split blocks")
         }
 

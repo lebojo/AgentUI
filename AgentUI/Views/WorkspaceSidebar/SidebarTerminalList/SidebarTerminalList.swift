@@ -13,8 +13,12 @@ struct SidebarTerminalList: View {
             SidebarTerminalBlockRow(block: block)
         }
         .onMove(perform: store.isReadOnly ? nil : { store.reorderTerminalBlocks(in: worktree.id, blocks, from: $0, to: $1) })
-        .onInsert(of: store.isReadOnly ? [] : [.agentUITerminal]) { index, _ in
-            store.insertDraggedTerminal(in: worktree.id, blocks, at: index)
+        .onInsert(of: store.isReadOnly ? [] : [.agentUITerminal]) { index, providers in
+            store.endDragging()
+            Task {
+                guard let dragged = await TerminalDragItem.terminalID(in: providers) else { return }
+                store.insertTerminal(dragged, in: worktree.id, blocks, at: index)
+            }
         }
     }
 }

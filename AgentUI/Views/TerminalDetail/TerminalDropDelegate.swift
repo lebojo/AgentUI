@@ -25,7 +25,13 @@ struct TerminalDropDelegate: DropDelegate {
 
     func performDrop(info: DropInfo) -> Bool {
         edge = nil
-        guard let dragged = store.draggedTerminal else { return false }
-        return store.moveTerminal(dragged, beside: terminalID, edge: DropEdge(location: info.location, in: size))
+        store.endDragging()
+        let providers = info.itemProviders(for: [.agentUITerminal])
+        let edge = DropEdge(location: info.location, in: size)
+        Task {
+            guard let dragged = await TerminalDragItem.terminalID(in: providers) else { return }
+            store.moveTerminal(dragged, beside: terminalID, edge: edge)
+        }
+        return !providers.isEmpty
     }
 }
