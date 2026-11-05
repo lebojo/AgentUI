@@ -49,32 +49,33 @@ enum Removal: Hashable, Sendable {
         case .orphanWorktree(_, let name): String(localized: "Move the worktree “\(name)” to the Trash?")
         }
     }
-    var confirmation: String {
+    private var confirmation: LocalizedStringResource {
         switch self {
-        case .project: String(localized: "Remove")
-        case .terminal: String(localized: "Close")
-        case .worktree: String(localized: "Delete Forever")
-        case .orphanWorktree: String(localized: "Move to Trash")
+        case .project: "Remove"
+        case .terminal: "Close"
+        case .worktree: "Delete Forever"
+        case .orphanWorktree: "Move to Trash"
         }
     }
-    var message: String {
+    private var message: LocalizedStringResource {
         switch self {
         case .project, .terminal:
-            String(localized: "The processes of the affected terminals will be stopped. Files and worktrees on disk will be kept.")
+            "The processes of the affected terminals will be stopped. Files and worktrees on disk will be kept."
         case .orphanWorktree:
-            String(localized: "Its folder, including uncommitted changes, goes to the Trash, where you can restore it. Its branch and commits stay in the repository.")
+            "Its folder, including uncommitted changes, goes to the Trash, where you can restore it. Its branch and commits stay in the repository."
         case .worktree:
-            String(localized: "Its terminals will be closed and its folder will be erased from disk, including uncommitted changes. This can’t be undone. The branch and its commits stay in the repository.")
+            "Its terminals will be closed and its folder will be erased from disk, including uncommitted changes. This can’t be undone. The branch and its commits stay in the repository."
         }
     }
 
-    func confirmation(deletableBranch branch: String?) -> String {
+    func confirmation(deletableBranch branch: String?) -> LocalizedStringResource {
         guard case .worktree = self, branch != nil else { return confirmation }
-        return String(localized: "Delete Worktree Only")
+        return "Delete Worktree Only"
     }
 
-    func message(deletableBranch branch: String?) -> String {
+    func message(deletableBranch branch: String?) -> LocalizedStringResource {
         guard case .worktree = self, let branch else { return message }
-        return String(localized: "Its terminals will be closed and its folder will be erased from disk, including uncommitted changes. This can’t be undone. You can keep the branch “\(branch)” and its commits in the repository, or delete it too if it’s merged into the main branch.")
+        return LocalizedStringResource("Its terminals will be closed and its folder will be erased from disk, including uncommitted changes. This can’t be undone. You can keep the branch “\(branch)” and its commits in the repository, or delete it too if it’s merged into the main branch.",
+                                       comment: "Message of the worktree deletion dialog; the variable is the branch name.")
     }
 }

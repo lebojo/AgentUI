@@ -44,7 +44,7 @@ struct RemovalConfirmation: View {
 
     private func dialog(allowingSkip: Bool) -> some View {
         Color.clear.confirmationDialog(removal?.title ?? "", isPresented: isPresented(allowingSkip: allowingSkip), titleVisibility: .visible) {
-            Button(removal?.confirmation(deletableBranch: branch) ?? "", role: .destructive) { confirm(.keep) }
+            Button(role: .destructive) { confirm(.keep) } label: { Text(removal?.confirmation(deletableBranch: branch) ?? "") }
             if branch != nil {
                 Button("Delete Worktree and Branch", role: .destructive) { confirm(.merged) }
             }
