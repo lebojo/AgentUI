@@ -351,6 +351,14 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
     }
 }
 
+enum StagedChangesSection: Equatable, Sendable {
+    case hidden, listed, unlisted
+
+    init(listsChanges: Bool, hasStagedChanges: Bool) {
+        if listsChanges { self = .listed } else { self = hasStagedChanges ? .unlisted : .hidden }
+    }
+}
+
 struct WorkingTreeOmission: Equatable, Sendable {
     let count: Int
     let isTruncated: Bool

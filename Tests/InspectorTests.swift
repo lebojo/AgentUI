@@ -23,6 +23,10 @@ enum InspectorTests {
                     && omission(false, true) == "3 more changes aren’t listed. Stage All and Unstage All also apply to them."
                     && omission(true, true).hasPrefix("At least 3") && omission(false, false) == "3 more changes aren’t listed.",
                     "The working tree notice counts the hidden changes and mentions the bulk actions only when they exist")
+        try require(StagedChangesSection(listsChanges: true, hasStagedChanges: true) == .listed
+                        && StagedChangesSection(listsChanges: false, hasStagedChanges: true) == .unlisted
+                        && StagedChangesSection(listsChanges: false, hasStagedChanges: false) == .hidden,
+                    "Staged changes beyond the listed ones keep their section and Unstage All")
         let file = repository.appendingPathComponent("tracked file.txt")
         try "before\n".write(to: file, atomically: true, encoding: .utf8)
         _ = try await GitService.run(["add", "--", "tracked file.txt"], at: repository.path)

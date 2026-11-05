@@ -844,6 +844,16 @@
         }
       }
     },
+    "Staged changes aren’t listed." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les modifications indexées ne sont pas listées."
+          }
+        }
+      }
+    },
     "Staged Changes · %lld" : {
       "localizations" : {
         "fr" : {

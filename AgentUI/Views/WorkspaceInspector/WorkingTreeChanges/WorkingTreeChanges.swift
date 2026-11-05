@@ -16,8 +16,10 @@ struct WorkingTreeChanges: View {
             GitCommitComposer(root: root, hasStagedChanges: hasStagedChanges, hasChanges: hasChanges,
                               push: push, republish: republish, upstreamIsGone: upstreamIsGone, source: source)
         }
-        if !trees.staged.isEmpty {
-            GitChangeList(root: root, scope: .staged, outline: trees.staged, omitted: 0, source: source)
+        switch StagedChangesSection(listsChanges: !trees.staged.isEmpty, hasStagedChanges: hasStagedChanges) {
+        case .listed: GitChangeList(root: root, scope: .staged, outline: trees.staged, omitted: 0, source: source)
+        case .unlisted: UnlistedStagedChanges(root: root, source: source)
+        case .hidden: EmptyView()
         }
         GitChangeList(root: root, scope: .unstaged, outline: trees.unstaged, omitted: 0, source: source)
         if omission.count > 0 {
