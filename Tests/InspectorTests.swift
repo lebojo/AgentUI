@@ -66,6 +66,16 @@ enum InspectorTests {
         } catch let error as ReadCommandError {
             try require(error.message.hasSuffix("hook failed"), "Discarded output still reports the latest diagnostic")
         }
+        for pause in ["sleep 0.3; ", ""] {
+            do {
+                _ = try await CommandRunner.run(shell, ["-c", "yes hook output | head -c 200000 >&2; echo hook failed >&2; \(pause)exit 1"], at: root.path,
+                                                timeout: 10, limit: 1024, readOnly: false, overflow: .discard)
+                throw WorkspaceError(message: "FAIL: failing hook accepted")
+            } catch let error as ReadCommandError {
+                try require(error.message.contains("hook output\n") && error.message.hasSuffix("hook outhook failed"),
+                            "A hook's final error survives, after the end of its output, the output discarded before it exits")
+            }
+        }
         do {
             _ = try await CommandRunner.run(shell, ["-c", noisy], at: root.path, timeout: 10, limit: 1024, readOnly: true)
             throw WorkspaceError(message: "FAIL: oversized read accepted")

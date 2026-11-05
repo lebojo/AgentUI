@@ -9,6 +9,7 @@ enum CommandRunner {
 
     private static let registry = Registry()
     private static let diagnosticLimit = 65_536
+    private static let diagnosticTail = 16_384
 
     static func cancelAll() { registry.cancelAll() }
 
@@ -59,7 +60,7 @@ enum CommandRunner {
         let outURL = directory.appendingPathComponent("stdout"), errURL = directory.appendingPathComponent("stderr")
         FileManager.default.createFile(atPath: outURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
         FileManager.default.createFile(atPath: errURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
-        let output = try FileHandle(forWritingTo: outURL), error = try FileHandle(forWritingTo: errURL)
+        let output = try FileHandle(forWritingTo: outURL), error = try FileHandle(forUpdating: errURL)
         defer { try? output.close(); try? error.close() }
         _ = fcntl(output.fileDescriptor, F_SETFL, O_APPEND)
         _ = fcntl(error.fileDescriptor, F_SETFL, O_APPEND)
@@ -77,7 +78,7 @@ enum CommandRunner {
             let errOverflows = fstat(errFD, &errStat) == 0 && errStat.st_size > diagnosticLimit
             if overflow == .discard {
                 if outOverflows { _ = ftruncate(outFD, 0) }
-                if errOverflows { _ = ftruncate(errFD, 0) }
+                if errOverflows { keepTail(of: errFD, size: errStat.st_size) }
             } else if overflow == .truncate, outOverflows {
                 return job.stop(.truncated)
             } else if outOverflows || errOverflows {
@@ -86,8 +87,9 @@ enum CommandRunner {
             if DispatchTime.now() >= deadline { job.stop(.timeout) }
         }
         timer.resume()
-        defer { timer.cancel(); queue.sync {} }
         if await !waitForExit(of: pid, on: queue) { job.stop(.waitFailure) }
+        timer.cancel()
+        queue.sync {}
         var status: Int32 = 0
         let isTruncated = try job.finish(status: &status)
         let reader = try FileHandle(forReadingFrom: outURL)
@@ -104,6 +106,13 @@ enum CommandRunner {
         }
         let exceedsLimit = data.count > limit
         return Output(data: exceedsLimit ? Data(data.prefix(limit)) : data, isTruncated: isTruncated || exceedsLimit)
+    }
+
+    private static func keepTail(of descriptor: Int32, size: off_t) {
+        var tail = [UInt8](repeating: 0, count: diagnosticTail)
+        let count = pread(descriptor, &tail, diagnosticTail, size - off_t(diagnosticTail))
+        _ = ftruncate(descriptor, 0)
+        if count > 0 { _ = write(descriptor, tail, count) }
     }
 
     private static func waitForExit(of pid: pid_t, on queue: DispatchQueue) async -> Bool {
