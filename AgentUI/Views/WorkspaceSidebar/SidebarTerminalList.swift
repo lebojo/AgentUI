@@ -10,11 +10,7 @@ struct SidebarTerminalList: View {
     var body: some View {
         let blocks = worktree.terminalBlocks(showing: terminals)
         ForEach(blocks) { block in
-            if block.isSplit {
-                SidebarSplitBlockRow(block: block)
-            } else {
-                SidebarTerminalRow(terminal: block.terminals[0])
-            }
+            SidebarTerminalBlockRow(block: block)
         }
         .onMove(perform: store.isReadOnly ? nil : { store.reorderTerminalBlocks(in: worktree.id, blocks, from: $0, to: $1) })
         .onInsert(of: store.isReadOnly ? [] : [.agentUITerminal]) { index, _ in

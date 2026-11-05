@@ -19,10 +19,28 @@ struct WorkInProgressGroup: Identifiable, Equatable, Sendable {
     let items: [WorkInProgressItem]
 
     var id: AgentStatus { status }
+    var rows: [WorkInProgressRow] { [.status(status, count: items.count)] + items.map(WorkInProgressRow.terminal) }
 
     func matching(_ query: String) -> WorkInProgressGroup? {
         let matches = items.filter { $0.matches(query) }
         return matches.isEmpty ? nil : WorkInProgressGroup(status: status, items: matches)
+    }
+}
+
+enum WorkInProgressRow: Identifiable, Equatable, Sendable {
+    case status(AgentStatus, count: Int)
+    case terminal(WorkInProgressItem)
+
+    enum ID: Hashable, Sendable {
+        case status(AgentStatus)
+        case terminal(UUID)
+    }
+
+    var id: ID {
+        switch self {
+        case .status(let status, _): .status(status)
+        case .terminal(let item): .terminal(item.id)
+        }
     }
 }
 

@@ -308,6 +308,10 @@ private final class ChangeFlag: @unchecked Sendable {
         let searched = WorkInProgress.groups(WorkInProgress.groups(in: [busy], statuses: statuses, agents: [:]), matching: "feature")
         try require(searched.map(\.status) == [.waitingForInput] && searched[0].items.map(\.id) == [waiting.id], "The sidebar filter applies to work in progress")
         try require(WorkInProgress.groups(progress, matching: "") == progress, "An empty filter keeps every group")
+        try require(progress.flatMap(\.rows).map(\.id) == [.status(.waitingForInput), .terminal(waiting.id), .status(.working), .terminal(working.id),
+                                                          .status(.ready), .terminal(ready.id)]
+                        && progress[0].rows.first == .status(.waitingForInput, count: 1),
+                    "Work in progress flattens into one list of status headers and terminals with stable identities")
         let splitTerminal = split.projects[0].worktrees[0].terminals[0]
         let progressChanged = ChangeFlag()
         withObservationTracking { _ = split.workInProgress } onChange: { progressChanged.mark() }
@@ -317,7 +321,8 @@ private final class ChangeFlag: @unchecked Sendable {
         split.sessions.runningAgents = [splitTerminal.id: .claude]
         split.terminalSessionsDidChangeAgents()
         try require(progressChanged.value && split.workInProgress.map(\.status) == [.working]
-                        && split.workInProgress[0].items.map(\.name) == ["Renamed"] && split.workInProgress[0].items[0].agent == .claude,
+                        && split.workInProgress[0].items.map(\.name) == ["Renamed"] && split.workInProgress[0].items[0].agent == .claude
+                        && split.workInProgressRows == split.workInProgress.flatMap(\.rows),
                     "An agent status change updates the cached work in progress")
         split.rename(splitTerminal.id, to: "Renamed Again")
         try require(split.workInProgress[0].items.map(\.name) == ["Renamed Again"], "Renaming a terminal running an agent updates work in progress")
@@ -333,7 +338,7 @@ private final class ChangeFlag: @unchecked Sendable {
         split.sessions.agentStatuses = [:]
         split.sessions.runningAgents = [:]
         split.terminalSessionsDidChangeAgents()
-        try require(split.workInProgress.isEmpty, "A finished agent leaves work in progress")
+        try require(split.workInProgress.isEmpty && split.workInProgressRows.isEmpty, "A finished agent leaves work in progress")
         print("PASS work in progress groups")
 
         let gitRoot = root.appendingPathComponent("grouped")

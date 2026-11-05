@@ -5,17 +5,16 @@ struct SidebarWorkInProgressSection: View {
 
     let query: String
 
-    private var groups: [WorkInProgressGroup] { WorkInProgress.groups(store.workInProgress, matching: query) }
+    private var rows: [WorkInProgressRow] {
+        query.isEmpty ? store.workInProgressRows : WorkInProgress.groups(store.workInProgress, matching: query).flatMap(\.rows)
+    }
 
     var body: some View {
-        let groups = groups
-        if !groups.isEmpty {
+        let rows = rows
+        if !rows.isEmpty {
             Section(isExpanded: query.isEmpty ? Bindable(store)[expanded: WorkInProgress.expansionID] : .constant(true)) {
-                ForEach(groups) { group in
-                    SidebarStatusHeader(status: group.status, count: group.items.count)
-                    ForEach(group.items) { item in
-                        SidebarWorkInProgressRow(item: item)
-                    }
+                ForEach(rows) { row in
+                    SidebarWorkInProgressRow(row: row)
                 }
             } header: {
                 Text("Work in Progress")
