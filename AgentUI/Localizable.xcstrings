@@ -94,6 +94,16 @@
         }
       }
     },
+    "--force-branch only applies with --delete-branch. Add --delete-branch to delete the branch." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--force-branch ne s’applique qu’avec --delete-branch. Ajoutez --delete-branch pour supprimer la branche."
+          }
+        }
+      }
+    },
     "Actions" : {
       "localizations" : {
         "fr" : {

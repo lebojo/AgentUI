@@ -125,14 +125,15 @@ import AppKit
         if currentLocation?.worktreeID == worktreeID {
             throw WorkspaceError(message: String(localized: "The current folder belongs to the worktree to delete. Run the command from another folder."))
         }
+        let branchRemoval = try request.branchRemoval
         if request.force != true, try await GitService.hasLocalChanges(at: worktree.path) {
             throw WorkspaceError(message: String(localized: "The worktree “\(worktree.displayName)” has uncommitted changes or untracked files. Run again with --force to erase them."))
         }
-        guard request.deleteBranch == true || request.forceBranch == true else {
+        guard branchRemoval != .keep else {
             try await store.deleteWorktree(projectID: project.id, worktreeID: worktreeID)
             return BridgeResponse(ok: true, projectID: project.id, worktreeID: worktreeID, path: worktree.path)
         }
-        let cleanup = try await store.deleteWorktree(projectID: project.id, worktreeID: worktreeID, branch: request.forceBranch == true ? .force : .merged)
+        let cleanup = try await store.deleteWorktree(projectID: project.id, worktreeID: worktreeID, branch: branchRemoval)
         return BridgeResponse(ok: cleanup.failure == nil, message: cleanup.failure ?? cleanup.notice, projectID: project.id, worktreeID: worktreeID,
                               path: worktree.path, branch: cleanup.branch, branchDeleted: cleanup.isDeleted)
     }

@@ -13,6 +13,18 @@ struct BridgeRequest: Codable, Sendable {
     var force: Bool?
     var deleteBranch: Bool?
     var forceBranch: Bool?
+
+    var branchRemoval: BranchRemoval {
+        get throws {
+            guard deleteBranch == true else {
+                if forceBranch == true {
+                    throw WorkspaceError(message: String(localized: "--force-branch only applies with --delete-branch. Add --delete-branch to delete the branch."))
+                }
+                return .keep
+            }
+            return forceBranch == true ? .force : .merged
+        }
+    }
 }
 
 struct BridgeResponse: Codable, Sendable {

@@ -99,6 +99,23 @@ import Foundation
         try require(forcedFiles.force == true && forcedFiles.forceBranch == nil, "--force discards working files but doesn't force the branch deletion")
         let forcedBranch = try AgentCLI.parse(["worktree", "delete", "--worktree", explicitID.uuidString, "--delete-branch", "--force-branch"], environment: env)
         try require(forcedBranch.forceBranch == true && forcedBranch.force == nil, "--force-branch alone forces the branch deletion")
+        let removals = try [forcedBranch.branchRemoval, branchDeletion.branchRemoval, deletion.branchRemoval]
+        try require(removals == [.force, .merged, .keep],
+                    "--delete-branch deletes a merged branch, --force-branch any branch")
+        do {
+            _ = try AgentCLI.parse(["worktree", "delete", "--worktree", explicitID.uuidString, "--force-branch"], environment: env)
+            throw WorkspaceError(message: "FAIL: --force-branch accepted without --delete-branch")
+        } catch let error as WorkspaceError {
+            try require(error.message.contains("--delete-branch") && !error.message.hasPrefix("FAIL"), "--force-branch requires --delete-branch")
+        }
+        var forcedOnly = deletion
+        forcedOnly.forceBranch = true
+        do {
+            _ = try forcedOnly.branchRemoval
+            throw WorkspaceError(message: "FAIL: a request forcing the branch without deleting it accepted")
+        } catch let error as WorkspaceError {
+            try require(!error.message.hasPrefix("FAIL"), "The bridge refuses to force a branch deletion that wasn't asked for")
+        }
         do { _ = try AgentCLI.parse(["worktree", "create", "--branch", "x", "--force-branch"], environment: env); throw WorkspaceError(message: "FAIL: --force-branch accepted on creation") }
         catch let error as WorkspaceError { try require(!error.message.hasPrefix("FAIL"), "--force-branch only applies to deletion") }
         do { _ = try AgentCLI.parse(["worktree", "create", "--branch", "x", "--delete-branch"], environment: env); throw WorkspaceError(message: "FAIL: --delete-branch accepted on creation") }

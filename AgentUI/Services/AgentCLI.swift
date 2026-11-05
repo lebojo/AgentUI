@@ -140,6 +140,7 @@ enum AgentCLI {
             index += 2
         }
         if isDeletion {
+            _ = try request.branchRemoval
             guard let target = request.worktreeID else {
                 throw WorkspaceError(message: String(localized: "Specify the worktree to delete: --worktree UUID (see agentui list)."))
             }
