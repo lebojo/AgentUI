@@ -1,11 +1,10 @@
 import SwiftUI
-import AppKit
 
 struct SidebarProjectList: View {
+    @Environment(WorkspaceStore.self) private var store
+
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
-
-    @Bindable var store: WorkspaceStore
 
     let result: SidebarFilterResult
     let query: String
@@ -15,15 +14,15 @@ struct SidebarProjectList: View {
     }
 
     var body: some View {
-        List(selection: $store.selection) {
-            SidebarWorkInProgressSection(store: store, query: query)
+        List(selection: Bindable(store).selection) {
+            SidebarWorkInProgressSection(query: query)
             Section {
                 ForEach(result.groups) { group in
-                    SidebarFolderRow(sheet: $sheet, removal: $removal, store: store, group: group, query: query)
+                    SidebarFolderRow(sheet: $sheet, removal: $removal, group: group, query: query)
                 }
                 .onMove(perform: store.isReadOnly ? nil : { store.reorderFolders(result.groups.map(\.id), from: $0, to: $1) })
                 ForEach(result.ungrouped) { project in
-                    SidebarProjectRow(sheet: $sheet, removal: $removal, store: store, project: project, query: query, showAll: false)
+                    SidebarProjectRow(sheet: $sheet, removal: $removal, project: project, query: query, showAll: false)
                 }
                 .onMove(perform: store.isReadOnly ? nil : { store.reorderProjects(result.ungrouped.map(\.id), from: $0, to: $1) })
             }

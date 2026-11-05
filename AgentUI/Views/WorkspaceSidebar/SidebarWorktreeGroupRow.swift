@@ -1,13 +1,12 @@
 import SwiftUI
-import AppKit
 
 struct SidebarWorktreeGroupRow: View {
+    @Environment(WorkspaceStore.self) private var store
+
     @State private var isDropTargeted = false
 
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
-
-    @Bindable var store: WorkspaceStore
 
     let project: Project
     let group: WorktreeGroup
@@ -21,9 +20,9 @@ struct SidebarWorktreeGroupRow: View {
     }
 
     var body: some View {
-        DisclosureGroup(isExpanded: query.isEmpty ? $store[expanded: group.id] : .constant(true)) {
+        DisclosureGroup(isExpanded: query.isEmpty ? Bindable(store)[expanded: group.id] : .constant(true)) {
             ForEach(worktrees) { worktree in
-                SidebarWorktreeRow(sheet: $sheet, removal: $removal, store: store, project: project, worktree: worktree, query: query, showAll: showAll)
+                SidebarWorktreeRow(sheet: $sheet, removal: $removal, project: project, worktree: worktree, query: query, showAll: showAll)
             }
             .onMove(perform: store.isReadOnly ? nil : { store.reorderWorktrees(in: project.id, worktrees.map(\.id), from: $0, to: $1) })
             if project.worktrees(in: group.id).isEmpty {

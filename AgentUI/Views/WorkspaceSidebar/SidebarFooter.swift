@@ -1,8 +1,7 @@
 import SwiftUI
-import AppKit
 
 struct SidebarFooter: View {
-    let store: WorkspaceStore
+    @Environment(WorkspaceStore.self) private var store
 
     var body: some View {
         VStack(spacing: 0) {

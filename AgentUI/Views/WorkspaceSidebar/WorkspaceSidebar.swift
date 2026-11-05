@@ -8,7 +8,7 @@ struct WorkspaceSidebar: View {
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
 
-    @Bindable var store: WorkspaceStore
+    let store: WorkspaceStore
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,11 +51,10 @@ struct WorkspaceSidebar: View {
             SidebarProjectList(
                 sheet: $sheet,
                 removal: $removal,
-                store: store,
                 result: filtered,
                 query: search
             )
-            SidebarFooter(store: store)
+            SidebarFooter()
         }
         .toolbar {
             ToolbarItem { FloatingTerminalButton() }

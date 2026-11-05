@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SidebarWorkInProgressSection: View {
-    @Bindable var store: WorkspaceStore
+    @Environment(WorkspaceStore.self) private var store
 
     let query: String
 
@@ -13,7 +13,7 @@ struct SidebarWorkInProgressSection: View {
     var body: some View {
         let groups = groups
         if !groups.isEmpty {
-            Section(isExpanded: query.isEmpty ? $store[expanded: WorkInProgress.expansionID] : .constant(true)) {
+            Section(isExpanded: query.isEmpty ? Bindable(store)[expanded: WorkInProgress.expansionID] : .constant(true)) {
                 ForEach(groups) { group in
                     SidebarStatusHeader(status: group.status, count: group.items.count)
                     ForEach(group.items) { item in

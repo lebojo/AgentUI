@@ -1,12 +1,12 @@
 import SwiftUI
 
 struct SidebarFolderRow: View {
+    @Environment(WorkspaceStore.self) private var store
+
     @State private var isDropTargeted = false
 
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
-
-    @Bindable var store: WorkspaceStore
 
     let group: SidebarFilterResult.Group
     let query: String
@@ -14,17 +14,17 @@ struct SidebarFolderRow: View {
     private var folder: ProjectFolder { group.folder }
 
     private var expanded: Binding<Bool> {
-        query.isEmpty ? $store[expanded: folder.id] : .constant(true)
+        query.isEmpty ? Bindable(store)[expanded: folder.id] : .constant(true)
     }
 
     var body: some View {
         DisclosureGroup(isExpanded: expanded) {
             ForEach(group.subgroups) { subgroup in
-                SidebarFolderRow(sheet: $sheet, removal: $removal, store: store, group: subgroup, query: query)
+                SidebarFolderRow(sheet: $sheet, removal: $removal, group: subgroup, query: query)
             }
             .onMove(perform: store.isReadOnly ? nil : { store.reorderFolders(group.subgroups.map(\.id), from: $0, to: $1) })
             ForEach(group.projects) { project in
-                SidebarProjectRow(sheet: $sheet, removal: $removal, store: store, project: project, query: query, showAll: group.showsAll)
+                SidebarProjectRow(sheet: $sheet, removal: $removal, project: project, query: query, showAll: group.showsAll)
             }
             .onMove(perform: store.isReadOnly ? nil : { store.reorderProjects(group.projects.map(\.id), from: $0, to: $1) })
             if group.isEmpty {

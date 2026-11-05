@@ -1,43 +1,25 @@
 import SwiftUI
-import AppKit
 
 struct SidebarTerminalRow: View {
+    @Environment(WorkspaceStore.self) private var store
+
     @Binding var sheet: WorkspaceSheet?
     @Binding var removal: Removal?
 
-    @Bindable var store: WorkspaceStore
-
     let terminal: TerminalRecord
-    let worktree: Worktree
-
-    private var session: TerminalSession? { store.sessions.session(terminal.id) }
-    private var subagents: [Subagent] {
-        (session?.subagents ?? []).filter { $0.isVisible || $0.id == store.selection }
-    }
-
-    private var row: some View {
-        SidebarTerminalLabel(name: terminal.name, session: session,
-                             divergentBranch: store.sessions.divergentBranch(for: terminal.id, worktreePath: worktree.path))
-        .padding(.vertical, Spacing.xxs)
-        .tag(terminal.id)
-        .terminalDragSource(terminal.id)
-        .contextMenu { SidebarTerminalMenu(sheet: $sheet, removal: $removal, terminal: terminal) }
-        .swipeActions(edge: .trailing) {
-            RemovalButton(pending: $removal, removal: .terminal(terminal.id), placement: .swipe)
-        }
-    }
+    let worktreePath: String
 
     var body: some View {
-        if subagents.isEmpty {
-            row
-        } else {
-            DisclosureGroup(isExpanded: $store[expanded: terminal.id]) {
-                ForEach(subagents) { subagent in
-                    SidebarSubagentRow(subagent: subagent)
+        SidebarSubagentDisclosure(expansionID: terminal.id, terminalIDs: [terminal.id]) {
+            SidebarTerminalLabel(name: terminal.name, session: store.sessions.session(terminal.id),
+                                 divergentBranch: store.sessions.divergentBranch(for: terminal.id, worktreePath: worktreePath))
+                .padding(.vertical, Spacing.xxs)
+                .tag(terminal.id)
+                .terminalDragSource(terminal.id)
+                .contextMenu { SidebarTerminalMenu(sheet: $sheet, removal: $removal, terminal: terminal) }
+                .swipeActions(edge: .trailing) {
+                    RemovalButton(pending: $removal, removal: .terminal(terminal.id), placement: .swipe)
                 }
-            } label: {
-                row
-            }
         }
     }
 }
