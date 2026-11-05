@@ -4,9 +4,6 @@ struct SidebarProjectRow: View {
     @Environment(SettingsStore.self) private var settings
     @Environment(WorkspaceStore.self) private var store
 
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
-
     let project: Project
     let query: String
     let showAll: Bool
@@ -22,26 +19,23 @@ struct SidebarProjectRow: View {
     var body: some View {
         DisclosureGroup(isExpanded: isExpanded) {
             ForEach(project.worktrees.filter(\.isPrimary)) { worktree in
-                SidebarTerminalList(sheet: $sheet, removal: $removal, worktree: worktree,
-                                    terminals: worktree.terminals.filter { showsEverything || matches($0.name) })
+                SidebarTerminalList(worktree: worktree, terminals: worktree.terminals.filter { showsEverything || matches($0.name) })
                 if worktree.terminals.isEmpty {
                     Button("Open Terminal") { store.openTerminal(project, worktree, launch: settings.agentLaunch) }
                         .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 }
             }
             ForEach(visibleGroups) { group in
-                SidebarWorktreeGroupRow(sheet: $sheet, removal: $removal, project: project, group: group, query: query,
-                                        showAll: showsEverything || matches(group.name))
+                SidebarWorktreeGroupRow(project: project, group: group, query: query, showAll: showsEverything || matches(group.name))
             }
             .onMove(perform: store.isReadOnly ? nil : { store.reorderWorktreeGroups(in: project.id, visibleGroups.map(\.id), from: $0, to: $1) })
             let ungrouped = visibleWorktrees(in: nil)
             ForEach(ungrouped) { worktree in
-                SidebarWorktreeRow(sheet: $sheet, removal: $removal, project: project, worktree: worktree, query: query,
-                                   showAll: showsEverything)
+                SidebarWorktreeRow(project: project, worktree: worktree, query: query, showAll: showsEverything)
             }
             .onMove(perform: store.isReadOnly ? nil : { store.reorderWorktrees(in: project.id, ungrouped.map(\.id), from: $0, to: $1) })
         } label: {
-            SidebarProjectLabel(sheet: $sheet, removal: $removal, project: project)
+            SidebarProjectLabel(project: project)
         }
     }
 

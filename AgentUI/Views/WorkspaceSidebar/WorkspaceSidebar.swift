@@ -2,13 +2,11 @@ import AppKit
 import SwiftUI
 
 struct WorkspaceSidebar: View {
+    @Environment(WorkspaceStore.self) private var store
+    @Environment(WorkspacePresentation.self) private var presentation
+
     @State private var search = ""
     @State private var filtered = SidebarFilterResult()
-
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
-
-    let store: WorkspaceStore
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,7 +18,7 @@ struct WorkspaceSidebar: View {
                         .keyboardShortcut("o")
                     Button("Import Folder…", systemImage: "square.and.arrow.down") { store.chooseFolder() }
                     Divider()
-                    Button("New Virtual Folder…", systemImage: "folder.badge.plus") { sheet = .folder(parentID: nil) }
+                    Button("New Virtual Folder…", systemImage: "folder.badge.plus") { presentation.sheet = .folder(parentID: nil) }
                         .keyboardShortcut("n", modifiers: [.command, .shift])
                 } label: {
                     Image(systemName: "plus").frame(width: IconSize.l, height: IconSize.l)
@@ -49,9 +47,7 @@ struct WorkspaceSidebar: View {
             .padding(.horizontal, Spacing.l).padding(.top, Spacing.m).padding(.bottom, Spacing.l)
 
             SidebarProjectList(
-                sheet: $sheet,
-                removal: $removal,
-                result: filtered,
+                                                result: filtered,
                 query: search
             )
             SidebarFooter()

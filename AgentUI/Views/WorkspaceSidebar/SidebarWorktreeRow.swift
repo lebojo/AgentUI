@@ -6,9 +6,6 @@ struct SidebarWorktreeRow: View {
 
     @State private var isInserted = false
 
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
-
     let project: Project
     let worktree: Worktree
     let query: String
@@ -24,13 +21,13 @@ struct SidebarWorktreeRow: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: isExpanded) {
-            SidebarTerminalList(sheet: $sheet, removal: $removal, worktree: worktree, terminals: terminals)
+            SidebarTerminalList(worktree: worktree, terminals: terminals)
             if worktree.terminals.isEmpty {
                 Button("Open Terminal") { store.openTerminal(project, worktree, launch: settings.agentLaunch) }
                     .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
             }
         } label: {
-            SidebarWorktreeLabel(sheet: $sheet, removal: $removal, project: project, worktree: worktree)
+            SidebarWorktreeLabel(project: project, worktree: worktree)
         }
         .task { isInserted = true }
     }

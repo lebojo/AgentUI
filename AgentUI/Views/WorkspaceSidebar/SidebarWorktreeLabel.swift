@@ -4,9 +4,7 @@ import SwiftUI
 struct SidebarWorktreeLabel: View {
     @Environment(SettingsStore.self) private var settings
     @Environment(WorkspaceStore.self) private var store
-
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
+    @Environment(WorkspacePresentation.self) private var presentation
 
     let project: Project
     let worktree: Worktree
@@ -39,13 +37,13 @@ struct SidebarWorktreeLabel: View {
                         .disabled(worktree.groupID == group.id)
                 }
                 Divider()
-                Button("New Group…") { sheet = .worktreeGroup(projectID: project.id, worktreeID: worktree.id) }
+                Button("New Group…") { presentation.sheet = .worktreeGroup(projectID: project.id, worktreeID: worktree.id) }
             }
             Divider()
-            RemovalButton(pending: $removal, removal: worktreeRemoval, placement: .menu)
+            RemovalButton(removal: worktreeRemoval, placement: .menu)
         }
         .swipeActions(edge: .trailing) {
-            RemovalButton(pending: $removal, removal: worktreeRemoval, placement: .swipe)
+            RemovalButton(removal: worktreeRemoval, placement: .swipe)
         }
     }
 

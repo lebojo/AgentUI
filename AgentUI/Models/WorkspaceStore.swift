@@ -4,7 +4,10 @@ import Observation
 @MainActor @Observable final class WorkspaceStore {
     private(set) var folders: [ProjectFolder] = []
     private(set) var projects: [Project] = [] {
-        didSet { updateSelectedContext() }
+        didSet {
+            updateSelectedContext()
+            updateWorkInProgress()
+        }
     }
     private var collapsed: Set<UUID> = []
     var selection: UUID? {
@@ -34,6 +37,7 @@ import Observation
     var errorMessage: String?
     var busyProjects: Set<UUID> = []
     private(set) var orphanWorktrees: [DiscoveredWorktree] = []
+    private(set) var workInProgress: [WorkInProgressGroup] = []
     @ObservationIgnored private var orphanScan: UInt64 = 0
     private(set) var isImporting = false
     var pendingImport: RepositoryImport?
@@ -50,7 +54,7 @@ import Observation
             canSave = false
             errorMessage = String(localized: "Couldn’t read the organization. The original file was preserved: \(fileURL.path)\n\(error.localizedDescription)")
         }
-        sessions.onAgentsRefreshed = { [weak self] in self?.recordAgentSessions() }
+        sessions.delegate = self
     }
 
     var isReadOnly: Bool { !canSave }
@@ -69,6 +73,11 @@ import Observation
 
     private func updateSelectedContext() {
         selectedContext = context(for: persistedSelection)
+    }
+
+    private func updateWorkInProgress() {
+        let groups = WorkInProgress.groups(in: projects, statuses: sessions.agentStatuses, agents: sessions.runningAgents)
+        if workInProgress != groups { workInProgress = groups }
     }
 
     private func refreshSelectedSubagent() {
@@ -427,8 +436,9 @@ import Observation
               !worktree.isPrimary else { return nil }
         let branches = sessions.branchesByPath
         let elsewhere = project.worktrees.filter { $0.id != worktreeID }.compactMap { branches[$0.path] }.filter { !$0.isDetached }.map(\.name)
-        return WorktreeBranch(branches[worktree.path], defaultBranches: DefaultBranch.names(remoteHeads: []),
-                              checkedOutElsewhere: Set(elsewhere)).deletableName
+        let protection = sessions.protectedBranchesByPath[worktree.path] ?? .conventional
+        return WorktreeBranch(branches[worktree.path], defaultBranches: protection.defaults,
+                              checkedOutElsewhere: protection.checkedOutElsewhere.union(elsewhere)).deletableName
     }
 
     func remove(_ removal: Removal, branch: BranchRemoval = .keep) {
@@ -442,7 +452,7 @@ import Observation
         case .worktree(let projectID, let worktreeID, _):
             Task {
                 do {
-                    let cleanup = try await deleteWorktree(projectID: projectID, worktreeID: worktreeID, branch: branch)
+                    let cleanup = try await deleteWorktree(projectID: projectID, worktreeID: worktreeID, branch: branch, protectedBranch: .keep)
                     if let failure = cleanup.failure { errorMessage = failure }
                 } catch { errorMessage = error.localizedDescription }
             }
@@ -607,7 +617,12 @@ import Observation
         try await GitService.fetchRemotes(project: project)
     }
 
-    @discardableResult func deleteWorktree(projectID: UUID, worktreeID: UUID, branch removal: BranchRemoval = .keep) async throws -> BranchCleanup {
+    enum ProtectedBranchHandling: Sendable {
+        case refuse, keep
+    }
+
+    @discardableResult func deleteWorktree(projectID: UUID, worktreeID: UUID, branch removal: BranchRemoval = .keep,
+                                           protectedBranch handling: ProtectedBranchHandling = .refuse) async throws -> BranchCleanup {
         guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: String(localized: "A Git operation is already in progress on this project.")) }
         guard let project = projects.first(where: { $0.id == projectID }),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }) else {
@@ -621,7 +636,8 @@ import Observation
             removingWorktrees.remove(worktreeID)
         }
         let branch = removal == .keep ? WorktreeBranch.none : await GitService.worktreeBranch(at: worktree.path, project: project)
-        if let refusal = branch.refusal { throw WorkspaceError(message: refusal) }
+        let keptBranch = handling == .keep ? Self.keptCleanup(of: branch) : nil
+        if keptBranch == nil, let refusal = branch.refusal { throw WorkspaceError(message: refusal) }
         let started = worktree.terminals.filter { sessions.isRunning($0.id) }
         for terminal in started { sessions.close(terminal.id) }
         do {
@@ -631,7 +647,16 @@ import Observation
             throw error
         }
         forgetWorktree(worktreeID, of: projectID)
+        if let keptBranch { return keptBranch }
         return await deleteBranch(branch, removal, of: project)
+    }
+
+    private static func keptCleanup(of branch: WorktreeBranch) -> BranchCleanup? {
+        switch branch {
+        case .protected(let name, .defaultBranch): .kept(name, reason: String(localized: "“\(name)” is the repository’s main branch."))
+        case .protected(let name, .checkedOutElsewhere): .kept(name, reason: String(localized: "“\(name)” is checked out in another worktree."))
+        case .deletable, .none, .unreadable: nil
+        }
     }
 
     private func forgetWorktree(_ worktreeID: UUID, of projectID: UUID) {
@@ -861,5 +886,15 @@ import Observation
             persistenceError = String(localized: "Unsaved changes: \(error.localizedDescription)")
             throw WorkspaceError(message: String(localized: "The operation was applied in memory, but saving it failed. Retry saving in the app before running the command again. \(error.localizedDescription)"))
         }
+    }
+}
+
+extension WorkspaceStore: TerminalSessionsDelegate {
+    func terminalSessionsDidChangeAgents() {
+        updateWorkInProgress()
+    }
+
+    func terminalSessionsDidRefreshAgents() {
+        recordAgentSessions()
     }
 }

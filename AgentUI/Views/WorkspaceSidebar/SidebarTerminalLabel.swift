@@ -3,7 +3,6 @@ import SwiftUI
 struct SidebarTerminalLabel: View {
     let name: String
     let session: TerminalSession?
-    let divergentBranch: GitBranch?
 
     var body: some View {
         HStack(spacing: Spacing.s) {
@@ -11,7 +10,7 @@ struct SidebarTerminalLabel: View {
             VStack(alignment: .leading, spacing: Spacing.xxs) {
                 Text(name).lineLimit(1)
                     .foregroundStyle(session == nil ? Palette.textSecondary : Palette.textPrimary)
-                if let divergentBranch {
+                if let divergentBranch = session?.divergentBranch {
                     SidebarBranchName(branch: divergentBranch, color: Palette.danger)
                         .help("This terminal is on a different branch from its worktree")
                 }

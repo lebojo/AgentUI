@@ -2,11 +2,9 @@ import SwiftUI
 
 struct SidebarWorktreeGroupRow: View {
     @Environment(WorkspaceStore.self) private var store
+    @Environment(WorkspacePresentation.self) private var presentation
 
     @State private var isDropTargeted = false
-
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
 
     let project: Project
     let group: WorktreeGroup
@@ -22,7 +20,7 @@ struct SidebarWorktreeGroupRow: View {
     var body: some View {
         DisclosureGroup(isExpanded: query.isEmpty ? Bindable(store)[expanded: group.id] : .constant(true)) {
             ForEach(worktrees) { worktree in
-                SidebarWorktreeRow(sheet: $sheet, removal: $removal, project: project, worktree: worktree, query: query, showAll: showAll)
+                SidebarWorktreeRow(project: project, worktree: worktree, query: query, showAll: showAll)
             }
             .onMove(perform: store.isReadOnly ? nil : { store.reorderWorktrees(in: project.id, worktrees.map(\.id), from: $0, to: $1) })
             if project.worktrees(in: group.id).isEmpty {
@@ -44,7 +42,7 @@ struct SidebarWorktreeGroupRow: View {
                 return store.moveWorktree(id, to: group.id)
             } isTargeted: { isDropTargeted = $0 }
             .contextMenu {
-                Button("Rename…", systemImage: "pencil") { sheet = .rename(group.id, group.name) }
+                Button("Rename…", systemImage: "pencil") { presentation.sheet = .rename(group.id, group.name) }
                 Divider()
                 Button("Dissolve Group", systemImage: "rectangle.stack.badge.minus") { store.removeWorktreeGroup(group.id) }
             }

@@ -4,9 +4,6 @@ import UniformTypeIdentifiers
 struct SidebarTerminalList: View {
     @Environment(WorkspaceStore.self) private var store
 
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
-
     let worktree: Worktree
     let terminals: [TerminalRecord]
 
@@ -14,9 +11,9 @@ struct SidebarTerminalList: View {
         let blocks = worktree.terminalBlocks(showing: terminals)
         ForEach(blocks) { block in
             if block.isSplit {
-                SidebarSplitBlockRow(sheet: $sheet, removal: $removal, block: block, worktreePath: worktree.path)
+                SidebarSplitBlockRow(block: block)
             } else {
-                SidebarTerminalRow(sheet: $sheet, removal: $removal, terminal: block.terminals[0], worktreePath: worktree.path)
+                SidebarTerminalRow(terminal: block.terminals[0])
             }
         }
         .onMove(perform: store.isReadOnly ? nil : { store.reorderTerminalBlocks(in: worktree.id, blocks, from: $0, to: $1) })

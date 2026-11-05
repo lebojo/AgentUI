@@ -2,14 +2,13 @@ import SwiftUI
 
 struct RemovalConfirmation: View {
     @Environment(SettingsStore.self) private var settings
+    @Environment(WorkspaceStore.self) private var store
+    @Environment(WorkspacePresentation.self) private var presentation
 
     @State private var prompt: Prompt?
     @State private var skipsConfirmation = false
 
-    @Binding var removal: Removal?
-
-    let store: WorkspaceStore
-
+    private var removal: Removal? { presentation.removal }
     private var branch: String? { prompt?.deletableBranch }
 
     var body: some View {
@@ -38,7 +37,7 @@ struct RemovalConfirmation: View {
             guard let removal, prompt?.removal == removal else { return false }
             return removal.allowsSkippingConfirmation == allowingSkip
         } set: { isPresented in
-            if !isPresented { removal = nil }
+            if !isPresented { presentation.removal = nil }
         }
     }
 
@@ -46,7 +45,7 @@ struct RemovalConfirmation: View {
         guard let removal else { return }
         if skipsConfirmation { settings.confirmations.skip(removal) }
         store.remove(removal, branch: branch)
-        self.removal = nil
+        presentation.removal = nil
     }
 
     private struct Prompt: Equatable {

@@ -3,9 +3,6 @@ import SwiftUI
 struct SidebarProjectList: View {
     @Environment(WorkspaceStore.self) private var store
 
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
-
     let result: SidebarFilterResult
     let query: String
 
@@ -18,18 +15,18 @@ struct SidebarProjectList: View {
             SidebarWorkInProgressSection(query: query)
             Section {
                 ForEach(result.groups) { group in
-                    SidebarFolderRow(sheet: $sheet, removal: $removal, group: group, query: query)
+                    SidebarFolderRow(group: group, query: query)
                 }
                 .onMove(perform: store.isReadOnly ? nil : { store.reorderFolders(result.groups.map(\.id), from: $0, to: $1) })
                 ForEach(result.ungrouped) { project in
-                    SidebarProjectRow(sheet: $sheet, removal: $removal, project: project, query: query, showAll: false)
+                    SidebarProjectRow(project: project, query: query, showAll: false)
                 }
                 .onMove(perform: store.isReadOnly ? nil : { store.reorderProjects(result.ungrouped.map(\.id), from: $0, to: $1) })
             }
             if !orphans.isEmpty {
                 Section("Orphans") {
                     ForEach(orphans) { worktree in
-                        SidebarOrphanRow(removal: $removal, worktree: worktree)
+                        SidebarOrphanRow(worktree: worktree)
                     }
                 }
             }

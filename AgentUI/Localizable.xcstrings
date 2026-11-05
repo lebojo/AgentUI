@@ -6,10 +6,40 @@
     },
     "%@, %lld terminals" : {
       "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$@, %2$lld terminal"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$@, %2$lld terminals"
+                }
+              }
+            }
+          }
+        },
         "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@, %2$lld terminaux"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$@, %2$lld terminal"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$@, %2$lld terminaux"
+                }
+              }
+            }
           }
         }
       }
@@ -636,6 +666,26 @@
     },
     "—" : {
       "shouldTranslate" : false
+    },
+    "“%@” is checked out in another worktree." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "« %@ » est utilisée par un autre worktree."
+          }
+        }
+      }
+    },
+    "“%@” is the repository’s main branch." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "« %@ » est la branche principale du dépôt."
+          }
+        }
+      }
     },
     "… and %lld more." : {
       "localizations" : {

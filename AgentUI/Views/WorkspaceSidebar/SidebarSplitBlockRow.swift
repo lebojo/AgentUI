@@ -3,11 +3,7 @@ import SwiftUI
 struct SidebarSplitBlockRow: View {
     @Environment(WorkspaceStore.self) private var store
 
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
-
     let block: SidebarTerminalBlock
-    let worktreePath: String
 
     private var focusedID: UUID? { block.terminals.first { $0.id == store.selection }?.id }
     private var symbolName: String { block.axis == .vertical ? "rectangle.split.1x2" : "rectangle.split.2x1" }
@@ -21,8 +17,7 @@ struct SidebarSplitBlockRow: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: Spacing.s) {
                     ForEach(block.terminals) { terminal in
-                        SidebarSplitMemberRow(sheet: $sheet, removal: $removal, terminal: terminal,
-                                              worktreePath: worktreePath, isFocused: terminal.id == focusedID)
+                        SidebarSplitMemberRow(terminal: terminal, isFocused: terminal.id == focusedID)
                     }
                 }
             }

@@ -5,10 +5,7 @@ struct SidebarWorkInProgressSection: View {
 
     let query: String
 
-    private var groups: [WorkInProgressGroup] {
-        WorkInProgress.groups(in: store.projects, statuses: store.sessions.agentStatuses,
-                              agents: store.sessions.runningAgents, query: query)
-    }
+    private var groups: [WorkInProgressGroup] { WorkInProgress.groups(store.workInProgress, matching: query) }
 
     var body: some View {
         let groups = groups

@@ -2,11 +2,9 @@ import SwiftUI
 
 struct SidebarFolderRow: View {
     @Environment(WorkspaceStore.self) private var store
+    @Environment(WorkspacePresentation.self) private var presentation
 
     @State private var isDropTargeted = false
-
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
 
     let group: SidebarFilterResult.Group
     let query: String
@@ -20,11 +18,11 @@ struct SidebarFolderRow: View {
     var body: some View {
         DisclosureGroup(isExpanded: expanded) {
             ForEach(group.subgroups) { subgroup in
-                SidebarFolderRow(sheet: $sheet, removal: $removal, group: subgroup, query: query)
+                SidebarFolderRow(group: subgroup, query: query)
             }
             .onMove(perform: store.isReadOnly ? nil : { store.reorderFolders(group.subgroups.map(\.id), from: $0, to: $1) })
             ForEach(group.projects) { project in
-                SidebarProjectRow(sheet: $sheet, removal: $removal, project: project, query: query, showAll: group.showsAll)
+                SidebarProjectRow(project: project, query: query, showAll: group.showsAll)
             }
             .onMove(perform: store.isReadOnly ? nil : { store.reorderProjects(group.projects.map(\.id), from: $0, to: $1) })
             if group.isEmpty {
@@ -57,8 +55,8 @@ struct SidebarFolderRow: View {
             } isTargeted: { isDropTargeted = $0 }
             .contextMenu {
                 Button("Add Projects…", systemImage: "plus") { store.chooseProjects(in: folder.id) }
-                Button("New Subfolder…", systemImage: "folder.badge.plus") { sheet = .folder(parentID: folder.id) }
-                Button("Rename and Customize…", systemImage: "paintpalette") { sheet = .rename(folder.id, folder.name) }
+                Button("New Subfolder…", systemImage: "folder.badge.plus") { presentation.sheet = .folder(parentID: folder.id) }
+                Button("Rename and Customize…", systemImage: "paintpalette") { presentation.sheet = .rename(folder.id, folder.name) }
                 Menu("Move To", systemImage: "folder") {
                     Button("Root") { store.moveFolder(folder.id, to: nil) }
                         .disabled(!store.canMoveFolder(folder.id, to: nil))

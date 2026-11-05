@@ -2,7 +2,7 @@ import AppKit
 import SwiftTerm
 import Observation
 
-@MainActor @Observable final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
+@MainActor @Observable final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate, TerminalOutputReceiver {
     enum InputOrigin: Sendable {
         case local
         case remote
@@ -13,6 +13,8 @@ import Observation
     private(set) var exitCode: Int32?
     private(set) var title = ""
     let path: String
+    let terminalID: UUID
+    let isFloating: Bool
     let identity = UUID()
     let transcript = SessionTranscript()
     private(set) var outputRevision = 0
@@ -37,25 +39,22 @@ import Observation
     private(set) var subagents: [Subagent] = []
     @ObservationIgnored private(set) var hadAgent = false
     @ObservationIgnored var resume: AgentResume?
-    @ObservationIgnored fileprivate(set) var usedLocally: () -> Void = {}
+    @ObservationIgnored fileprivate weak var owner: TerminalSessions?
     fileprivate(set) var remoteGrid: TerminalGridSize? {
         didSet { view.remoteGrid = remoteGrid }
     }
 
     init(context: TerminalContext, command: [String], keepsShell: Bool = false, environment: [String: String]) {
         path = context.worktree.path
+        terminalID = context.terminal.id
+        isFloating = context.isFloating
         currentDirectory = context.worktree.path
         runsShell = command.isEmpty
         view = ActivityTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
         super.init()
         view.processDelegate = self
-        view.usedLocally = { [weak self] in self?.usedLocally() }
-        view.received = { [weak self] data in
-            guard let self else { return }
-            self.mirrorModes.append(data)
-            self.outputRevision += 1
-            self.scheduleTranscriptRefresh()
-        }
+        view.outputReceiver = self
+        view.usedLocally = { [weak self] in self?.takeBackGrid() }
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
             hasExited = true
@@ -81,6 +80,16 @@ import Observation
             hasExited = true
             view.feed(text: String(localized: "Couldn’t start the terminal.") + "\r\n")
         }
+    }
+
+    func terminalReceived(_ slice: ArraySlice<UInt8>) {
+        mirrorModes.append(slice)
+        outputRevision += 1
+        scheduleTranscriptRefresh()
+    }
+
+    func takeBackGrid() {
+        owner?.takeBackGrid(of: terminalID)
     }
 
     func acquireChat() {
@@ -225,6 +234,7 @@ import Observation
         subagents = []
         journalMonitor.attach(nil)
         self.exitCode = exitCode.flatMap { $0 & 0x7f == 0 ? ($0 >> 8) & 0xff : nil }
+        owner?.recordAgent(nil, status: nil, of: terminalID)
     }
     func updateRepository(directory: String, branch: GitBranch?, divergentBranch: GitBranch?) {
         if currentDirectory != directory { currentDirectory = directory }
@@ -247,6 +257,7 @@ import Observation
         if self.subagents != children { self.subagents = children }
         if chatViewers > 0 || chatRelease != nil { journalMonitor.attach(running?.journal) }
         if agentChanged { scheduleTranscriptRefresh() }
+        owner?.recordAgent(agentKind, status: agentStatus, of: terminalID)
     }
 
     func stop() {
@@ -262,6 +273,10 @@ import Observation
     private var entries: [UUID: TerminalSession] = [:]
     var environment: [String: String] = [:]
     private(set) var branchesByPath: [String: GitBranch] = [:]
+    private(set) var protectedBranchesByPath: [String: ProtectedBranches] = [:]
+    private(set) var runningAgents: [UUID: ConversationAgent] = [:]
+    private(set) var agentStatuses: [UUID: AgentStatus] = [:]
+    @ObservationIgnored weak var delegate: TerminalSessionsDelegate?
     @ObservationIgnored private var refreshingRepositories = false
     @ObservationIgnored private var refreshingAgents = false
     @ObservationIgnored private var agentWatchers = 0
@@ -272,11 +287,6 @@ import Observation
     func branch(for terminalID: UUID, initialPath: String) -> GitBranch? {
         if let session = entries[terminalID] { return session.branch }
         return branchesByPath[initialPath]
-    }
-
-    func divergentBranch(for terminalID: UUID, worktreePath: String) -> GitBranch? {
-        guard let session = entries[terminalID], session.path == worktreePath else { return nil }
-        return session.divergentBranch
     }
 
     func refreshRepositories(worktreePaths: [String]) async {
@@ -290,6 +300,7 @@ import Observation
         let result = await Self.inspect(worktreePaths: worktreePaths, locations: locations)
         guard !Task.isCancelled else { return }
         if branchesByPath != result.branches { branchesByPath = result.branches }
+        if protectedBranchesByPath != result.protectedBranches { protectedBranchesByPath = result.protectedBranches }
         for value in result.sessions {
             guard let session = entries[value.id], session.identity == value.identity else { continue }
             session.updateRepository(directory: value.directory, branch: value.branch, divergentBranch: value.divergentBranch)
@@ -312,7 +323,13 @@ import Observation
         let divergentBranch: GitBranch?
     }
 
-    @concurrent nonisolated private static func inspect(worktreePaths: [String], locations: [Location]) async -> (branches: [String: GitBranch], sessions: [SessionRepository]) {
+    private struct Inspection: Sendable {
+        let branches: [String: GitBranch]
+        let protectedBranches: [String: ProtectedBranches]
+        let sessions: [SessionRepository]
+    }
+
+    @concurrent nonisolated private static func inspect(worktreePaths: [String], locations: [Location]) async -> Inspection {
         var cache: [String: GitRepository?] = [:]
         func repository(at path: String) -> GitRepository? {
             if let cached = cache[path] { return cached }
@@ -320,15 +337,24 @@ import Observation
             cache[path] = .some(value)
             return value
         }
+        var protections: [String: GitBranchProtection.Repository] = [:]
         var branches: [String: GitBranch] = [:]
-        for path in Set(worktreePaths) { branches[path] = repository(at: path)?.branch }
+        var protectedBranches: [String: ProtectedBranches] = [:]
+        for path in Set(worktreePaths) {
+            guard let repository = repository(at: path) else { continue }
+            branches[path] = repository.branch
+            let storage = repository.commonDirectory.path
+            let protection = protections[storage] ?? GitBranchProtection.read(commonDirectory: repository.commonDirectory)
+            protections[storage] = protection
+            protectedBranches[path] = protection.protectedBranches(forGitDirectory: WorkspacePath.canonical(repository.gitDirectory))
+        }
         let sessions = locations.map { location in
             let directory = TerminalProcessDirectory.read(pid: location.pid) ?? location.fallback
             let current = repository(at: directory)
             return SessionRepository(id: location.id, identity: location.identity, directory: directory, branch: current?.branch,
                                      divergentBranch: current?.divergentBranch(from: repository(at: location.worktreePath)))
         }
-        return (branches, sessions)
+        return Inspection(branches: branches, protectedBranches: protectedBranches, sessions: sessions)
     }
 
     func watchAgents() async {
@@ -349,8 +375,6 @@ import Observation
             do { try await Task.sleep(for: .seconds(1)) } catch { return }
         }
     }
-
-    @ObservationIgnored var onAgentsRefreshed: (() -> Void)?
 
     func refreshAgents() async {
         guard !refreshingAgents else { return }
@@ -375,7 +399,14 @@ import Observation
             let agent = found[session.identity]
             session.updateAgent(agent?.process, subagents: agent?.subagents ?? [])
         }
-        onAgentsRefreshed?()
+        delegate?.terminalSessionsDidRefreshAgents()
+    }
+
+    fileprivate func recordAgent(_ agent: ConversationAgent?, status: AgentStatus?, of id: UUID) {
+        guard runningAgents[id] != agent || agentStatuses[id] != status else { return }
+        if runningAgents[id] != agent { runningAgents[id] = agent }
+        if agentStatuses[id] != status { agentStatuses[id] = status }
+        delegate?.terminalSessionsDidChangeAgents()
     }
 
     func agentResumes() -> [UUID: AgentResume?] {
@@ -413,8 +444,7 @@ import Observation
     }
 
     var runningCount: Int { entries.values.filter { !$0.hasExited }.count }
-    var runningAgents: [UUID: ConversationAgent] { entries.compactMapValues(\.agentKind) }
-    var agentStatuses: [UUID: AgentStatus] { entries.compactMapValues(\.agentStatus) }
+    var runningWorkspaceCount: Int { entries.values.filter { !$0.isFloating && !$0.hasExited }.count }
 
     func session(_ id: UUID) -> TerminalSession? { entries[id] }
     func subagent(_ id: UUID?) -> SubagentSelection? {
@@ -429,20 +459,31 @@ import Observation
         let resume = command.isEmpty ? context.terminal.resume.flatMap { $0.command == nil ? nil : $0 } : nil
         let session = TerminalSession(context: context, command: resume?.command ?? command, keepsShell: resume != nil, environment: environment)
         session.resume = resume
-        let id = context.terminal.id
-        session.usedLocally = { [weak self] in self?.updateRemoteGrid(of: id) { $0.takeBack() } }
-        entries[id] = session
-        updateRemoteGrid(of: id) { _ in }
+        session.owner = self
+        entries[session.terminalID] = session
+        updateRemoteGrid(of: session.terminalID) { _ in }
         return session
     }
     func close(_ id: UUID) {
         remoteGrids[id] = nil
-        entries.removeValue(forKey: id)?.stop()
+        guard let session = entries.removeValue(forKey: id) else { return }
+        session.owner = nil
+        session.stop()
+        recordAgent(nil, status: nil, of: id)
     }
     func stopAll() {
-        for session in entries.values { session.stop() }
+        for session in entries.values {
+            session.owner = nil
+            session.stop()
+        }
         entries.removeAll()
         remoteGrids.removeAll()
+        if !runningAgents.isEmpty { runningAgents = [:] }
+        if !agentStatuses.isEmpty { agentStatuses = [:] }
+    }
+
+    func takeBackGrid(of terminal: UUID) {
+        updateRemoteGrid(of: terminal) { $0.takeBack() }
     }
 
     func requestGrid(_ size: TerminalGridSize, for terminal: UUID, viewer: UUID) {

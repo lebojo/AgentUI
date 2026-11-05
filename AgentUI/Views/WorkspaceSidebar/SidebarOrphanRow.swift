@@ -4,8 +4,6 @@ import AppKit
 struct SidebarOrphanRow: View {
     @Environment(WorkspaceStore.self) private var store
 
-    @Binding var removal: Removal?
-
     let worktree: DiscoveredWorktree
 
     private var trash: Removal { .orphanWorktree(path: worktree.path, name: worktree.folderName) }
@@ -32,10 +30,10 @@ struct SidebarOrphanRow: View {
             }
             Button("Show in Finder", systemImage: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: worktree.path) }
             Divider()
-            RemovalButton(pending: $removal, removal: trash, placement: .menu)
+            RemovalButton(removal: trash, placement: .menu)
         }
         .swipeActions(edge: .trailing) {
-            RemovalButton(pending: $removal, removal: trash, placement: .swipe)
+            RemovalButton(removal: trash, placement: .swipe)
         }
     }
 }

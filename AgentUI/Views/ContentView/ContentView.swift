@@ -8,14 +8,13 @@ struct ContentView: View {
     @Environment(SettingsStore.self) private var settings
     @Environment(FloatingTerminalStore.self) private var floating
 
-    @State private var sheet: WorkspaceSheet?
-    @State private var removal: Removal?
+    @State private var presentation = WorkspacePresentation()
 
     @Bindable var store: WorkspaceStore
 
     var body: some View {
         WorkspaceSplitView(inspectorVisible: $inspectorVisible) {
-            WorkspaceSidebar(sheet: $sheet, removal: $removal, store: store)
+            WorkspaceSidebar()
                 .disabled(store.isReadOnly)
         } detail: {
             Group {
@@ -24,7 +23,7 @@ struct ContentView: View {
                 } else if let context = store.selectedContext {
                     TerminalDetail(store: store, context: context)
                 } else {
-                    WorkspaceWelcomeView(sheet: $sheet, store: store)
+                    WorkspaceWelcomeView()
                 }
             }
             .disabled(store.isReadOnly)
@@ -53,7 +52,7 @@ struct ContentView: View {
         }
         .frame(minWidth: Dimension.Window.minWidth, minHeight: Dimension.Window.minHeight)
         .modifier(WorkspaceMonitors(store: store))
-        .sheet(item: $sheet) { item in
+        .sheet(item: Bindable(presentation).sheet) { item in
             WorkspaceEditor(store: store, sheet: item)
         }
         .sheet(isPresented: Bindable(floating).isPresented) {
@@ -65,6 +64,7 @@ struct ContentView: View {
         .alert("Couldn’t Complete the Operation", isPresented: $store.errorMessage.isPresent) {
             Button("OK") { store.errorMessage = nil }
         } message: { Text(store.errorMessage ?? "") }
-        .background { RemovalConfirmation(removal: $removal, store: store) }
+        .background { RemovalConfirmation() }
+        .environment(presentation)
     }
 }

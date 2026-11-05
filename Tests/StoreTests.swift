@@ -7,15 +7,21 @@ import Observation
     func close(_ id: UUID) {}
     func start(_ context: TerminalContext, command: [String] = []) {}
     func isRunning(_ id: UUID) -> Bool { true }
-    var onAgentsRefreshed: (() -> Void)?
+    weak var delegate: TerminalSessionsDelegate?
     func agentResumes() -> [UUID: AgentResume?] { [:] }
     func subagent(_ id: UUID?) -> SubagentSelection? { nil }
     var branchesByPath: [String: GitBranch] = [:]
+    var protectedBranchesByPath: [String: ProtectedBranches] = [:]
+    var agentStatuses: [UUID: AgentStatus] = [:]
+    var runningAgents: [UUID: ConversationAgent] = [:]
 
     func readBranches(of projects: [Project]) {
-        let paths = projects.flatMap(\.worktrees).map(\.path)
-        branchesByPath = Dictionary(paths.compactMap { path in GitRepository.containing(path).map { (path, $0.branch) } },
-                                    uniquingKeysWith: { first, _ in first })
+        let repositories = projects.flatMap(\.worktrees).map(\.path).compactMap { path in GitRepository.containing(path).map { (path, $0) } }
+        branchesByPath = Dictionary(repositories.map { ($0.0, $0.1.branch) }, uniquingKeysWith: { first, _ in first })
+        protectedBranchesByPath = Dictionary(repositories.map { path, repository in
+            (path, GitBranchProtection.read(commonDirectory: repository.commonDirectory)
+                .protectedBranches(forGitDirectory: WorkspacePath.canonical(repository.gitDirectory)))
+        }, uniquingKeysWith: { first, _ in first })
     }
 }
 
@@ -299,13 +305,29 @@ private final class ChangeFlag: @unchecked Sendable {
         busy.worktrees[0].terminals = [ready, shell, working]
         busy.worktrees.append(Worktree(name: "feature-x", path: root.appendingPathComponent("feature-x").path, terminals: [waiting]))
         let statuses: [UUID: AgentStatus] = [waiting.id: .waitingForInput, working.id: .working, ready.id: .ready]
-        let progress = WorkInProgress.groups(in: [busy], statuses: statuses, agents: [working.id: .codex], query: "")
+        let progress = WorkInProgress.groups(in: [busy], statuses: statuses, agents: [working.id: .codex])
         try require(progress.map(\.status) == [.waitingForInput, .working, .ready], "Agents needing input come first, then working, then ready")
         try require(progress.flatMap(\.items).map(\.id) == [waiting.id, working.id, ready.id], "Only terminals running an agent are listed")
         try require(progress[0].items[0].location == "busy · feature-x" && progress[1].items[0].agent == .codex, "Items carry their project, worktree and agent")
-        try require(WorkInProgress.groups(in: [busy], statuses: [:], agents: [:], query: "").isEmpty, "No running agent hides the section")
-        let searched = WorkInProgress.groups(in: [busy], statuses: statuses, agents: [:], query: "feature")
+        try require(WorkInProgress.groups(in: [busy], statuses: [:], agents: [:]).isEmpty, "No running agent hides the section")
+        let searched = WorkInProgress.groups(WorkInProgress.groups(in: [busy], statuses: statuses, agents: [:]), matching: "feature")
         try require(searched.map(\.status) == [.waitingForInput] && searched[0].items.map(\.id) == [waiting.id], "The sidebar filter applies to work in progress")
+        try require(WorkInProgress.groups(progress, matching: "") == progress, "An empty filter keeps every group")
+        let splitTerminal = split.projects[0].worktrees[0].terminals[0]
+        let progressChanged = ChangeFlag()
+        withObservationTracking { _ = split.workInProgress } onChange: { progressChanged.mark() }
+        split.rename(splitTerminal.id, to: "Renamed")
+        try require(!progressChanged.value && split.workInProgress.isEmpty, "Project edits without running agents leave work in progress untouched")
+        split.sessions.agentStatuses = [splitTerminal.id: .working]
+        split.sessions.runningAgents = [splitTerminal.id: .claude]
+        split.terminalSessionsDidChangeAgents()
+        try require(progressChanged.value && split.workInProgress.map(\.status) == [.working]
+                        && split.workInProgress[0].items.map(\.name) == ["Renamed"] && split.workInProgress[0].items[0].agent == .claude,
+                    "An agent status change updates the cached work in progress")
+        split.sessions.agentStatuses = [:]
+        split.sessions.runningAgents = [:]
+        split.terminalSessionsDidChangeAgents()
+        try require(split.workInProgress.isEmpty, "A finished agent leaves work in progress")
         print("PASS work in progress groups")
 
         let gitRoot = root.appendingPathComponent("grouped")
@@ -379,7 +401,25 @@ private final class ChangeFlag: @unchecked Sendable {
         print("PASS worktree folder adoption")
 
         let reviewRemoval = Removal.worktree(projectID: grouped.id, worktreeID: review.id, name: review.name)
+        let originHead = gitRoot.appendingPathComponent(".git/refs/remotes/origin/HEAD")
+        try fm.createDirectory(at: originHead.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try "ref: refs/remotes/origin/review/one\n".write(to: originHead, atomically: true, encoding: .utf8)
         groups.sessions.readBranches(of: groups.projects)
+        try require(groups.sessions.protectedBranchesByPath[review.path]?.defaults == ["main", "master", "review/one"]
+                        && groups.deletableBranch(for: reviewRemoval) == nil,
+                    "The removal dialog never offers to delete the branch a remote HEAD points to")
+        try fm.removeItem(at: originHead.deletingLastPathComponent())
+        let hidden = root.appendingPathComponent("hidden-review")
+        _ = try await GitService.run(["worktree", "add", "-q", "-f", hidden.path, "review/one"], at: gitRoot.path)
+        groups.sessions.readBranches(of: groups.projects)
+        let reviewProtection = groups.sessions.protectedBranchesByPath[review.path]
+        try require(reviewProtection?.checkedOutElsewhere.isSuperset(of: ["main", "review/one"]) == true
+                        && groups.deletableBranch(for: reviewRemoval) == nil,
+                    "The removal dialog never offers to delete a branch checked out in a worktree AgentUI doesn't know")
+        _ = try await GitService.run(["worktree", "remove", "--force", hidden.path], at: gitRoot.path)
+        groups.sessions.readBranches(of: groups.projects)
+        try require(groups.sessions.protectedBranchesByPath[review.path]?.checkedOutElsewhere.contains("review/one") == false,
+                    "A worktree's own branch isn't protected as checked out elsewhere")
         let reviewBranch = groups.deletableBranch(for: reviewRemoval)
         try require(reviewBranch == "review/one", "The removal dialog offers to delete a worktree's branch")
         let mainBranch = groups.deletableBranch(for: .worktree(projectID: grouped.id, worktreeID: groupedProject().worktrees[0].id, name: "Main"))
@@ -414,6 +454,12 @@ private final class ChangeFlag: @unchecked Sendable {
                             && groups.projects.contains { $0.worktrees.contains { $0.id == onMain.id } },
                         "Forcing the deletion of a worktree on main in a local-only repository is refused before removing anything")
         }
+        let keptMain = try await groups.deleteWorktree(projectID: lonelyProject.id, worktreeID: onMain.id, branch: .merged, protectedBranch: .keep)
+        let mainLeft = try await GitService.run(["branch", "--list", "main"], at: lonelyRoot.path)
+        try require(keptMain.branch == "main" && !keptMain.isDeleted && keptMain.failure?.contains("main branch") == true
+                        && !mainLeft.isEmpty && !fm.fileExists(atPath: extra.path)
+                        && !groups.projects.contains { $0.worktrees.contains { $0.id == onMain.id } },
+                    "From the sidebar, a worktree on the main branch is deleted and its branch kept with an explanation")
         print("PASS worktree deletion with or without its branch")
 
         let legacy = Data(#"{"version":1,"folders":[],"collapsed":[],"projects":[{"id":"\#(UUID())","name":"Old","path":"/tmp/old","worktrees":[{"id":"\#(UUID())","name":"Principal","path":"/tmp/old","isPrimary":true,"terminals":[]}]}]}"#.utf8)

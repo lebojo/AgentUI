@@ -2,9 +2,7 @@ import SwiftUI
 
 struct SidebarProjectLabel: View {
     @Environment(WorkspaceStore.self) private var store
-
-    @Binding var sheet: WorkspaceSheet?
-    @Binding var removal: Removal?
+    @Environment(WorkspacePresentation.self) private var presentation
 
     let project: Project
 
@@ -34,7 +32,7 @@ struct SidebarProjectLabel: View {
             Spacer(minLength: Spacing.xxs)
             if store.busyProjects.contains(project.id) { ProgressView().controlSize(.mini) }
             else {
-                Button { sheet = .worktree(project.id, project.name) } label: { Image(systemName: "plus").font(Typography.s.weight(.semibold)) }
+                Button { presentation.sheet = .worktree(project.id, project.name) } label: { Image(systemName: "plus").font(Typography.s.weight(.semibold)) }
                     .buttonStyle(.borderless).help("Create a worktree for \(project.name)")
                     .accessibilityLabel("Create a worktree for \(project.name)")
             }
@@ -42,9 +40,9 @@ struct SidebarProjectLabel: View {
         .contentShape(Rectangle())
         .help(project.path)
         .draggable(project.id.uuidString)
-        .contextMenu { SidebarProjectMenu(sheet: $sheet, removal: $removal, project: project) }
+        .contextMenu { SidebarProjectMenu(project: project) }
         .swipeActions(edge: .trailing) {
-            RemovalButton(pending: $removal, removal: .project(project.id), placement: .swipe)
+            RemovalButton(removal: .project(project.id), placement: .swipe)
         }
     }
 

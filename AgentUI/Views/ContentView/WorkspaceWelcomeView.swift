@@ -2,9 +2,8 @@ import SwiftUI
 import AppKit
 
 struct WorkspaceWelcomeView: View {
-    @Binding var sheet: WorkspaceSheet?
-
-    let store: WorkspaceStore
+    @Environment(WorkspaceStore.self) private var store
+    @Environment(WorkspacePresentation.self) private var presentation
 
     var body: some View {
         VStack(spacing: Spacing.xl) {
@@ -16,7 +15,7 @@ struct WorkspaceWelcomeView: View {
                 Button("Add Project…") { store.chooseProjects() }.buttonStyle(.borderedProminent)
                 Button("Import Folder…") { store.chooseFolder() }
             }.padding(.top, Spacing.s)
-            Button("Create a Virtual Folder") { sheet = .folder(parentID: nil) }.buttonStyle(.link).font(Typography.m)
+            Button("Create a Virtual Folder") { presentation.sheet = .folder(parentID: nil) }.buttonStyle(.link).font(Typography.m)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Palette.surface)

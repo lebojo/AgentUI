@@ -3,8 +3,7 @@ import SwiftUI
 struct RemovalButton: View {
     @Environment(SettingsStore.self) private var settings
     @Environment(WorkspaceStore.self) private var store
-
-    @Binding var pending: Removal?
+    @Environment(WorkspacePresentation.self) private var presentation
 
     let removal: Removal
     let placement: Placement
@@ -30,7 +29,7 @@ struct RemovalButton: View {
     }
 
     private func request() {
-        if requiresConfirmation { pending = removal }
+        if requiresConfirmation { presentation.removal = removal }
         else { store.remove(removal) }
     }
 
