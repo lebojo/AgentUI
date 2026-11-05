@@ -424,7 +424,7 @@ import SystemConfiguration
             return try await .success(InspectorService.remote(for: local))
         case .diff(let id, let change, let kinds):
             let local = try await InspectorService.localGit(at: context(id).worktree.path,
-                                                            changesIn: [change.path] + (change.originalPath.map { [$0] } ?? []))
+                                                            changesIn: change.paths)
             guard let actual = local.changes.first(where: { $0.path == change.path }) else { throw RemoteError(message: String(localized: "The file no longer has changes.")) }
             _ = try validatedURL(URL(fileURLWithPath: local.root).appendingPathComponent(actual.path).path, within: local.root)
             let sections = Set(kinds ?? [.staged, .unstaged]).intersection([.staged, .unstaged])
@@ -440,7 +440,7 @@ import SystemConfiguration
         case .comparisonDiff(let id, let base, let change):
             let root = try await comparableRoot(terminal: id, base: base)
             let changes = try await InspectorService.comparedChanges(with: base, at: root,
-                                                                     paths: [change.path] + (change.originalPath.map { [$0] } ?? []))
+                                                                     paths: change.paths)
             guard let actual = changes.first(where: { $0.path == change.path }) else {
                 throw RemoteError(message: String(localized: "The file no longer differs from this branch."))
             }

@@ -97,10 +97,9 @@ enum InspectorService {
             return GitDiff(path: change.path, sections: [.untracked(path: change.path, content: content, isExecutable: isExecutable)])
         }
         let git = URL(fileURLWithPath: "/usr/bin/git")
-        let paths = [change.path] + (change.originalPath.map { [$0] } ?? [])
         let safety = try await GitFilterGuard.shared.configuration(at: root).overrides
-        async let staged = kinds.contains(.staged) ? section(git, diffFlags + ["--cached", "--"] + paths, at: root, kind: .staged, safety: safety) : nil
-        async let unstaged = kinds.contains(.unstaged) ? section(git, diffFlags + ["--"] + paths, at: root, kind: .unstaged, safety: safety) : nil
+        async let staged = kinds.contains(.staged) ? section(git, diffFlags + ["--cached", "--"] + change.paths, at: root, kind: .staged, safety: safety) : nil
+        async let unstaged = kinds.contains(.unstaged) ? section(git, diffFlags + ["--"] + change.paths, at: root, kind: .unstaged, safety: safety) : nil
         return GitDiff(path: change.path, sections: try await [staged, unstaged].compactMap { $0 })
     }
 
@@ -147,8 +146,7 @@ enum InspectorService {
     @concurrent static func comparisonDiff(_ change: GitChange, base: ComparisonBranch, at root: String) async throws -> GitDiff {
         let git = URL(fileURLWithPath: "/usr/bin/git")
         try validate(base)
-        let paths = [change.path] + (change.originalPath.map { [$0] } ?? [])
-        let arguments = diffFlags + ["--find-renames", base.reference + "...HEAD", "--"] + paths
+        let arguments = diffFlags + ["--find-renames", base.reference + "...HEAD", "--"] + change.paths
         let safety = try await GitFilterGuard.shared.configuration(at: root).overrides
         let section = try await section(git, arguments, at: root, kind: .committed, safety: safety)
         return GitDiff(path: change.path, sections: [section].compactMap { $0 })

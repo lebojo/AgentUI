@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GitChangeList: View {
     @State private var collapsed: Set<String> = []
+    @State private var visibleRows: [GitChangeTreeRow] = []
 
     let root: String
     let scope: GitChangeScope
@@ -24,12 +25,18 @@ struct GitChangeList: View {
                 Label { Text(scope.emptyTitle) } icon: { Image(systemName: "checkmark.circle") }
                     .foregroundStyle(Palette.textSecondary).font(Typography.body)
             }
-            ForEach(outline.rows(collapsing: collapsed)) { row in
+            ForEach(visibleRows) { row in
                 GitChangeOutlineRow(collapsed: $collapsed, row: row, root: root, scope: scope, source: source)
             }
             if omitted > 0 {
                 InspectorNotice(title: "Truncated List", message: "\(omitted) more changes not shown on this device", symbol: "ellipsis.circle")
             }
         }
+        .onChange(of: outline, updateVisibleRows)
+        .onChange(of: collapsed, initial: true, updateVisibleRows)
+    }
+
+    private func updateVisibleRows() {
+        visibleRows = outline.rows(collapsing: collapsed)
     }
 }

@@ -15,10 +15,8 @@ enum ReadCommand {
     }
 
     static func run(_ executable: URL, _ arguments: [String], at path: String,
-                    timeout: TimeInterval = 20, limit: Int = 2_097_152, overflow: CommandRunner.OutputOverflow = .stop,
-                    gitConfiguration: [String: String] = [:]) async throws -> Data {
-        try await output(executable, arguments, at: path, timeout: timeout, limit: limit, overflow: overflow,
-                         gitConfiguration: gitConfiguration).data
+                    timeout: TimeInterval = 20, limit: Int = 2_097_152, gitConfiguration: [String: String] = [:]) async throws -> Data {
+        try await output(executable, arguments, at: path, timeout: timeout, limit: limit, gitConfiguration: gitConfiguration).data
     }
 
     static func output(_ executable: URL, _ arguments: [String], at path: String,
