@@ -23,9 +23,22 @@ struct RemovalConfirmation: View {
                 prompt = nil
                 return
             }
-            let branch = await store.deletableBranch(for: removal)
-            guard !Task.isCancelled else { return }
-            prompt = Prompt(removal: removal, deletableBranch: branch)
+            await present(removal)
+        }
+    }
+
+    private func present(_ removal: Removal) async {
+        let store = store
+        await withTaskGroup(of: BranchLookup.self) { group in
+            group.addTask { .found(await store.deletableBranch(for: removal)) }
+            group.addTask {
+                try? await Task.sleep(for: Removal.branchLookupDeadline)
+                return .timedOut
+            }
+            let first = await group.next()
+            group.cancelAll()
+            guard !Task.isCancelled, let first else { return }
+            prompt = Prompt(removal: removal, deletableBranch: first.branch)
         }
     }
 
@@ -57,5 +70,13 @@ struct RemovalConfirmation: View {
     private struct Prompt: Equatable {
         let removal: Removal
         let deletableBranch: String?
+    }
+
+    private enum BranchLookup: Sendable {
+        case found(String?), timedOut
+
+        var branch: String? {
+            if case .found(let branch) = self { branch } else { nil }
+        }
     }
 }

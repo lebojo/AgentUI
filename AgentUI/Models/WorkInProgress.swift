@@ -46,6 +46,14 @@ enum WorkInProgress {
         }
     }
 
+    static func listsSameTerminals(_ old: [Project], _ new: [Project]) -> Bool {
+        old.elementsEqual(new) { old, new in
+            old.name == new.name && old.worktrees.elementsEqual(new.worktrees) { old, new in
+                old.isPrimary == new.isPrimary && old.name == new.name && old.terminals.elementsEqual(new.terminals) { $0.id == $1.id && $0.name == $1.name }
+            }
+        }
+    }
+
     static func groups(_ groups: [WorkInProgressGroup], matching query: String) -> [WorkInProgressGroup] {
         query.isEmpty ? groups : groups.compactMap { $0.matching(query) }
     }

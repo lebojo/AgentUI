@@ -3,6 +3,8 @@ import Foundation
 enum Removal: Hashable, Sendable {
     case project(UUID), terminal(UUID), worktree(projectID: UUID, worktreeID: UUID, name: String), orphanWorktree(path: String, name: String)
 
+    static let branchLookupDeadline = Duration.milliseconds(300)
+
     var projectID: UUID? {
         switch self {
         case .project(let id): id

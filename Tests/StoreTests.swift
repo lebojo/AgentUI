@@ -319,6 +319,17 @@ private final class ChangeFlag: @unchecked Sendable {
         try require(progressChanged.value && split.workInProgress.map(\.status) == [.working]
                         && split.workInProgress[0].items.map(\.name) == ["Renamed"] && split.workInProgress[0].items[0].agent == .claude,
                     "An agent status change updates the cached work in progress")
+        split.rename(splitTerminal.id, to: "Renamed Again")
+        try require(split.workInProgress[0].items.map(\.name) == ["Renamed Again"], "Renaming a terminal running an agent updates work in progress")
+        var renamedProject = busy
+        renamedProject.name = "elsewhere"
+        var movedTerminal = busy
+        movedTerminal.worktrees[1].terminals.append(movedTerminal.worktrees[0].terminals.removeLast())
+        var relaidOut = busy
+        relaidOut.worktrees[0].terminals[0].hasCustomName.toggle()
+        try require(WorkInProgress.listsSameTerminals([busy], [relaidOut]) && !WorkInProgress.listsSameTerminals([busy], [renamedProject])
+                        && !WorkInProgress.listsSameTerminals([busy], [movedTerminal]) && !WorkInProgress.listsSameTerminals([busy], [busy, renamedProject]),
+                    "Work in progress is rebuilt only when terminals, their names or their locations change")
         split.sessions.agentStatuses = [:]
         split.sessions.runningAgents = [:]
         split.terminalSessionsDidChangeAgents()

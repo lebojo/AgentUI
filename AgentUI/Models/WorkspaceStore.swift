@@ -6,7 +6,7 @@ import Observation
     private(set) var projects: [Project] = [] {
         didSet {
             updateSelectedContext()
-            updateWorkInProgress()
+            if !WorkInProgress.listsSameTerminals(oldValue, projects) { updateWorkInProgress() }
         }
     }
     private var collapsed: Set<UUID> = []
