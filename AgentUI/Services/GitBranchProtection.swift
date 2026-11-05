@@ -20,6 +20,11 @@ enum GitBranchProtection {
         return BranchProtectionReport(branch: branch, mergeCandidates: DefaultBranch.references(remoteHeads: heads))
     }
 
+    static func isCheckedOut(_ branch: String, inRepositoryAt path: String) -> Bool {
+        guard let repository = GitRepository.containing(path) else { return false }
+        return checkedOutBranches(in: repository.commonDirectory).values.contains(branch)
+    }
+
     static func mergeCandidates(of repository: GitRepository, headFiles: [String]) -> [String]? {
         remoteHeads(of: repository, in: headFiles).map(DefaultBranch.references(remoteHeads:))
     }
@@ -58,10 +63,8 @@ enum GitBranchProtection {
     }
 
     private static func isBare(_ commonDirectory: URL) -> Bool {
-        guard let value = WorktreeFolder.coreSetting("bare", in: commonDirectory)?.lowercased() else {
-            return commonDirectory.lastPathComponent != ".git"
-        }
-        return ["true", "yes", "on", "1"].contains(value)
+        let value = WorktreeFolder.coreSetting("bare", in: commonDirectory)?.lowercased()
+        return value.map(["true", "yes", "on", "1"].contains) ?? false
     }
 
     private static func childNames(of directory: URL) -> [String] {

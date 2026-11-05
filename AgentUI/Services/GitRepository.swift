@@ -34,7 +34,8 @@ struct GitRepository: Sendable {
     static func registeredWorktree(at path: String, in repositoryPath: String) -> GitRepository? {
         guard let repository = containing(repositoryPath) else { return nil }
         for gitDirectory in linkedGitDirectories(in: repository.commonDirectory) {
-            guard let link = smallTextFile(gitDirectory.appendingPathComponent("gitdir")), folder(ofGitLink: link) == path,
+            guard let link = smallTextFile(gitDirectory.appendingPathComponent("gitdir")),
+                  folder(ofGitLink: resolve(link, relativeTo: gitDirectory)) == path,
                   let branch = headBranch(in: gitDirectory) else { continue }
             return GitRepository(root: URL(fileURLWithPath: path), branch: branch,
                                  gitDirectory: URL(fileURLWithPath: WorkspacePath.canonical(gitDirectory)),
@@ -43,14 +44,18 @@ struct GitRepository: Sendable {
         return nil
     }
 
+    var isLinkedWorktree: Bool {
+        gitDirectory.deletingLastPathComponent().path == commonDirectory.appendingPathComponent("worktrees").path
+    }
+
     static func linkedGitDirectories(in commonDirectory: URL) -> [URL] {
         let registrations = commonDirectory.appendingPathComponent("worktrees")
         let names = (try? FileManager.default.contentsOfDirectory(atPath: registrations.path)) ?? []
         return names.sorted().map { registrations.appendingPathComponent($0) }
     }
 
-    private static func folder(ofGitLink link: String) -> String {
-        let folder = URL(fileURLWithPath: link).deletingLastPathComponent()
+    private static func folder(ofGitLink link: URL) -> String {
+        let folder = link.deletingLastPathComponent()
         let parent = URL(fileURLWithPath: WorkspacePath.canonical(folder.deletingLastPathComponent()))
         return parent.appendingPathComponent(folder.lastPathComponent).path
     }
@@ -189,13 +194,14 @@ enum TerminalProcessDirectory {
 }
 
 enum WorktreeFolder {
-    @concurrent static func scan(_ roots: [URL]) async -> [DiscoveredWorktree] {
-        roots.flatMap { root in
-            ((try? WorkspaceDisk.childDirectories(of: root)) ?? []).compactMap(worktree)
+    @concurrent static func scan(_ roots: [URL], repositories: [String]) async -> [DiscoveredWorktree] {
+        let known = mainWorktrees(of: repositories)
+        return roots.flatMap { root in
+            ((try? WorkspaceDisk.childDirectories(of: root)) ?? []).compactMap { worktree(at: $0, knownMainWorktrees: known) }
         }
     }
 
-    private static func worktree(at url: URL) -> DiscoveredWorktree? {
+    private static func worktree(at url: URL, knownMainWorktrees: [String: String]) -> DiscoveredWorktree? {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.appendingPathComponent(".git").path, isDirectory: &isDirectory),
               !isDirectory.boolValue else { return nil }
@@ -203,15 +209,21 @@ enum WorktreeFolder {
         guard let repository = GitRepository.atRoot(url) else {
             return DiscoveredWorktree(path: path, branch: nil, repositoryPath: nil)
         }
-        return DiscoveredWorktree(path: path, branch: repository.branch.name,
-                                  repositoryPath: mainWorktree(of: repository.commonDirectory).map(WorkspacePath.canonical))
+        let repositoryPath = knownMainWorktrees[repository.commonDirectory.path]
+            ?? mainWorktree(of: repository.commonDirectory).map(WorkspacePath.canonical)
+        return DiscoveredWorktree(path: path, branch: repository.branch.name, repositoryPath: repositoryPath)
     }
 
     static func registration(of worktree: URL) -> URL? {
-        guard let repository = GitRepository.atRoot(worktree),
-              repository.gitDirectory.deletingLastPathComponent().path
-                == repository.commonDirectory.appendingPathComponent("worktrees").path else { return nil }
+        guard let repository = GitRepository.atRoot(worktree), repository.isLinkedWorktree else { return nil }
         return repository.gitDirectory
+    }
+
+    private static func mainWorktrees(of repositories: [String]) -> [String: String] {
+        let mains = repositories.compactMap { path in
+            GitRepository.atRoot(URL(fileURLWithPath: path)).flatMap { $0.isLinkedWorktree ? nil : ($0.commonDirectory.path, path) }
+        }
+        return Dictionary(mains) { first, _ in first }
     }
 
     private static func mainWorktree(of commonDirectory: URL) -> URL? {

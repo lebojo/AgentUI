@@ -430,6 +430,48 @@ import Foundation
         try require(!movingLeft.isEmpty, "A commit made between the merge check and the deletion keeps the branch")
         _ = try await GitService.run(["branch", "-D", "cleanup/moving"], at: project.path)
 
+        let leaving = try await GitService.createWorktree(project: project, branch: "cleanup/elsewhere", root: root)
+        let leavingCheck = try await GitService.deletion(of: "cleanup/elsewhere", .merged(confirmed: nil), mergeCandidates: ["refs/heads/main"], at: project.path)
+        try await GitService.removeWorktree(project: project, path: leaving.path)
+        let elsewhere = root.appendingPathComponent("cleanup-elsewhere-again")
+        _ = try await GitService.run(["worktree", "add", "-q", elsewhere.path, "cleanup/elsewhere"], at: project.path)
+        do {
+            try await GitService.deleteBranch(leavingCheck!, at: project.path)
+            throw WorkspaceError(message: "FAIL: branch deleted while checked out elsewhere")
+        } catch let error as WorkspaceError {
+            try require(error.message == "The branch “cleanup/elsewhere” is checked out in another worktree.",
+                        "A branch checked out in another worktree after the check is refused")
+        }
+        let elsewhereLeft = try await GitService.run(["branch", "--list", "cleanup/elsewhere"], at: project.path)
+        try require(!elsewhereLeft.isEmpty, "A branch checked out elsewhere between the check and the deletion is kept")
+        try await GitService.removeWorktree(project: project, path: elsewhere.path)
+        _ = try await GitService.run(["branch", "-D", "cleanup/elsewhere"], at: project.path)
+
+        let relative = URL(fileURLWithPath: WorkspacePath.canonical(root)).appendingPathComponent("cleanup-relative")
+        _ = try await GitService.run(["-c", "worktree.useRelativePaths=true", "worktree", "add", "-q", "-b", "cleanup/relative", relative.path], at: project.path)
+        try FileManager.default.removeItem(at: relative)
+        let relativeBranch = await GitBranchProtection.report(at: relative.path, in: project.path, checkedOutElsewhere: []).branch
+        try require(relativeBranch == .deletable("cleanup/relative"), "A registration with a relative link finds its removed worktree")
+        try await GitService.removeWorktree(project: project, path: relative.path)
+        _ = try await GitService.run(["branch", "-D", "cleanup/relative"], at: project.path)
+
+        let canonicalRoot = URL(fileURLWithPath: WorkspacePath.canonical(root))
+        let symlinkedMain = canonicalRoot.appendingPathComponent("cleanup-linked-main")
+        let symlinkedStorage = canonicalRoot.appendingPathComponent("cleanup-storage/linked-main.git")
+        let symlinkedScan = canonicalRoot.appendingPathComponent("cleanup-linked-worktrees")
+        try FileManager.default.createDirectory(at: symlinkedMain, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: symlinkedStorage.deletingLastPathComponent(), withIntermediateDirectories: true)
+        _ = try await GitService.run(["init", "-q", "-b", "main"], at: symlinkedMain.path)
+        try await commit("Initial", at: symlinkedMain.path)
+        try FileManager.default.moveItem(at: symlinkedMain.appendingPathComponent(".git"), to: symlinkedStorage)
+        try FileManager.default.createSymbolicLink(at: symlinkedMain.appendingPathComponent(".git"), withDestinationURL: symlinkedStorage)
+        let symlinkedWorktree = symlinkedScan.appendingPathComponent("feature")
+        _ = try await GitService.run(["worktree", "add", "-q", "-b", "feature", symlinkedWorktree.path], at: symlinkedMain.path)
+        _ = try await GitService.run(["config", "--unset", "core.bare"], at: symlinkedMain.path)
+        let symlinkedFound = await WorktreeFolder.scan([symlinkedScan], repositories: [symlinkedMain.path])
+        try require(symlinkedFound.map(\.repositoryPath) == [symlinkedMain.path] && GitBranchProtection.isCheckedOut("main", inRepositoryAt: symlinkedWorktree.path),
+                    "A main folder whose .git is a symlink keeps its worktrees and its checked out branch")
+
         let unmerged = try await GitService.createWorktree(project: project, branch: "cleanup/unmerged", root: root)
         _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "--allow-empty", "-m", "Work"], at: unmerged.path)
         try await GitService.removeWorktree(project: project, path: unmerged.path)

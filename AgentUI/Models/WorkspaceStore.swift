@@ -780,7 +780,7 @@ import Observation
     func adoptWorktrees(in directories: [URL]) async {
         orphanScan += 1
         let scan = orphanScan
-        let discovered = await WorktreeFolder.scan(directories)
+        let discovered = await WorktreeFolder.scan(directories, repositories: projects.map(\.path))
         guard scan == orphanScan else { return }
         let unknown = discovered.filter { !isKnownWorktree($0.path) }
         let owners = Set(unknown.compactMap { worktree in projects.first { $0.path == worktree.repositoryPath }?.id })
