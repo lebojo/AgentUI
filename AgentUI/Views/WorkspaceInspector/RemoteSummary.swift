@@ -13,9 +13,9 @@ struct RemoteSummary: View {
                     Text("\(pr.isDraft ? String(localized: "Draft") : pr.state) · \(pr.headRefName) → \(pr.baseRefName)")
                         .font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 } else if let error = remote.changeRequestError {
-                    InspectorNotice(title: "\(remote.hosting.changeRequestTitle) unavailable", error: error)
+                    InspectorNotice(title: remote.hosting.changeRequestUnavailableTitle, error: error)
                 } else {
-                    Text("No \(remote.hosting.changeRequestTitle.lowercased()) for this branch.")
+                    Text(remote.hosting.noChangeRequestMessage)
                         .font(Typography.body).foregroundStyle(Palette.textSecondary)
                 }
             } else if let error = model.remoteError {

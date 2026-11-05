@@ -31,7 +31,17 @@ enum GitAction: Equatable, Sendable {
         case .stageAll: "Stage All"
         case .unstageAll: "Unstage All"
         case .commit: "Commit"
-        case .push, .pushUpstream, .publish: "Push"
+        case .push, .pushUpstream: "Push"
+        case .publish: "Publish"
+        }
+    }
+
+    var help: LocalizedStringResource {
+        switch self {
+        case .publish(let remote, let branch):
+            LocalizedStringResource("Push this branch to a new \(remote)/\(branch) branch and track it",
+                                    comment: "Help of the Publish button; the variables are a remote name and a branch name.")
+        default: title
         }
     }
 

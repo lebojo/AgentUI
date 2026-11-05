@@ -173,7 +173,7 @@ enum InspectorTests {
         try require(calls.contains("--commit") && calls.contains("local-sha"), "gh Actions query filters current commit")
         print("PASS gh JSON decoding, commit filtering, no PR and network failures")
 
-        let hosts = ["git@gitlab.com:group/app.git", "https://gitlab.example.org/group/app", "ssh://git@gitlab.internal:2222/app.git",
+        let hosts = ["git@gitlab.com:group/app.git", "https://gitlab.example.org/group/app", "ssh://git@gitlab.internal:2222/group/app.git",
                      "git@github.com:owner/app.git", "https://github.com/owner/app.git"].map(GitHosting.init(remoteURL:))
         try require(hosts == [.gitlab, .gitlab, .gitlab, .github, .github], "Detect GitLab and GitHub from remote URLs")
         _ = try await GitService.run(["remote", "add", "origin", "git@gitlab.com:fixture/app.git"], at: repository.path)
@@ -500,6 +500,23 @@ enum InspectorTests {
         local = try await InspectorService.localGit(at: repository.path)
         try require(remoteFix == fixHead && strayFix == nil && local.tracking?.upstream == "origin/bugfix/fix-123" && local.push == nil,
                     "Pushing to a differently named upstream keeps it and creates no branch under the local name")
+        _ = try await GitService.run(["checkout", "-q", "--track", "-b", "local-track", "main"], at: repository.path)
+        try "local\n".write(to: repository.appendingPathComponent("local.txt"), atomically: true, encoding: .utf8)
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.commit(title: "Local", message: ""), at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        let localRemote = try await GitService.run(["config", "branch.local-track.remote"], at: repository.path)
+        let localMerge = try await GitService.run(["config", "branch.local-track.merge"], at: repository.path)
+        let publishLocal = GitAction.publish(remote: "origin", branch: "local-track")
+        try require(local.tracking?.upstream == "main" && local.tracking?.isPublished == false && !(local.tracking?.hasUnpushedCommits ?? true)
+                        && local.push == publishLocal && String(localized: publishLocal.title) == "Publish"
+                        && String(localized: publishLocal.help) == "Push this branch to a new origin/local-track branch and track it"
+                        && localRemote == "." && localMerge == "refs/heads/main",
+                    "A branch tracking a local branch is unpublished, offers an explicit Publish to origin and keeps its upstream until then")
+        try await InspectorService.perform(publishLocal, at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(local.tracking?.upstream == "origin/local-track" && local.tracking?.isPublished == true && local.push == nil,
+                    "Publishing a branch tracking a local branch creates and tracks origin/<branch>")
         _ = try await GitService.run(["checkout", "-q", "--detach"], at: repository.path)
         let detachedHead = try await GitService.run(["rev-parse", "HEAD"], at: repository.path)
         local = try await InspectorService.localGit(at: repository.path)
@@ -713,6 +730,34 @@ enum InspectorTests {
         try require(ComparisonBranch(reference: "refs/remotes/origin/release/1.0").hostedName == "release/1.0"
                     && ComparisonBranch(reference: "refs/heads/feature/x").hostedName == "feature/x",
                     "Target the branch name without its remote")
+        func forkSnapshot(_ remotes: [(String, String)], push: String, hosting host: String = "github.com") -> LocalGitSnapshot {
+            let configuration = GitRemoteConfiguration(entries: remotes.map { (key: "remote.\($0.0).url", value: "git@\(host):\($0.1).git") })
+            return LocalGitSnapshot(root: "/r", branch: GitBranch(name: "x"), headSHA: "abc", changes: [],
+                                    tracking: GitTracking(upstream: "\(push)/x", tracksSameBranch: true),
+                                    webAddress: configuration.primaryURL.flatMap(RemoteWebAddress.init(remoteURL:)),
+                                    pushWebAddress: configuration.url(ofRemote: push).flatMap(RemoteWebAddress.init(remoteURL:)),
+                                    remoteWebAddresses: configuration.webAddresses)
+        }
+        let originFork = forkSnapshot([("origin", "me/app"), ("upstream", "team/app")], push: "origin")
+        let originTeam = forkSnapshot([("origin", "team/app"), ("fork", "me/app")], push: "fork")
+        let gitlabOriginFork = forkSnapshot([("origin", "me/app"), ("upstream", "team/app")], push: "origin", hosting: "gitlab.com")
+        let slashRemote = forkSnapshot([("origin", "me/app"), ("team/main", "team/app")], push: "origin")
+        try require(originFork.newChangeRequestURL(into: ComparisonBranch(reference: "refs/remotes/upstream/main"))?.absoluteString
+                        == "https://github.com/team/app/compare/main...me:x?expand=1"
+                    && originFork.newChangeRequestURL(into: ComparisonBranch(reference: "refs/remotes/upstream/release/1.0"))?.absoluteString
+                        == "https://github.com/team/app/compare/release/1.0...me:x?expand=1"
+                    && originFork.newChangeRequestURL(into: ComparisonBranch(reference: "refs/remotes/origin/main"))?.absoluteString
+                        == "https://github.com/me/app/compare/main...x?expand=1"
+                    && originFork.newChangeRequestURL(into: ComparisonBranch(reference: "refs/heads/main"))?.absoluteString
+                        == "https://github.com/me/app/compare/main...x?expand=1"
+                    && originTeam.newChangeRequestURL(into: ComparisonBranch(reference: "refs/remotes/origin/main"))?.absoluteString
+                        == "https://github.com/team/app/compare/main...me:x?expand=1"
+                    && slashRemote.newChangeRequestURL(into: ComparisonBranch(reference: "refs/remotes/team/main/dev"))?.absoluteString
+                        == "https://github.com/team/app/compare/dev...me:x?expand=1",
+                    "A pull request targets the repository of the base's remote and names the fork's owner when the branch is pushed elsewhere")
+        try require(gitlabOriginFork.newChangeRequestURL(into: ComparisonBranch(reference: "refs/remotes/upstream/main"))?.absoluteString
+                        == "https://gitlab.com/me/app/-/merge_requests/new?merge_request%5Bsource_branch%5D=x&merge_request%5Btarget_branch%5D=main",
+                    "A merge request opens on the source project with the base branch without its remote")
         print("PASS change request pages for GitHub and GitLab remotes")
     }
 }

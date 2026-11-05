@@ -69,7 +69,7 @@ enum InspectorService {
                                 isTruncated: status.isTruncated ? true : nil,
                                 containsStagedChanges: status.isTruncated || status.changes.contains(where: \.isStaged), tracking: tracking,
                                 webAddress: remotes.primaryURL.flatMap(RemoteWebAddress.init(remoteURL:)),
-                                pushWebAddress: pushRemoteURL.flatMap(RemoteWebAddress.init(remoteURL:)))
+                                pushWebAddress: pushRemoteURL.flatMap(RemoteWebAddress.init(remoteURL:)), remoteWebAddresses: remotes.webAddresses)
     }
 
     @concurrent private static func status(at root: String, paths: [String]?, configuration: GitFilterGuard.Configuration) async throws -> GitStatus {
@@ -85,7 +85,8 @@ enum InspectorService {
     }
 
     @concurrent static func perform(_ action: GitAction, at root: String) async throws {
-        _ = try await GitService.run(action.arguments, at: root, timeout: action.timeout, overflow: .discard)
+        _ = try await CommandRunner.run(URL(fileURLWithPath: "/usr/bin/git"), action.arguments, at: root, timeout: action.timeout,
+                                        limit: 0, readOnly: false, overflow: .discard)
     }
 
     @concurrent static func diff(_ change: GitChange, at root: String,

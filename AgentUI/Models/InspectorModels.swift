@@ -272,6 +272,11 @@ struct ComparisonBranch: Codable, Hashable, Identifiable, Sendable {
         let parts = name.split(separator: "/", maxSplits: 1)
         return reference.hasPrefix("refs/remotes/") && parts.count == 2 ? String(parts[1]) : name
     }
+
+    func remote(among names: some Sequence<String>) -> String? {
+        guard reference.hasPrefix("refs/remotes/") else { return nil }
+        return names.filter { name.hasPrefix($0 + "/") && name.count > $0.count + 1 }.max { $0.count < $1.count }
+    }
 }
 
 struct GitBranchList: Codable, Equatable, Sendable {
@@ -305,6 +310,7 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
     var tracking: GitTracking?
     var webAddress: RemoteWebAddress?
     var pushWebAddress: RemoteWebAddress?
+    var remoteWebAddresses: [String: RemoteWebAddress]?
 
     var omission: WorkingTreeOmission { WorkingTreeOmission(count: omittedChanges, isTruncated: isTruncated == true) }
     var hasStagedChanges: Bool { containsStagedChanges ?? changes.contains(where: \.isStaged) }
@@ -313,6 +319,15 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
     var push: GitAction? {
         guard headSHA != nil, let branch, !branch.isDetached else { return nil }
         return tracking?.push(branch: branch.name)
+    }
+
+    func newChangeRequestURL(into base: ComparisonBranch) -> URL? {
+        guard let branch, !branch.isDetached else { return nil }
+        let addresses = remoteWebAddresses ?? [:]
+        let remote = base.remote(among: addresses.keys)
+        let baseBranch = remote.map { String(base.name.dropFirst($0.count + 1)) } ?? base.hostedName
+        let target = remote.flatMap { addresses[$0] } ?? webAddress
+        return target?.newChangeRequestURL(branch: tracking?.remoteBranch(for: branch.name) ?? branch.name, base: baseBranch, from: pushWebAddress)
     }
 
     func limited(to changes: [GitChange], omitting omitted: Int) -> LocalGitSnapshot {
@@ -349,7 +364,7 @@ enum GitHosting: String, Codable, Sendable {
     case github, gitlab
 
     init(remoteURL: String) {
-        self = Self(host: Self.host(of: remoteURL)) ?? .github
+        self = RemoteWebAddress(remoteURL: remoteURL)?.hosting ?? .github
     }
 
     init?(host: String) {
@@ -373,13 +388,6 @@ enum GitHosting: String, Codable, Sendable {
         }
     }
 
-    var changeRequestTitle: String {
-        switch self {
-        case .github: String(localized: "Pull request")
-        case .gitlab: String(localized: "Merge request")
-        }
-    }
-
     var changeRequestPrefix: String {
         switch self {
         case .github: "#"
@@ -387,25 +395,53 @@ enum GitHosting: String, Codable, Sendable {
         }
     }
 
-    var runsTitle: String {
+    var changeRequestChecksTitle: LocalizedStringResource {
         switch self {
-        case .github: String(localized: "Actions")
-        case .gitlab: String(localized: "Pipelines")
+        case .github: "Checks for this pull request"
+        case .gitlab: "Checks for this merge request"
         }
     }
 
-    var noRunsMessage: String {
+    var remoteCommitNotice: LocalizedStringResource {
         switch self {
-        case .github: String(localized: "No GitHub Actions runs for this commit.")
-        case .gitlab: String(localized: "No GitLab pipelines for this commit.")
+        case .github: "These checks are for the remote commit of the pull request, which differs from the local HEAD."
+        case .gitlab: "These checks are for the remote commit of the merge request, which differs from the local HEAD."
         }
     }
 
-    private static func host(of remoteURL: String) -> String {
-        let value = remoteURL.lowercased()
-        if let host = URL(string: value)?.host { return host }
-        let address = value.split(separator: ":").first.map(String.init) ?? value
-        return address.split(separator: "@").last.map(String.init) ?? address
+    var changeRequestUnavailableTitle: LocalizedStringResource {
+        switch self {
+        case .github: "Pull request unavailable"
+        case .gitlab: "Merge request unavailable"
+        }
+    }
+
+    var noChangeRequestMessage: LocalizedStringResource {
+        switch self {
+        case .github: "No pull request for this branch."
+        case .gitlab: "No merge request for this branch."
+        }
+    }
+
+    var runsTitle: LocalizedStringResource {
+        switch self {
+        case .github: "Actions · Local HEAD"
+        case .gitlab: "Pipelines · Local HEAD"
+        }
+    }
+
+    var runsUnavailableTitle: LocalizedStringResource {
+        switch self {
+        case .github: "Couldn’t load Actions"
+        case .gitlab: "Couldn’t load pipelines"
+        }
+    }
+
+    var noRunsMessage: LocalizedStringResource {
+        switch self {
+        case .github: "No GitHub Actions runs for this commit."
+        case .gitlab: "No GitLab pipelines for this commit."
+        }
     }
 }
 

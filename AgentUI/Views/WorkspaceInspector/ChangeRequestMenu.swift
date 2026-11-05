@@ -22,7 +22,7 @@ struct ChangeRequestMenu: View {
     }
 
     private var browserHelp: LocalizedStringKey {
-        guard tracking?.isPublished == true else { return "Push the branch first" }
+        guard tracking?.isPublished == true else { return "Publish the branch first" }
         return tracking?.hasUnpushedCommits == true ? "Some local commits aren’t pushed yet" : "Open in Browser"
     }
 
@@ -54,8 +54,7 @@ struct ChangeRequestMenu: View {
                         source.runAgent(prompt: \.changeRequest, name: terminalName, in: worktree)
                     }
                 }
-                if let url = model.local?.webAddress?.newChangeRequestURL(branch: tracking?.remoteBranch(for: branch) ?? branch, base: base.hostedName,
-                                                                        from: model.local?.pushWebAddress) {
+                if let url = model.local?.newChangeRequestURL(into: base) {
                     Button("Open in Browser", systemImage: "safari") { openURL(url) }
                         .disabled(tracking?.isPublished != true)
                         .help(browserHelp)

@@ -13,6 +13,6 @@ struct GitActionButton: View {
         } label: {
             Label { Text(action.title) } icon: { Image(systemName: action.symbol) }
         }
-        .help(Text(action.title))
+        .help(Text(action.help))
     }
 }
