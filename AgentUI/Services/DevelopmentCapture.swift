@@ -3,7 +3,6 @@ import AppKit
 import SwiftUI
 import SwiftTerm
 
-/// Test-only operations, enabled only for an explicitly isolated workspace.
 @MainActor enum DevelopmentCapture {
     static func execute(_ request: BridgeRequest, store: WorkspaceStore) async throws -> BridgeResponse {
         switch request.action {

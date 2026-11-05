@@ -2,12 +2,12 @@ import SwiftUI
 import SwiftTerm
 
 struct MobileTerminalViewport: UIViewRepresentable {
+    let session: MobileTerminalSession
     let terminal: TerminalView
     let canvasSize: CGSize
-    let fit: (CGSize) -> Void
 
     func makeUIView(context: Context) -> MobileTerminalScrollView {
-        MobileTerminalScrollView(terminal: terminal, fit: fit)
+        MobileTerminalScrollView(session: session, terminal: terminal)
     }
 
     func updateUIView(_ uiView: MobileTerminalScrollView, context: Context) {

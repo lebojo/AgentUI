@@ -6,7 +6,7 @@ private struct Viewport: View {
 
     var body: some View {
         if let view = session.view {
-            MobileTerminalViewport(terminal: view, canvasSize: session.canvasSize, fit: session.fit)
+            MobileTerminalViewport(session: session, terminal: view, canvasSize: session.canvasSize)
         }
     }
 }

@@ -3,16 +3,16 @@ import SwiftTerm
 
 final class MobileTerminalScrollView: UIScrollView, UIScrollViewDelegate {
     private let canvas = UIView()
+    private let session: MobileTerminalSession
     private let terminal: TerminalView
-    private let fit: (CGSize) -> Void
     private var canvasSize = CGSize.zero
     private var lastViewport = CGSize.zero
     private var followsFit = true
     private var fitting = false
 
-    init(terminal: TerminalView, fit: @escaping (CGSize) -> Void) {
+    init(session: MobileTerminalSession, terminal: TerminalView) {
+        self.session = session
         self.terminal = terminal
-        self.fit = fit
         super.init(frame: .zero)
         delegate = self
         maximumZoomScale = 3
@@ -48,7 +48,7 @@ final class MobileTerminalScrollView: UIScrollView, UIScrollViewDelegate {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        if !isTracking { fit(bounds.size) }
+        if !isTracking { session.fit(bounds.size) }
         guard canvasSize.width > 0, bounds.width > 0 else { return }
         let scale = min(1, bounds.width / canvasSize.width)
         if bounds.size != lastViewport || abs(minimumZoomScale - scale) > 0.001 {
@@ -65,7 +65,7 @@ final class MobileTerminalScrollView: UIScrollView, UIScrollViewDelegate {
     }
 
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { canvas }
-    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { fit(bounds.size) }
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { session.fit(bounds.size) }
     func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) { followsFit = false }
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
         if !fitting { followsFit = abs(zoomScale - minimumZoomScale) < 0.01 }
