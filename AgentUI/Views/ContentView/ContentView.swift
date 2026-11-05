@@ -12,6 +12,8 @@ struct ContentView: View {
 
     @Bindable var store: WorkspaceStore
 
+    let gitActionQueues: GitActionQueues
+
     var body: some View {
         WorkspaceSplitView(inspectorVisible: $inspectorVisible) {
             WorkspaceSidebar()
@@ -28,7 +30,7 @@ struct ContentView: View {
             }
             .disabled(store.isReadOnly)
         } inspector: {
-            WorkspaceInspector(context: store.selectedContext, source: LocalInspectorSource(store: store, settings: settings))
+            WorkspaceInspector(context: store.selectedContext, source: LocalInspectorSource(store: store, settings: settings, gitActionQueues: gitActionQueues))
                 .disabled(store.isReadOnly)
         }
         .environment(\.workspaceVisible, visibility.isVisible)

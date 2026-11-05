@@ -4,7 +4,7 @@ struct InspectorContents: View {
     @Environment(\.workspaceVisible) private var workspaceVisible
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var model = InspectorStore()
+    @State private var model: InspectorStore
     @State private var previews = InspectorPreviews()
     @State private var refresh = 0
 
@@ -38,5 +38,12 @@ struct InspectorContents: View {
                                 readLocal: { [source] in try await source.localGit(at: $0) },
                                 readRemote: { [source] in try await source.remote($0) })
         }
+    }
+
+    init(context: TerminalContext, tab: InspectorTab, source: any InspectorSource) {
+        self.context = context
+        self.tab = tab
+        self.source = source
+        _model = State(initialValue: source.gitActionQueues.map(InspectorStore.init(actionQueues:)) ?? InspectorStore())
     }
 }

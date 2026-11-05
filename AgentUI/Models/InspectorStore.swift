@@ -7,8 +7,7 @@ import Observation
     }
 
     var comparisonBase: ComparisonBranch?
-    var commitTitle = ""
-    var commitMessage = ""
+    private(set) var actions: GitActionQueue?
     private(set) var local: LocalGitSnapshot?
     private(set) var changeTrees = GitChangeTrees()
     private(set) var remote: RemoteSnapshot?
@@ -18,10 +17,7 @@ import Observation
     private(set) var lacksChangeRequest = false
     private(set) var localError: String?
     private(set) var remoteError: String?
-    private(set) var pendingAction: GitAction?
-    var actionFailure: GitActionFailure?
-    @ObservationIgnored private var queuedActions: [CheckedContinuation<Bool, Never>] = []
-    @ObservationIgnored private var runningAction: Task<Void, any Error>?
+    @ObservationIgnored private let actionQueues: GitActionQueues
     @ObservationIgnored private var path: String?
     @ObservationIgnored private var reloadTrigger: AsyncStream<Void>.Continuation?
     @ObservationIgnored private var generation = UUID()
@@ -33,6 +29,27 @@ import Observation
     typealias LocalQuery = @Sendable (String) async throws -> LocalGitSnapshot
     typealias RemoteQuery = @Sendable (LocalGitSnapshot) async throws -> RemoteSnapshot
     typealias GitCommand = (GitAction, String) async throws -> Void
+
+    init(actionQueues: GitActionQueues = GitActionQueues()) {
+        self.actionQueues = actionQueues
+    }
+
+    var commitTitle: String {
+        get { actions?.commitTitle ?? "" }
+        set { actions?.commitTitle = newValue }
+    }
+
+    var commitMessage: String {
+        get { actions?.commitMessage ?? "" }
+        set { actions?.commitMessage = newValue }
+    }
+
+    var pendingAction: GitAction? { actions?.pendingAction }
+
+    var actionFailure: GitActionFailure? {
+        get { actions?.failure }
+        set { actions?.failure = newValue }
+    }
 
     private var currentKey: String? {
         branchKey.map { $0 + "|" + (local?.headSHA ?? "") }
@@ -57,7 +74,6 @@ import Observation
             changeTrees = GitChangeTrees()
             remoteKey = nil; remoteDate = nil
             lacksChangeRequest = false; comparisonBase = nil
-            commitTitle = ""; commitMessage = ""
         }
         localLoading = false; remoteLoading = false
         showsNextLocalLoad = true
@@ -90,36 +106,15 @@ import Observation
     }
 
     @discardableResult func perform(_ action: GitAction, at root: String, run: @escaping GitCommand) async -> Bool {
-        if pendingAction != nil {
-            let admitted = await withCheckedContinuation { queuedActions.append($0) }
-            guard admitted else { return false }
-        }
-        pendingAction = action
-        defer {
-            reload(remote: action.updatesRemote)
-            if queuedActions.isEmpty { pendingAction = nil } else { queuedActions.removeFirst().resume(returning: true) }
-        }
-        guard !Task.isCancelled else { return false }
-        let running = Task { try await run(action, root) }
-        runningAction = running
-        defer { runningAction = nil }
-        do {
-            try await withTaskCancellationHandler { try await running.value } onCancel: { running.cancel() }
-            if let actionFailure, action.retries(actionFailure.action) { self.actionFailure = nil }
-            return true
-        } catch is CancellationError {
-            return false
-        } catch {
-            actionFailure = GitActionFailure(action: action, error: error.localizedDescription)
-            return false
-        }
+        let queue = actionQueues.queue(at: root)
+        actions = queue
+        let succeeded = await queue.perform(action) { try await run(action, root) }
+        reload(remote: action.updatesRemote)
+        return succeeded
     }
 
     func cancelActions() {
-        let queued = queuedActions
-        queuedActions = []
-        queued.forEach { $0.resume(returning: false) }
-        runningAction?.cancel()
+        actions?.cancel()
     }
 
     private func localLoop(path: String, token: UUID, changes: AsyncStream<Void>,
@@ -133,6 +128,7 @@ import Observation
                 let trees = snapshot.changes == local?.changes ? changeTrees : await GitChangeTrees.build(snapshot)
                 guard !Task.isCancelled, generation == token else { break }
                 let oldKey = currentKey, oldBranchKey = branchKey
+                actions = actionQueues.queue(at: snapshot.root)
                 local = snapshot
                 changeTrees = trees
                 localError = nil

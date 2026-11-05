@@ -3,6 +3,7 @@ import Foundation
 @MainActor protocol InspectorSource: Sendable {
     var canOpenLocalFiles: Bool { get }
     var canWriteRepository: Bool { get }
+    var gitActionQueues: GitActionQueues? { get }
     func openLocalFile(_ url: URL)
     func revealLocalFile(_ url: URL)
     func children(at url: URL) async throws -> ExplorerListing
@@ -25,6 +26,7 @@ extension InspectorSource {
     func openLocalFile(_ url: URL) {}
     func revealLocalFile(_ url: URL) {}
     var canWriteRepository: Bool { false }
+    var gitActionQueues: GitActionQueues? { nil }
     func perform(_ action: GitAction, at root: String) async throws { throw CocoaError(.featureUnsupported) }
     func runAgent(_ request: AgentRequest, name: String, in worktree: InspectedWorktree) {}
 }

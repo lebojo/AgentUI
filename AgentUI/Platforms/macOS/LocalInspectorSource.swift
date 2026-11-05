@@ -4,6 +4,7 @@ import AppKit
 @MainActor struct LocalInspectorSource: InspectorSource {
     let store: WorkspaceStore
     let settings: SettingsStore
+    let gitActionQueues: GitActionQueues?
 
     var canOpenLocalFiles: Bool { true }
     var canWriteRepository: Bool { true }

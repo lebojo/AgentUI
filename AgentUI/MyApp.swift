@@ -69,6 +69,7 @@ struct AgentUIApplication: App {
     @State private var visibility = AppVisibility()
     @State private var host = LocalHost()
     @State private var installedAgents = InstalledAgents()
+    @State private var gitActionQueues = GitActionQueues()
 
     init() {
         let store = WorkspaceStore()
@@ -78,7 +79,7 @@ struct AgentUIApplication: App {
 
     var body: some Scene {
         Window("AgentUI", id: "workspace") {
-            ContentView(store: store)
+            ContentView(store: store, gitActionQueues: gitActionQueues)
                 .environment(store)
                 .environment(floating)
                 .environment(usage)

@@ -116,6 +116,28 @@ import Foundation
         try CoreTests.require(!queuedPushResult && !pushed && queue.actionFailure == nil, "Cancelling also drops the queued Git actions")
         print("PASS cancelled Git action")
 
+        let sharedQueues = GitActionQueues()
+        let leaving = InspectorStore(actionQueues: sharedQueues), returning = InspectorStore(actionQueues: sharedQueues)
+        let elsewhere = InspectorStore(actionQueues: sharedQueues)
+        let sharedRunning = Task {
+            await leaving.perform(.stageAll, at: repository.path) { _, _ in try await Task.sleep(for: .seconds(600)) }
+        }
+        try await wait(until: { leaving.pendingAction == .stageAll }, "A Git action starts in the first inspector")
+        leaving.commitTitle = "Draft"
+        var ranConcurrently = false
+        let sharedWaiting = Task {
+            await returning.perform(.unstageAll, at: repository.path) { _, _ in ranConcurrently = true }
+        }
+        let otherRepository = await elsewhere.perform(.stageAll, at: root.path) { _, _ in }
+        try await Task.sleep(for: .milliseconds(100))
+        try CoreTests.require(returning.pendingAction == .stageAll && returning.commitTitle == "Draft" && !ranConcurrently && otherRepository,
+                              "Inspectors of the same repository share its running Git action, queue and draft; other repositories run on their own")
+        returning.cancelActions()
+        let sharedResults = await [sharedRunning.value, sharedWaiting.value]
+        try CoreTests.require(sharedResults == [false, false] && !ranConcurrently && leaving.pendingAction == nil,
+                              "Cancelling from another inspector stops the shared action and its queue")
+        print("PASS Git actions shared by repository")
+
         let lock = repository.appendingPathComponent("index.lock")
         let cleanup = "touch index.lock; trap 'rm -f index.lock; exit 143' TERM; while true; do sleep 0.05; done"
         let locking = Task {
