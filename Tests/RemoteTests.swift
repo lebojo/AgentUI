@@ -163,6 +163,15 @@ import Foundation
         let transportedTracking = try RemoteReply.success(tracked).decode(LocalGitSnapshot.self)
         try require(transportedTracking == tracked && legacySnapshot.tracking == GitTracking(upstream: "origin/feature", ahead: 2) && legacySnapshot.tracking?.isPublished == false,
                     "Branch tracking survives mobile transport and older payloads without the same-branch flag still decode")
+        let address = #"{"scheme":"https","host":"github.com","path":"team/app"}"#
+        let legacyAddresses = Data(#"{"root":"/r","changes":[],"omittedChanges":0,"webAddress":\#(address),"pushWebAddress":\#(address),"remoteWebAddresses":{"origin":\#(address)}}"#.utf8)
+        let addressed = try JSONDecoder().decode(LocalGitSnapshot.self, from: legacyAddresses)
+        var named = addressed
+        named.primaryRemote = "origin"
+        named.pushRemote = "origin"
+        try require(addressed.webAddress == nil && addressed.remoteWebAddresses?["origin"] != nil
+                        && named.webAddress == addressed.remoteWebAddresses?["origin"] && named.pushWebAddress == named.webAddress,
+                    "Older payloads with stored web addresses still decode, and the addresses derive from the remote names")
         print("PASS GitHub and GitLab inspector round trip")
 
         let rejection = try JSONEncoder().encode(RemoteRejection("Versions incompatibles."))

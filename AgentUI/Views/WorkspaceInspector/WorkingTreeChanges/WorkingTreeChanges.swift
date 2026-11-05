@@ -7,13 +7,14 @@ struct WorkingTreeChanges: View {
     let hasStagedChanges: Bool
     let omission: WorkingTreeOmission
     let push: GitAction?
+    let republish: GitAction?
     let upstreamIsGone: Bool
     let source: any InspectorSource
 
     var body: some View {
         if source.canWriteRepository {
             GitCommitComposer(root: root, hasStagedChanges: hasStagedChanges, hasChanges: hasChanges,
-                              push: push, upstreamIsGone: upstreamIsGone, source: source)
+                              push: push, republish: republish, upstreamIsGone: upstreamIsGone, source: source)
         }
         if !trees.staged.isEmpty {
             GitChangeList(root: root, scope: .staged, outline: trees.staged, omitted: 0, source: source)

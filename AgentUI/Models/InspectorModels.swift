@@ -170,10 +170,15 @@ struct GitTracking: Codable, Equatable, Sendable {
     var hasUnpushedCommits: Bool { isPublished && ahead > 0 }
 
     func push(branch: String) -> GitAction? {
-        if goneUpstream != nil { return mergeState == .merged ? nil : remote.map { .publish(remote: $0, branch: branch) } }
+        guard goneUpstream == nil else { return nil }
         if upstream != nil, let namedUpstream { return ahead > 0 ? .pushUpstream(namedUpstream) : nil }
         guard isPublished else { return remote.map { .publish(remote: $0, branch: branch) } }
         return ahead > 0 ? .push : nil
+    }
+
+    func republish(branch: String) -> GitAction? {
+        guard goneUpstream != nil, mergeState == .unmerged || mergeState == .unknown else { return nil }
+        return remote.map { .republish(remote: $0, branch: branch) }
     }
 
     func remoteBranch(for branch: String) -> String {
@@ -197,11 +202,14 @@ struct GitRemoteConfiguration: Equatable, Sendable {
     private(set) var remotes: [GitRemote] = []
     private var values: [String: String] = [:]
 
-    var primaryURL: String? { (remotes.first { $0.name == "origin" } ?? remotes.first)?.url }
+    var primaryURL: String? { primaryRemote?.url }
+    var primaryName: String? { primaryRemote?.name }
     var names: [String] { remotes.map(\.name) }
     var webAddresses: [String: RemoteWebAddress] {
         remotes.reduce(into: [:]) { addresses, remote in addresses[remote.name] = RemoteWebAddress(remoteURL: remote.url) }
     }
+
+    private var primaryRemote: GitRemote? { remotes.first { $0.name == "origin" } ?? remotes.first }
 
     func pushURL(for branch: String) -> String? {
         pushRemote(for: branch).flatMap(url(ofRemote:))
@@ -308,17 +316,22 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
     var isTruncated: Bool?
     var containsStagedChanges: Bool?
     var tracking: GitTracking?
-    var webAddress: RemoteWebAddress?
-    var pushWebAddress: RemoteWebAddress?
     var remoteWebAddresses: [String: RemoteWebAddress]?
+    var primaryRemote: String?
+    var pushRemote: String?
 
     var omission: WorkingTreeOmission { WorkingTreeOmission(count: omittedChanges, isTruncated: isTruncated == true) }
     var hasStagedChanges: Bool { containsStagedChanges ?? changes.contains(where: \.isStaged) }
     var stagedChanges: [GitChange] { changes.filter(\.isStaged) }
+    var webAddress: RemoteWebAddress? { primaryRemote.flatMap { remoteWebAddresses?[$0] } }
+    var pushWebAddress: RemoteWebAddress? { pushRemote.flatMap { remoteWebAddresses?[$0] } }
     var unstagedChanges: [GitChange] { changes.filter(\.isUnstaged) }
-    var push: GitAction? {
+    var push: GitAction? { pushableBranch.flatMap { tracking?.push(branch: $0) } }
+    var republish: GitAction? { pushableBranch.flatMap { tracking?.republish(branch: $0) } }
+
+    private var pushableBranch: String? {
         guard headSHA != nil, let branch, !branch.isDetached else { return nil }
-        return tracking?.push(branch: branch.name)
+        return branch.name
     }
 
     func newChangeRequestURL(into base: ComparisonBranch) -> URL? {

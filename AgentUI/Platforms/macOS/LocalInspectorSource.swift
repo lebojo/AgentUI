@@ -38,8 +38,8 @@ import AppKit
         try store.resume(conversation, projectID: context.project.id, worktreeID: context.worktree.id)
     }
     func perform(_ action: GitAction, at root: String) async throws { try await InspectorService.perform(action, at: root) }
-    func runAgent(prompt: KeyPath<AgentPrompts, String>, name: String, in worktree: InspectedWorktree) {
-        store.runAgent(prompt: settings.prompts[keyPath: prompt], name: name, projectID: worktree.projectID, worktreeID: worktree.worktreeID,
+    func runAgent(_ request: AgentRequest, name: String, in worktree: InspectedWorktree) {
+        store.runAgent(prompt: request.prompt(from: settings.prompts), name: name, projectID: worktree.projectID, worktreeID: worktree.worktreeID,
                        launch: settings.agentLaunch)
     }
 }

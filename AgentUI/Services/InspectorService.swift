@@ -62,14 +62,13 @@ enum InspectorService {
                                                                      remoteNames: remotes.names)
             }
         }
-        let pushRemoteURL = tracking?.namedUpstream.flatMap { remotes.url(ofRemote: $0.remote) } ?? publishedBranch.flatMap(remotes.pushURL(for:))
+        let pushRemote = tracking?.namedUpstream?.remote ?? publishedBranch.flatMap(remotes.pushRemote(for:))
         let shown = Array(status.changes.prefix(LocalGitSnapshot.changeLimit))
         return LocalGitSnapshot(root: root, branch: branch, headSHA: status.headSHA, changes: shown,
                                 omittedChanges: status.changes.count - shown.count + (status.isTruncated ? 1 : 0),
                                 isTruncated: status.isTruncated ? true : nil,
                                 containsStagedChanges: status.isTruncated || status.changes.contains(where: \.isStaged), tracking: tracking,
-                                webAddress: remotes.primaryURL.flatMap(RemoteWebAddress.init(remoteURL:)),
-                                pushWebAddress: pushRemoteURL.flatMap(RemoteWebAddress.init(remoteURL:)), remoteWebAddresses: remotes.webAddresses)
+                                remoteWebAddresses: remotes.webAddresses, primaryRemote: remotes.primaryName, pushRemote: pushRemote)
     }
 
     @concurrent private static func status(at root: String, paths: [String]?, configuration: GitFilterGuard.Configuration) async throws -> GitStatus {

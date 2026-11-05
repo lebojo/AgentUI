@@ -694,6 +694,16 @@
         }
       }
     },
+    "Publish Again" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Republier"
+          }
+        }
+      }
+    },
     "Publish the branch first" : {
       "localizations" : {
         "fr" : {
@@ -740,6 +750,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pousser cette branche vers une nouvelle branche %@/%@ et la suivre"
+          }
+        }
+      }
+    },
+    "Recreate the deleted %@/%@ branch from this branch and track it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recréer la branche supprimée %@/%@ à partir de cette branche et la suivre"
           }
         }
       }

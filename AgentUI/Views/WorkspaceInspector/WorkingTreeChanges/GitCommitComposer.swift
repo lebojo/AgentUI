@@ -8,6 +8,7 @@ struct GitCommitComposer: View {
     let hasStagedChanges: Bool
     let hasChanges: Bool
     let push: GitAction?
+    let republish: GitAction?
     let upstreamIsGone: Bool
     let source: any InspectorSource
 
@@ -36,12 +37,17 @@ struct GitCommitComposer: View {
                     Text("The remote branch was deleted")
                         .font(Typography.caption).foregroundStyle(Palette.textSecondary)
                         .lineLimit(1)
+                    if let republish {
+                        GitActionButton(action: republish, root: root, source: source)
+                            .buttonStyle(.borderless)
+                            .disabled(model.pendingAction != nil)
+                    }
                 }
                 Spacer(minLength: Spacing.xs)
                 if model.pendingAction != nil { ProgressView().controlSize(.small) }
             }
             Button {
-                if let worktree { source.runAgent(prompt: \.commit, name: String(localized: "Commits"), in: worktree) }
+                if let worktree { source.runAgent(.commit, name: String(localized: "Commits"), in: worktree) }
             } label: {
                 Label("Generate Commits with AI", systemImage: "sparkles")
             }

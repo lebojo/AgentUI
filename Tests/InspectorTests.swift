@@ -307,14 +307,30 @@ enum InspectorTests {
         try require(snapshot.push == .push && GitTracking(upstream: "origin/main", tracksSameBranch: true).push(branch: "main") == nil
                     && GitTracking(upstream: nil).push(branch: "main") == nil
                     && GitTracking(upstream: nil, remote: "fork").push(branch: "main") == .publish(remote: "fork", branch: "main")
-                    && GitTracking(upstream: nil, remote: "origin", goneUpstream: "origin/main", mergeState: .merged).push(branch: "main") == nil
-                    && GitTracking(upstream: nil, remote: "origin", goneUpstream: "origin/main", mergeState: .unmerged).push(branch: "main") == .publish(remote: "origin", branch: "main")
-                    && GitTracking(upstream: nil, remote: "origin", goneUpstream: "origin/main", mergeState: .unknown).push(branch: "main") == .publish(remote: "origin", branch: "main")
-                    && GitTracking(upstream: nil, remote: "origin", goneUpstream: "origin/main").push(branch: "main") == .publish(remote: "origin", branch: "main")
                     && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "abc", isDetached: true), headSHA: "abc", changes: [],
                                         tracking: GitTracking(upstream: nil)).push == nil
                     && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "main"), headSHA: nil, changes: [], tracking: GitTracking(upstream: nil)).push == nil,
-                    "Offer push for commits ahead or a branch without upstream that has a remote, and recreate a deleted upstream unless its work is merged")
+                    "Offer push for commits ahead or a branch without upstream that has a remote")
+        let gone = { (state: BranchMergeState?) in GitTracking(upstream: nil, remote: "origin", goneUpstream: "origin/main", mergeState: state) }
+        try require([BranchMergeState.merged, .unmerged, .unknown, nil].allSatisfy { gone($0).push(branch: "main") == nil },
+                    "A deleted remote branch never offers Push or Publish as the main action")
+        try require(gone(.merged).republish(branch: "main") == nil && gone(nil).republish(branch: "main") == nil
+                    && gone(.unmerged).republish(branch: "main") == .republish(remote: "origin", branch: "main")
+                    && gone(.unknown).republish(branch: "main") == .republish(remote: "origin", branch: "main")
+                    && GitTracking(upstream: nil, remote: "origin").republish(branch: "main") == nil
+                    && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "main"), headSHA: "abc", changes: [], tracking: gone(.unmerged)).republish
+                        == .republish(remote: "origin", branch: "main"),
+                    "Publish Again only recreates a deleted remote branch whose work isn't known to be merged")
+        try require(GitAction.republish(remote: "origin", branch: "main").arguments == GitAction.publish(remote: "origin", branch: "main").arguments
+                    && String(localized: GitAction.republish(remote: "origin", branch: "main").title) == "Publish Again"
+                    && String(localized: GitAction.republish(remote: "origin", branch: "main").help).contains("origin/main"),
+                    "Publish Again pushes like Publish and says which remote branch it recreates")
+        var prompts = AgentPrompts()
+        prompts.changeRequest = "Open the PR."
+        try require(AgentRequest.changeRequest(base: ComparisonBranch(reference: "refs/remotes/origin/develop")).prompt(from: prompts)
+                        == "Open the PR.\n\nBase branch: origin/develop"
+                    && AgentRequest.commit.prompt(from: prompts) == prompts.commit,
+                    "Asking the agent for a change request names the base chosen in Branch Comparison after the user's prompt")
         try require(String(localized: GitActionFailure(action: .stage(["docs/README.md"]), error: "boom").message) == "Couldn’t stage README.md: boom"
                     && String(localized: GitAction.stage(["a"]).accessibilityLabel(for: "a.txt")) == "Stage a.txt"
                     && String(localized: GitAction.stageAll.accessibilityLabel(for: "a.txt")) == "Stage All"
@@ -477,11 +493,11 @@ enum InspectorTests {
         _ = try await GitService.run(["push", "-q", "origin", "--delete", "feature"], at: repository.path)
         local = try await InspectorService.localGit(at: repository.path)
         try require(local.tracking?.goneUpstream == "origin/feature" && local.tracking?.upstream == nil
-                        && local.push == .publish(remote: "origin", branch: "feature"),
+                        && local.push == nil && local.republish == .republish(remote: "origin", branch: "feature"),
                     "A deleted upstream with commits outside the main branch can be published again")
         _ = try await GitService.run(["push", "-q", "origin", "HEAD:refs/heads/main"], at: repository.path)
         local = try await InspectorService.localGit(at: repository.path)
-        try require(local.tracking?.goneUpstream == "origin/feature" && local.push == nil,
+        try require(local.tracking?.goneUpstream == "origin/feature" && local.push == nil && local.republish == nil,
                     "A deleted upstream whose commits are merged into the main branch is never recreated")
         _ = try await GitService.run(["push", "-q", "origin", "HEAD:refs/heads/bugfix/fix-123"], at: repository.path)
         _ = try await GitService.run(["checkout", "-q", "-b", "fix", "--track", "origin/bugfix/fix-123"], at: repository.path)
@@ -734,9 +750,7 @@ enum InspectorTests {
             let configuration = GitRemoteConfiguration(entries: remotes.map { (key: "remote.\($0.0).url", value: "git@\(host):\($0.1).git") })
             return LocalGitSnapshot(root: "/r", branch: GitBranch(name: "x"), headSHA: "abc", changes: [],
                                     tracking: GitTracking(upstream: "\(push)/x", tracksSameBranch: true),
-                                    webAddress: configuration.primaryURL.flatMap(RemoteWebAddress.init(remoteURL:)),
-                                    pushWebAddress: configuration.url(ofRemote: push).flatMap(RemoteWebAddress.init(remoteURL:)),
-                                    remoteWebAddresses: configuration.webAddresses)
+                                    remoteWebAddresses: configuration.webAddresses, primaryRemote: configuration.primaryName, pushRemote: push)
         }
         let originFork = forkSnapshot([("origin", "me/app"), ("upstream", "team/app")], push: "origin")
         let originTeam = forkSnapshot([("origin", "team/app"), ("fork", "me/app")], push: "fork")

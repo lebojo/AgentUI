@@ -9,6 +9,7 @@ enum GitAction: Equatable, Sendable {
     case push
     case pushUpstream(GitUpstream)
     case publish(remote: String, branch: String)
+    case republish(remote: String, branch: String)
 
     var arguments: [String] {
         switch self {
@@ -20,7 +21,8 @@ enum GitAction: Equatable, Sendable {
             ["commit", "--message", title] + (message.isEmpty ? [] : ["--message", message])
         case .push: ["push"]
         case .pushUpstream(let upstream): ["push", "--", upstream.remote, "HEAD:refs/heads/" + upstream.branch]
-        case .publish(let remote, let branch): ["push", "--set-upstream", "--", remote, "HEAD:refs/heads/" + branch]
+        case .publish(let remote, let branch), .republish(let remote, let branch):
+            ["push", "--set-upstream", "--", remote, "HEAD:refs/heads/" + branch]
         }
     }
 
@@ -33,6 +35,7 @@ enum GitAction: Equatable, Sendable {
         case .commit: "Commit"
         case .push, .pushUpstream: "Push"
         case .publish: "Publish"
+        case .republish: "Publish Again"
         }
     }
 
@@ -41,6 +44,9 @@ enum GitAction: Equatable, Sendable {
         case .publish(let remote, let branch):
             LocalizedStringResource("Push this branch to a new \(remote)/\(branch) branch and track it",
                                     comment: "Help of the Publish button; the variables are a remote name and a branch name.")
+        case .republish(let remote, let branch):
+            LocalizedStringResource("Recreate the deleted \(remote)/\(branch) branch from this branch and track it",
+                                    comment: "Help of the Publish Again button; the variables are a remote name and a branch name.")
         default: title
         }
     }
@@ -55,7 +61,7 @@ enum GitAction: Equatable, Sendable {
         case .unstageAll: "Couldn’t unstage all changes"
         case .commit: "Couldn’t commit"
         case .push, .pushUpstream: "Couldn’t push"
-        case .publish(_, let branch):
+        case .publish(_, let branch), .republish(_, let branch):
             LocalizedStringResource("Couldn’t publish \(branch)", comment: "Title of a failed Git action; the variable is a branch name.")
         }
     }
@@ -73,21 +79,21 @@ enum GitAction: Equatable, Sendable {
         case .stage, .stageAll: "plus"
         case .unstage, .unstageAll: "minus"
         case .commit: "checkmark"
-        case .push, .pushUpstream, .publish: "arrow.up"
+        case .push, .pushUpstream, .publish, .republish: "arrow.up"
         }
     }
 
     var timeout: TimeInterval {
         switch self {
         case .commit: 3600
-        case .push, .pushUpstream, .publish: 900
+        case .push, .pushUpstream, .publish, .republish: 900
         default: 300
         }
     }
 
     var updatesRemote: Bool {
         switch self {
-        case .push, .pushUpstream, .publish: true
+        case .push, .pushUpstream, .publish, .republish: true
         default: false
         }
     }
