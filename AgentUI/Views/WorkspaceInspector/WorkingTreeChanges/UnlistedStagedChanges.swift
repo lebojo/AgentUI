@@ -6,15 +6,7 @@ struct UnlistedStagedChanges: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
-            HStack {
-                Text("Staged Changes").font(Typography.sectionTitle)
-                Spacer(minLength: Spacing.xs)
-                if source.canWriteRepository {
-                    GitActionButton(action: .unstageAll, root: root, source: source)
-                        .labelStyle(.titleOnly).buttonStyle(.borderless).font(Typography.caption)
-                }
-            }
-            .padding(.bottom, Spacing.xs)
+            GitChangeSectionHeader(title: "Staged Changes", action: GitChangeScope.staged.bulkAction, root: root, source: source)
             Text("Staged changes aren’t listed.")
                 .foregroundStyle(Palette.textSecondary).font(Typography.body)
         }

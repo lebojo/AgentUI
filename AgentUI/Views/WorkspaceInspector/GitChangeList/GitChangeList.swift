@@ -12,15 +12,8 @@ struct GitChangeList: View {
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: Spacing.xs) {
-            HStack {
-                Text(scope.title(count: outline.count + omitted)).font(Typography.sectionTitle)
-                Spacer(minLength: Spacing.xs)
-                if source.canWriteRepository, !outline.isEmpty, let action = scope.bulkAction {
-                    GitActionButton(action: action, root: root, source: source)
-                        .labelStyle(.titleOnly).buttonStyle(.borderless).font(Typography.caption)
-                }
-            }
-            .padding(.bottom, Spacing.xs)
+            GitChangeSectionHeader(title: scope.title(count: outline.count + omitted), action: outline.isEmpty ? nil : scope.bulkAction,
+                                   root: root, source: source)
             if outline.isEmpty {
                 Label { Text(scope.emptyTitle) } icon: { Image(systemName: "checkmark.circle") }
                     .foregroundStyle(Palette.textSecondary).font(Typography.body)
