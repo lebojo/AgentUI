@@ -447,6 +447,21 @@ import Foundation
         try await GitService.deleteBranch(checked!, at: project.path)
         print("PASS a branch deleted by someone else after its check counts as deleted")
 
+        let interrupted = try await GitService.createWorktree(project: project, branch: "cleanup/interrupted", root: root)
+        let interruptedCheck = try await GitService.deletion(of: "cleanup/interrupted", .merged(confirmed: nil), mergeCandidates: ["refs/heads/main"], at: project.path)
+        try await GitService.removeWorktree(project: project, path: interrupted.path)
+        _ = try await GitService.run(["config", "branch.cleanup/interrupted.remote", "origin"], at: project.path)
+        let cancelledDeletion = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            try await GitService.deleteBranch(interruptedCheck!, at: project.path)
+        }
+        let cancelledResult: Void? = try? await cancelledDeletion.value
+        let interruptedLeft = try await GitService.run(["branch", "--list", "cleanup/interrupted"], at: project.path)
+        let interruptedConfiguration = try await GitService.run(["config", "--get", "branch.cleanup/interrupted.remote"], at: project.path)
+        try require(cancelledResult == nil && !interruptedLeft.isEmpty && interruptedConfiguration == "origin",
+                    "A deletion whose branch lookup fails keeps the branch and its configuration and reports the failure")
+        _ = try await GitService.run(["branch", "-D", "cleanup/interrupted"], at: project.path)
+
         let leaving = try await GitService.createWorktree(project: project, branch: "cleanup/elsewhere", root: root)
         let leavingCheck = try await GitService.deletion(of: "cleanup/elsewhere", .merged(confirmed: nil), mergeCandidates: ["refs/heads/main"], at: project.path)
         try await GitService.removeWorktree(project: project, path: leaving.path)

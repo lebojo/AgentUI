@@ -70,12 +70,14 @@ enum GitService {
         }
         do {
             _ = try await run(deletion.arguments, at: path, timeout: 20)
-        } catch {
-            switch (deletion, await tip(of: deletion.name, at: path)) {
+        } catch let failure {
+            let currentTip: String?
+            do { currentTip = try await tip(of: deletion.name, at: path) } catch { throw failure }
+            switch (deletion, currentTip) {
             case (_, nil): break
             case (.unchanged(let name, let checkedTip), let currentTip?) where currentTip != checkedTip:
                 throw WorkspaceError(message: String(localized: "The branch “\(name)” changed after it was checked."))
-            default: throw error
+            default: throw failure
             }
         }
         if case .unchanged(let name, _) = deletion {
@@ -110,8 +112,9 @@ enum GitService {
         return listing.split(whereSeparator: \.isNewline).first { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }
     }
 
-    private static func tip(of branch: String, at path: String) async -> String? {
-        try? await run(["rev-parse", "--verify", "--quiet", "refs/heads/" + branch], at: path, timeout: 10)
+    private static func tip(of branch: String, at path: String) async throws -> String? {
+        let reference = "refs/heads/" + branch
+        return listedTip(of: reference, in: try await run(["for-each-ref", "--format=%(refname)%09%(objectname)", reference], at: path, timeout: 10))
     }
 
     static func hasLocalChanges(at path: String) async throws -> Bool {
