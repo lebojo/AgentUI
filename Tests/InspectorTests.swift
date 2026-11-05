@@ -91,6 +91,15 @@ enum InspectorTests {
                 try require(error.message.hasSuffix(expected), "A failing write reports its output when it has no error output, or its exit code: \(error.message)")
             }
         }
+        let stubborn = Task {
+            try await CommandRunner.run(shell, ["-c", "trap '' TERM; sleep 30"], at: root.path, timeout: 60, limit: 0, readOnly: false)
+        }
+        try await Task.sleep(for: .milliseconds(300))
+        let killedAt = ContinuousClock.now
+        CommandRunner.killAll()
+        let stubbornResult = await stubborn.result
+        try require((try? stubbornResult.get()) == nil && killedAt.duration(to: .now) < .seconds(1),
+                    "Quitting kills running commands at once, even those that ignore SIGTERM")
         try require(CommandRunner.ExitStatus(waitStatus: 256) == .exited(1) && CommandRunner.ExitStatus(waitStatus: 0) == .exited(0)
                         && CommandRunner.ExitStatus(waitStatus: 15) == .signalled(15),
                     "A wait status reads as an exit code or a signal")

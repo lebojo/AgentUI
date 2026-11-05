@@ -52,7 +52,7 @@ import AppKit
         return .terminateLater
     }
     func applicationWillTerminate(_ notification: Notification) {
-        CommandRunner.cancelAll()
+        CommandRunner.killAll()
         floating?.persist()
         store?.sessions.stopAll()
         bridge?.stop()

@@ -12,7 +12,7 @@ enum CommandRunner {
     private static let diagnosticTail = 16_384
     private static let terminationGrace: DispatchTimeInterval = .seconds(2)
 
-    static func cancelAll() { registry.cancelAll() }
+    static func killAll() { registry.killAll() }
 
     struct Output: Sendable {
         let data: Data
@@ -170,15 +170,15 @@ enum CommandRunner {
         var failed = false
     }
 
-    private enum StopReason { case cancelled, timeout, outputLimit, truncated, waitFailure }
+    private enum StopReason { case cancelled, quit, timeout, outputLimit, truncated, waitFailure }
 
     private final class Registry: Sendable {
         private let jobs = OSAllocatedUnfairLock<[UUID: Job]>(initialState: [:])
         func add(_ job: Job, id: UUID) { jobs.withLock { $0[id] = job } }
         func remove(_ id: UUID) { _ = jobs.withLock { $0.removeValue(forKey: id) } }
-        func cancelAll() {
+        func killAll() {
             let active = jobs.withLock { Array($0.values) }
-            active.forEach { $0.stop(.cancelled) }
+            active.forEach { $0.stop(.quit) }
         }
     }
 
@@ -241,7 +241,7 @@ enum CommandRunner {
                 stoppedAt = .now()
                 if let pid { kill(-pid, SIGTERM) }
             }
-            if reason == .waitFailure { killGroup() }
+            if reason == .quit || reason == .waitFailure { killGroup() }
         }
 
         func killIfStillRunning(after grace: DispatchTimeInterval) {
@@ -268,7 +268,7 @@ enum CommandRunner {
             finished = true
             pid = nil
             switch reason {
-            case .cancelled: throw CancellationError()
+            case .cancelled, .quit: throw CancellationError()
             case .timeout: throw ReadCommandError(message: String(localized: "The command didn’t respond in time. The operation was interrupted."))
             case .outputLimit: throw ReadCommandError(message: String(localized: "The output exceeds the display limit. The operation was interrupted."))
             case .waitFailure: throw ReadCommandError(message: String(localized: "Couldn’t follow the command. The operation was interrupted."))
