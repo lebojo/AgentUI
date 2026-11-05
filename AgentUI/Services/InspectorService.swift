@@ -58,7 +58,8 @@ enum InspectorService {
             }
             if tracking?.isPublished == false { tracking?.remote = remotes.pushRemote(for: publishedBranch) }
             if tracking?.goneUpstream != nil, paths == nil, let repository, let headSHA = status.headSHA {
-                tracking?.mergeState = await BranchMergeCache.shared.state(of: publishedBranch, headSHA: headSHA, in: repository, at: root)
+                tracking?.mergeState = await BranchMergeCache.shared.state(of: publishedBranch, headSHA: headSHA, in: repository, at: root,
+                                                                     remoteNames: remotes.names)
             }
         }
         let pushRemoteURL = tracking?.namedUpstream.flatMap { remotes.url(ofRemote: $0.remote) } ?? publishedBranch.flatMap(remotes.pushURL(for:))

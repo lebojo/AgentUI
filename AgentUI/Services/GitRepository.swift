@@ -69,7 +69,7 @@ struct GitRepository: Sendable {
         (path as NSString).isAbsolutePath ? URL(fileURLWithPath: path) : base.appendingPathComponent(path).standardizedFileURL
     }
 
-    private static func smallTextFile(_ url: URL) -> String? {
+    static func smallTextFile(_ url: URL) -> String? {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
         guard let data = try? handle.read(upToCount: 8192), data.count < 8192,

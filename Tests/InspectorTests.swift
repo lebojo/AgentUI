@@ -601,17 +601,23 @@ enum InspectorTests {
                                          return try await GitService.isMerged(branch, into: targets, at: path)
                                      })
         guard let found = GitRepository.containing(repository.path) else { throw WorkspaceError(message: "FAIL: missing repository") }
-        let first = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path)
-        let second = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path)
+        let first = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path, remoteNames: [])
+        let second = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path, remoteNames: [])
         let afterRepeat = await checks.value
         try require(first == .unmerged && second == .unmerged && afterRepeat == 1, "The merge state of a branch is computed once while nothing changes")
         _ = try await GitService.run(["branch", "-f", "main", "topic"], at: repository.path)
-        let landed = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path)
+        let landed = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path, remoteNames: [])
         let afterLanding = await checks.value
         try require(landed == .merged && afterLanding == 2, "Moving the main branch invalidates the cached merge state")
         _ = try await GitService.run(["branch", "-m", "main", "trunk"], at: repository.path)
-        let unknown = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path)
+        let unknown = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path, remoteNames: [])
         try require(unknown == .unknown, "Without a main branch, the merge state is unknown")
+        _ = try await GitService.run(["update-ref", "refs/remotes/origin/trunk", "trunk"], at: repository.path)
+        let withoutRemoteHead = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path, remoteNames: [])
+        _ = try await GitService.run(["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/trunk"], at: repository.path)
+        let withRemoteHead = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path, remoteNames: [])
+        try require(withoutRemoteHead == .unknown && withRemoteHead == .merged,
+                    "A remote and then its HEAD added after the merge state was cached are both noticed")
         print("PASS the merge state of a branch is cached until its references change")
     }
 

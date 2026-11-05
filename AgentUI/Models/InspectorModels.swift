@@ -198,6 +198,10 @@ struct GitRemoteConfiguration: Equatable, Sendable {
     private var values: [String: String] = [:]
 
     var primaryURL: String? { (remotes.first { $0.name == "origin" } ?? remotes.first)?.url }
+    var names: [String] { remotes.map(\.name) }
+    var webAddresses: [String: RemoteWebAddress] {
+        remotes.reduce(into: [:]) { addresses, remote in addresses[remote.name] = RemoteWebAddress(remoteURL: remote.url) }
+    }
 
     func pushURL(for branch: String) -> String? {
         pushRemote(for: branch).flatMap(url(ofRemote:))

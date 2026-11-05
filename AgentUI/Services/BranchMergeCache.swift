@@ -9,7 +9,6 @@ actor BranchMergeCache {
     private struct Key: Equatable {
         let branch: String
         let headSHA: String
-        let candidates: [String]
     }
 
     private struct Entry {
@@ -28,14 +27,18 @@ actor BranchMergeCache {
         self.merged = merged
     }
 
-    func state(of branch: String, headSHA: String, in repository: GitRepository, at root: String) async -> BranchMergeState {
-        guard let candidates = GitBranchProtection.mergeCandidates(of: repository) else { return .unknown }
-        let key = Key(branch: branch, headSHA: headSHA, candidates: candidates)
+    func state(of branch: String, headSHA: String, in repository: GitRepository, at root: String, remoteNames: [String]) async -> BranchMergeState {
+        let key = Key(branch: branch, headSHA: headSHA)
         if let entry = entries[root], entry.key == key, entry.stamps.allSatisfy({ FileStamp($0.key) == $0.value }) {
             return entry.state
         }
+        guard let candidates = GitBranchProtection.mergeCandidates(of: repository, remoteNames: remoteNames) else {
+            entries.removeValue(forKey: root)
+            return .unknown
+        }
         let common = repository.commonDirectory
-        var stamps = Self.stamps(of: ["config", "packed-refs"] + candidates, in: common)
+        let sources = ["config", "packed-refs", "reftable", "refs/remotes"] + GitBranchProtection.remoteHeadFiles(in: common, remoteNames: remoteNames)
+        var stamps = Self.stamps(of: sources + candidates, in: common)
         do {
             let found = try await targets(candidates, root)
             guard !found.isEmpty else { return remember(.unknown, for: key, stamps: stamps, at: root) }

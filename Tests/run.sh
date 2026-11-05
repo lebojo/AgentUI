@@ -26,7 +26,8 @@ xcrun swiftc "${swift_flags[@]}" \
   AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/WorkspaceStore.swift AgentUI/Extensions/Array+Moving.swift AgentUI/Models/SidebarFilter.swift AgentUI/Models/Removal.swift AgentUI/Models/SidebarTerminalBlock.swift AgentUI/Models/WorkInProgress.swift AgentUI/Models/AgentStatus.swift \
   AgentUI/Models/AgentConversation.swift AgentUI/Models/Subagent.swift \
   AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Models/DiscoveredWorktree.swift AgentUI/Models/RepositoryImport.swift AgentUI/Models/GitBranch.swift AgentUI/Models/WorktreeBranch.swift AgentUI/Services/DefaultBranch.swift AgentUI/Services/GitBranchProtection.swift AgentUI/Services/TerminalSessionsDelegate.swift AgentUI/Services/WorkspaceWriter.swift \
-  AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/GitConfiguration.swift \
+  AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/GitConfiguration.swift AgentUI/Services/GitFilterGuard.swift \
+  AgentUI/Models/InspectorModels.swift AgentUI/Models/GitAction.swift AgentUI/Models/RemoteWebAddress.swift AgentUI/Models/BranchMergeState.swift AgentUI/Models/GitDiff.swift \
   Tests/StoreTests.swift -o "$store_binary"
 "$store_binary"
 
