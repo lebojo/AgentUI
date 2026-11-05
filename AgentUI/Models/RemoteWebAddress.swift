@@ -12,24 +12,34 @@ struct RemoteWebAddress: Codable, Equatable, Sendable {
     var hosting: GitHosting? { GitHosting(host: host) }
     private var segments: [Substring] { path.split(separator: "/") }
 
+    private struct Location {
+        let webScheme: String?
+        let host: String
+        var port: Int?
+        let path: String
+    }
+
     init?(remoteURL: String) {
+        guard let location = Self.location(of: remoteURL), let scheme = location.webScheme else { return nil }
+        self.init(scheme: scheme, host: location.host, port: location.port, rawPath: location.path)
+    }
+
+    static func host(of remoteURL: String) -> String? {
+        location(of: remoteURL)?.host
+    }
+
+    private static func location(of remoteURL: String) -> Location? {
         let value = remoteURL.trimmingCharacters(in: .whitespacesAndNewlines)
         if value.contains("://") {
             guard let components = URLComponents(string: value), let scheme = components.scheme?.lowercased(),
-                  let host = components.host else { return nil }
-            if Self.webSchemes.contains(scheme) {
-                self.init(scheme: scheme, host: host, port: components.port, rawPath: components.path)
-            } else if Self.gitSchemes.contains(scheme) {
-                self.init(scheme: "https", host: host, port: nil, rawPath: components.path)
-            } else {
-                return nil
-            }
-        } else {
-            guard let colon = value.firstIndex(of: ":") else { return nil }
-            let address = value[..<colon]
-            guard !address.contains("/"), let host = address.split(separator: "@").last else { return nil }
-            self.init(scheme: "https", host: String(host), port: nil, rawPath: String(value[value.index(after: colon)...]))
+                  let host = components.host, !host.isEmpty else { return nil }
+            if webSchemes.contains(scheme) { return Location(webScheme: scheme, host: host, port: components.port, path: components.path) }
+            return Location(webScheme: gitSchemes.contains(scheme) ? "https" : nil, host: host, path: components.path)
         }
+        guard let colon = value.firstIndex(of: ":") else { return nil }
+        let address = value[..<colon]
+        guard !address.contains("/"), let host = address.split(separator: "@").last else { return nil }
+        return Location(webScheme: "https", host: String(host), path: String(value[value.index(after: colon)...]))
     }
 
     private init?(scheme: String, host: String, port: Int?, rawPath: String) {

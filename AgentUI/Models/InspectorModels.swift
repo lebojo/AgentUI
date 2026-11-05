@@ -178,6 +178,7 @@ struct GitTracking: Codable, Equatable, Sendable {
 
     func republish(branch: String) -> GitAction? {
         guard goneUpstream != nil, mergeState == .unmerged || mergeState == .unknown else { return nil }
+        if let namedUpstream { return .republish(remote: namedUpstream.remote, branch: namedUpstream.branch) }
         return remote.map { .republish(remote: $0, branch: branch) }
     }
 
@@ -376,7 +377,7 @@ enum GitHosting: String, Codable, Sendable {
     case github, gitlab
 
     init(remoteURL: String) {
-        self = RemoteWebAddress(remoteURL: remoteURL)?.hosting ?? .github
+        self = RemoteWebAddress.host(of: remoteURL).flatMap(GitHosting.init(host:)) ?? .github
     }
 
     init?(host: String) {

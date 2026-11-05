@@ -34,7 +34,7 @@ struct GitChangeList: View {
                 }
             }
             if omitted > 0 {
-                InspectorNotice(title: "Truncated List", message: "\(omitted) more changes not shown on this device", symbol: "ellipsis.circle")
+                InspectorNotice(title: "Truncated List", message: "\(omitted) more changes aren’t listed.", symbol: "ellipsis.circle")
             }
         }
         .onChange(of: outline, updateVisibleRows)

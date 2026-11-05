@@ -1495,46 +1495,6 @@
         }
       }
     },
-    "%lld more changes not shown on this device" : {
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld more change not shown on this device"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld more changes not shown on this device"
-                }
-              }
-            }
-          }
-        },
-        "fr" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld autre modification non affichée sur cet appareil"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld autres modifications non affichées sur cet appareil"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld more items not shown on this device" : {
       "localizations" : {
         "en" : {

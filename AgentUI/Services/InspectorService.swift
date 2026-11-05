@@ -52,7 +52,8 @@ enum InspectorService {
         var tracking = status.tracking
         if let publishedBranch, tracking != nil {
             tracking?.tracksSameBranch = remotes.tracksSameBranch(publishedBranch)
-            if tracking?.upstream != nil, tracking?.tracksSameBranch == false, let upstream = remotes.upstream(of: publishedBranch),
+            let tracksOtherBranch = tracking?.upstream != nil && tracking?.tracksSameBranch == false
+            if tracksOtherBranch || tracking?.goneUpstream != nil, let upstream = remotes.upstream(of: publishedBranch),
                let repository, !GitBranchProtection.isDefaultBranch(upstream.branch, of: upstream.remote, in: repository.commonDirectory) {
                 tracking?.namedUpstream = upstream
             }

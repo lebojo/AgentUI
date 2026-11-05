@@ -183,9 +183,11 @@ enum InspectorTests {
         try require(calls.contains("--commit") && calls.contains("local-sha"), "gh Actions query filters current commit")
         print("PASS gh JSON decoding, commit filtering, no PR and network failures")
 
-        let hosts = ["git@gitlab.com:group/app.git", "https://gitlab.example.org/group/app", "ssh://git@gitlab.internal:2222/group/app.git",
+        let hosts = ["git@gitlab.com:group/app.git", "https://gitlab.example.org/group/app", "ssh://git@gitlab.internal:2222/app.git",
+                     "git@gitlab.com:app.git", "file://gitlab.internal/srv/app.git",
                      "git@github.com:owner/app.git", "https://github.com/owner/app.git"].map(GitHosting.init(remoteURL:))
-        try require(hosts == [.gitlab, .gitlab, .gitlab, .github, .github], "Detect GitLab and GitHub from remote URLs")
+        try require(hosts == [.gitlab, .gitlab, .gitlab, .gitlab, .gitlab, .github, .github],
+                    "Detect GitLab and GitHub from the host of remote URLs, even those with no web address")
         _ = try await GitService.run(["remote", "add", "origin", "git@gitlab.com:fixture/app.git"], at: repository.path)
         let detected = await InspectorService.hosting(at: repository.path)
         _ = try await GitService.run(["remote", "remove", "origin"], at: repository.path)
@@ -552,6 +554,28 @@ enum InspectorTests {
         local = try await InspectorService.localGit(at: repository.path)
         try require(local.branch?.isDetached == true && local.headSHA == detachedHead && local.tracking == nil && local.push == nil,
                     "A detached HEAD keeps its commit and offers no push")
+        let fork = root.appendingPathComponent("publishing fork.git")
+        _ = try await GitService.run(["init", "-q", "--bare", "-b", "main", fork.path], at: root.path)
+        _ = try await GitService.run(["remote", "add", "fork", fork.path], at: repository.path)
+        _ = try await GitService.run(["config", "remote.pushdefault", "fork"], at: repository.path)
+        _ = try await GitService.run(["checkout", "-q", "-b", "feat", "origin/main"], at: repository.path)
+        try "feat\n".write(to: repository.appendingPathComponent("feat.txt"), atomically: true, encoding: .utf8)
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.commit(title: "Feat", message: ""), at: repository.path)
+        _ = try await GitService.run(["push", "-q", "--set-upstream", "origin", "HEAD:refs/heads/feature-x"], at: repository.path)
+        _ = try await GitService.run(["push", "-q", "origin", "--delete", "feature-x"], at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        let republishFeat = GitAction.republish(remote: "origin", branch: "feature-x")
+        try require(local.tracking?.goneUpstream == "origin/feature-x" && local.republish == republishFeat
+                        && String(localized: republishFeat.help).contains("origin/feature-x"),
+                    "Publish Again recreates the deleted upstream, not the local name on the push remote")
+        try await InspectorService.perform(republishFeat, at: repository.path)
+        let remoteFeat = try await GitService.run(["rev-parse", "feature-x"], at: remote.path)
+        let featHead = try await GitService.run(["rev-parse", "HEAD"], at: repository.path)
+        let forkFeat = try? await GitService.run(["rev-parse", "--verify", "--quiet", "refs/heads/feat"], at: fork.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(remoteFeat == featHead && forkFeat == nil && local.tracking?.upstream == "origin/feature-x" && local.tracking?.goneUpstream == nil,
+                    "Publishing again pushes to the configured upstream and keeps tracking it")
         print("PASS publish a branch whose upstream has another name")
     }
 
