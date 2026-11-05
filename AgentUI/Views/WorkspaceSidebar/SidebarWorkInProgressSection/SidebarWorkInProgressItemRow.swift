@@ -4,8 +4,7 @@ struct SidebarWorkInProgressItemRow: View {
     @Environment(WorkspaceStore.self) private var store
 
     let item: WorkInProgressItem
-
-    private var isSelected: Bool { store.selection == item.id }
+    let isSelected: Bool
 
     var body: some View {
         Button { store.selection = item.id } label: {

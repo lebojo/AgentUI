@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SidebarWorkInProgressRow: View {
     let row: WorkInProgressRow
+    let isSelected: Bool
 
     var body: some View {
         HStack(spacing: 0) {
@@ -9,7 +10,7 @@ struct SidebarWorkInProgressRow: View {
             case .status(let status, let count):
                 SidebarStatusHeader(status: status, count: count)
             case .terminal(let item):
-                SidebarWorkInProgressItemRow(item: item)
+                SidebarWorkInProgressItemRow(item: item, isSelected: isSelected)
             }
         }
         .selectionDisabled()

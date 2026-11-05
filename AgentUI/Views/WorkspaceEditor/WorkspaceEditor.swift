@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum WorkspaceSheet: Identifiable {
+enum WorkspaceSheet: Identifiable, Equatable {
     case folder(parentID: UUID?)
     case rename(UUID, String)
     case worktree(UUID, String)

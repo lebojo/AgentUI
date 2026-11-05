@@ -5,6 +5,7 @@ struct GitChangeOutlineRow<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        content.padding(.leading, CGFloat(depth) * (IconSize.xs + Spacing.xs))
+        HStack(spacing: 0) { content }
+            .padding(.leading, CGFloat(depth) * (IconSize.xs + Spacing.xs))
     }
 }
