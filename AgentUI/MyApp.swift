@@ -19,16 +19,18 @@ import AppKit
     var bridge: AgentBridge?
     var closeCommand: CloseTerminalCommand?
     var host: LocalHost?
+    var gitActionQueues: GitActionQueues?
 
     private var finishingTermination = false
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard !finishingTermination else { return .terminateLater }
         guard let store else { return .terminateNow }
-        if store.sessions.runningCount > 0 {
+        let isRunningGitAction = gitActionQueues?.hasPendingAction == true
+        if store.sessions.runningCount > 0 || isRunningGitAction {
             let alert = NSAlert()
             alert.messageText = String(localized: "Quit AgentUI?")
-            alert.informativeText = String(localized: "Terminals and their processes will be stopped. Your project organization will be kept and agent sessions will resume the next time you open AgentUI.")
+            alert.informativeText = quitWarnings(isRunningGitAction: isRunningGitAction, hasRunningTerminals: store.sessions.runningCount > 0)
             alert.addButton(withTitle: String(localized: "Quit"))
             alert.addButton(withTitle: String(localized: "Cancel"))
             guard alert.runModal() == .alertFirstButtonReturn else { return .terminateCancel }
@@ -51,12 +53,19 @@ import AppKit
         }
         return .terminateLater
     }
+
     func applicationWillTerminate(_ notification: Notification) {
-        CommandRunner.killAll()
+        CommandRunner.terminateAll()
         floating?.persist()
         store?.sessions.stopAll()
         bridge?.stop()
         host?.stop()
+    }
+
+    private func quitWarnings(isRunningGitAction: Bool, hasRunningTerminals: Bool) -> String {
+        let gitAction = isRunningGitAction ? String(localized: "A Git action is still running and will be interrupted.") : nil
+        let terminals = hasRunningTerminals ? String(localized: "Terminals and their processes will be stopped. Your project organization will be kept and agent sessions will resume the next time you open AgentUI.") : nil
+        return [gitAction, terminals].compactMap { $0 }.joined(separator: " ")
     }
 }
 
@@ -92,6 +101,7 @@ struct AgentUIApplication: App {
                     delegate.store = store
                     delegate.floating = floating
                     delegate.host = host
+                    delegate.gitActionQueues = gitActionQueues
                     host.configure(store: store, settings: settings, installedAgents: installedAgents)
                     if delegate.closeCommand == nil { delegate.closeCommand = CloseTerminalCommand(store: store, floating: floating) }
                     if delegate.bridge == nil {

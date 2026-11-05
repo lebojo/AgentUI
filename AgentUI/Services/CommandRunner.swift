@@ -12,7 +12,7 @@ enum CommandRunner {
     private static let diagnosticTail = 16_384
     private static let terminationGrace: DispatchTimeInterval = .seconds(2)
 
-    static func killAll() { registry.killAll() }
+    static func terminateAll(within grace: Duration = .milliseconds(500)) { registry.terminateAll(within: grace) }
 
     struct Output: Sendable {
         let data: Data
@@ -180,9 +180,12 @@ enum CommandRunner {
         private let jobs = OSAllocatedUnfairLock<[UUID: Job]>(initialState: [:])
         func add(_ job: Job, id: UUID) { jobs.withLock { $0[id] = job } }
         func remove(_ id: UUID) { _ = jobs.withLock { $0.removeValue(forKey: id) } }
-        func killAll() {
+        func terminateAll(within grace: Duration) {
             let active = jobs.withLock { Array($0.values) }
             active.forEach { $0.stop(.quit) }
+            let deadline = ContinuousClock.now + grace
+            while active.contains(where: \.isRunning), ContinuousClock.now < deadline { usleep(10_000) }
+            active.forEach { $0.forceStop() }
         }
     }
 
@@ -245,7 +248,21 @@ enum CommandRunner {
                 stoppedAt = .now()
                 if let pid { kill(-pid, SIGTERM) }
             }
-            if reason == .quit || reason == .waitFailure { killGroup() }
+            if reason == .waitFailure { killGroup() }
+        }
+
+        var isRunning: Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            guard !finished, let pid else { return false }
+            return exitState(of: pid) == .running
+        }
+
+        func forceStop() {
+            lock.lock()
+            defer { lock.unlock() }
+            guard !finished else { return }
+            killGroup()
         }
 
         func killIfStillRunning(after grace: DispatchTimeInterval) {

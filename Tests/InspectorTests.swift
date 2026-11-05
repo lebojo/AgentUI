@@ -96,14 +96,34 @@ enum InspectorTests {
         let stubborn = Task {
             try await CommandRunner.run(shell, ["-c", "trap '' TERM; sleep 30"], at: root.path, timeout: 60, limit: 0, readOnly: false)
         }
+        let quitLock = root.appendingPathComponent("quit.lock")
+        let cleaning = Task {
+            try await CommandRunner.run(shell, ["-c", "touch quit.lock; trap 'rm -f quit.lock; exit 143' TERM; while true; do sleep 0.05; done"],
+                                        at: root.path, timeout: 60, limit: 0, readOnly: false)
+        }
         try await Task.sleep(for: .milliseconds(300))
+        let lockedBeforeQuit = FileManager.default.fileExists(atPath: quitLock.path)
         let killedAt = ContinuousClock.now
-        CommandRunner.killAll()
+        CommandRunner.terminateAll()
+        let quitDuration = killedAt.duration(to: .now)
+        let lockedAfterQuit = FileManager.default.fileExists(atPath: quitLock.path)
         let stubbornResult = await stubborn.result
-        try require((try? stubbornResult.get()) == nil && killedAt.duration(to: .now) < .seconds(1),
-                    "Quitting kills running commands at once, even those that ignore SIGTERM")
+        let cleaningResult = await cleaning.result
+        try require(lockedBeforeQuit && !lockedAfterQuit && (try? cleaningResult.get()) == nil,
+                    "Quitting asks running commands to stop first, so a Git write can remove its lock")
+        try require((try? stubbornResult.get()) == nil && quitDuration >= .milliseconds(400) && killedAt.duration(to: .now) < .seconds(1),
+                    "Quitting kills the commands that ignore SIGTERM after a short wait")
+        let obedient = Task {
+            try await CommandRunner.run(shell, ["-c", "trap 'exit 143' TERM; while true; do sleep 0.05; done"], at: root.path, timeout: 60, limit: 0, readOnly: false)
+        }
+        try await Task.sleep(for: .milliseconds(300))
+        let obedientQuitAt = ContinuousClock.now
+        CommandRunner.terminateAll()
+        try require(obedientQuitAt.duration(to: .now) < .milliseconds(400), "Quitting waits only until the stopped commands exit")
+        _ = await obedient.result
         try require(CommandRunner.ExitStatus(waitStatus: 256) == .exited(1) && CommandRunner.ExitStatus(waitStatus: 0) == .exited(0)
-                        && CommandRunner.ExitStatus(waitStatus: 15) == .signalled(15),
+                        && CommandRunner.ExitStatus(waitStatus: 15) == .signalled(15)
+                        && CommandRunner.ExitStatus(waitStatus: 256).exitCode == 1 && CommandRunner.ExitStatus(waitStatus: 15).exitCode == nil,
                     "A wait status reads as an exit code or a signal")
         do {
             _ = try await CommandRunner.run(shell, ["-c", noisy], at: root.path, timeout: 10, limit: 1024, readOnly: true)

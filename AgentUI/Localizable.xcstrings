@@ -164,6 +164,16 @@
         }
       }
     },
+    "A Git action is still running and will be interrupted." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une action Git est encore en cours et sera interrompue."
+          }
+        }
+      }
+    },
     "Actions · Local HEAD" : {
       "localizations" : {
         "fr" : {
