@@ -21,9 +21,6 @@ struct FloatingTerminalPane: View {
                 NativeTerminalView(session: session, appearance: settings.terminal, isFocused: isFocused) { floating.focus(id) }
                     .id(ObjectIdentifier(session))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .onChange(of: session.hasExited) { _, hasExited in
-                        if hasExited { floating.close(id) }
-                    }
                 if session.hasExited {
                     HStack {
                         SessionExitLabel(code: session.exitCode)
