@@ -461,7 +461,6 @@ import Observation
         return session
     }
     func close(_ id: UUID) {
-        remoteGrids[id] = nil
         guard let session = entries.removeValue(forKey: id) else { return }
         session.owner = nil
         session.stop()
