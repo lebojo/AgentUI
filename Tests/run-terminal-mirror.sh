@@ -41,8 +41,9 @@ SDKROOT="$sdk" xcrun swiftc -parse-as-library -target arm64-apple-ios17.0-simula
 cp -R "$ios_build/SwiftTerm_SwiftTerm.bundle" "$app/"
 codesign --force --sign - "$app" >/dev/null
 # A disposable simulator keeps this run isolated from the user's running devices.
-runtime="$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; print(next(r["identifier"] for r in reversed(json.load(sys.stdin)["runtimes"]) if r["isAvailable"] and r["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-")))')"
-simulator="$(xcrun simctl create AgentUI-Mirror-Regression com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro "$runtime")"
+device=com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro
+runtime="$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; print(next(r["identifier"] for r in reversed(json.load(sys.stdin)["runtimes"]) if r["isAvailable"] and r["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-") and any(d["identifier"] == sys.argv[1] for d in r.get("supportedDeviceTypes", []))))' "$device")"
+simulator="$(xcrun simctl create AgentUI-Mirror-Regression "$device" "$runtime")"
 xcrun simctl boot "$simulator"
 xcrun simctl bootstatus "$simulator" -b >/dev/null
 xcrun simctl install "$simulator" "$app"
