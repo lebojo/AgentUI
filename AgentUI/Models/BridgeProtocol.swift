@@ -12,6 +12,7 @@ struct BridgeRequest: Codable, Sendable {
     var command: [String]
     var force: Bool?
     var deleteBranch: Bool?
+    var forceBranch: Bool?
 }
 
 struct BridgeResponse: Codable, Sendable {

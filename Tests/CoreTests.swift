@@ -94,7 +94,13 @@ import Foundation
         let deletion = try AgentCLI.parse(["worktree", "delete", "--force", "--worktree", explicitID.uuidString], environment: env)
         try require(deletion.action == "worktree.delete" && deletion.worktreeID == explicitID && deletion.force == true && deletion.deleteBranch == nil, "Parse worktree deletion")
         let branchDeletion = try AgentCLI.parse(["worktree", "delete", "--worktree", explicitID.uuidString, "--delete-branch"], environment: env)
-        try require(branchDeletion.deleteBranch == true && branchDeletion.force == nil, "Parse worktree deletion with its branch")
+        try require(branchDeletion.deleteBranch == true && branchDeletion.force == nil && branchDeletion.forceBranch == nil, "Parse worktree deletion with its branch")
+        let forcedFiles = try AgentCLI.parse(["worktree", "delete", "--worktree", explicitID.uuidString, "--delete-branch", "--force"], environment: env)
+        try require(forcedFiles.force == true && forcedFiles.forceBranch == nil, "--force discards working files but doesn't force the branch deletion")
+        let forcedBranch = try AgentCLI.parse(["worktree", "delete", "--worktree", explicitID.uuidString, "--delete-branch", "--force-branch"], environment: env)
+        try require(forcedBranch.forceBranch == true && forcedBranch.force == nil, "--force-branch alone forces the branch deletion")
+        do { _ = try AgentCLI.parse(["worktree", "create", "--branch", "x", "--force-branch"], environment: env); throw WorkspaceError(message: "FAIL: --force-branch accepted on creation") }
+        catch let error as WorkspaceError { try require(!error.message.hasPrefix("FAIL"), "--force-branch only applies to deletion") }
         do { _ = try AgentCLI.parse(["worktree", "create", "--branch", "x", "--delete-branch"], environment: env); throw WorkspaceError(message: "FAIL: --delete-branch accepted on creation") }
         catch let error as WorkspaceError { try require(!error.message.hasPrefix("FAIL"), "--delete-branch only applies to deletion") }
         do { _ = try AgentCLI.parse(["worktree", "delete"], environment: env); throw WorkspaceError(message: "FAIL: implicit deletion accepted") }

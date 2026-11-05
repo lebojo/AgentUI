@@ -8,7 +8,7 @@ enum AgentCLI {
     agentui project add /path/to/project
     agentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGUMENTS…]
     agentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGUMENTS…]
-    agentui worktree delete --worktree UUID [--delete-branch] [--force]
+    agentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]
 
     From an AgentUI terminal, the project and worktree are implicit.
     Elsewhere, they are inferred from the current folder if it belongs to a project open in AgentUI.
@@ -19,9 +19,9 @@ enum AgentCLI {
     Each creation returns the identifiers and path as JSON.
     An existing branch is opened as is; otherwise it is created from the project’s HEAD.
     worktree delete closes its terminals and erases its folder; by default, the branch and its commits stay in the repository.
-    With --delete-branch, the branch is deleted too if it’s merged into the repository’s main branch; add --force to delete it even if it isn’t.
+    With --delete-branch, the branch is deleted too if it’s merged into the repository’s main branch; add --force-branch to delete it even if it isn’t, losing its unmerged commits.
     The repository’s main branch and a branch checked out elsewhere are never deleted.
-    Without --force, a worktree with uncommitted changes or untracked files is kept.
+    Without --force, a worktree with uncommitted changes or untracked files is kept; --force never deletes an unmerged branch.
     A project’s main folder and the current terminal’s worktree can’t be deleted.
     """)
 
@@ -123,6 +123,7 @@ enum AgentCLI {
             if option == "--" && !isDeletion { request.command = Array(arguments.dropFirst(index + 1)); break }
             if option == "--force" && isDeletion { request.force = true; index += 1; continue }
             if option == "--delete-branch" && isDeletion { request.deleteBranch = true; index += 1; continue }
+            if option == "--force-branch" && isDeletion { request.forceBranch = true; index += 1; continue }
             guard index + 1 < arguments.count else { throw WorkspaceError(message: String(localized: "Missing value for \(option).")) }
             let value = arguments[index + 1]
             switch option {

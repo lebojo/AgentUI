@@ -2,7 +2,7 @@
 name: agentui
 description: Drive the AgentUI macOS app with the `agentui` CLI. Use when the AGENTUI_INSTANCE environment variable is set (you are in an AgentUI terminal), or when the user asks to use AgentUI from another terminal. Use it to start another agent in parallel on its own branch (`agentui worktree create`), to ask another agent for a review or a second opinion in the same worktree (`agentui terminal create`), to run a long process such as a dev server or watcher in a visible terminal, to add a project to the sidebar, to list projects, worktrees and terminals, or to delete a worktree once its branch is merged into the main branch. Prefer it over raw `git worktree add`, background jobs or a new shell when AgentUI is running.
 metadata:
-  version: "5"
+  version: "6"
 ---
 
 # AgentUI CLI
@@ -43,7 +43,7 @@ agentui list
 agentui project add /path/to/project
 agentui terminal create [--name NAME] [--project UUID] [--worktree UUID] [-- COMMAND ARGS…]
 agentui worktree create --branch BRANCH [--name NAME] [--project UUID] [-- COMMAND ARGS…]
-agentui worktree delete --worktree UUID [--delete-branch] [--force]
+agentui worktree delete --worktree UUID [--delete-branch [--force-branch]] [--force]
 ```
 
 - Without `--project` or `--worktree`, commands target the current project and worktree. `--project` alone targets that project's main folder; `--worktree` alone finds its project.
@@ -76,6 +76,6 @@ agentui worktree delete --worktree UUID [--delete-branch] [--force]
 
 - Always ask the user before deleting, and say which worktree and branch.
 - Without `--force`, a worktree with uncommitted changes or untracked files is kept and the command fails. Never add `--force` unless the user explicitly agrees to lose those changes.
-- Add `--delete-branch` to delete the branch too, only when the user asked for it. The branch is deleted only if it is merged into the repository's main branch (`main`, `master` or a remote's `HEAD` branch, locally or on the remote once fetched). Otherwise, for example when the branch was only pushed or the repository has no main branch, the branch is kept: the worktree is still deleted, and the command returns `ok: false`, `branchDeleted: false` and a `message` explaining why. Report it to the user instead of retrying. With `--force` as well, the branch is deleted even if it is not merged (`git branch -D`): its unmerged commits are lost, so never combine them without the user's explicit agreement.
+- Add `--delete-branch` to delete the branch too, only when the user asked for it. The branch is deleted only if it is merged into the repository's main branch (`main`, `master` or a remote's `HEAD` branch, locally or on the remote once fetched). Otherwise, for example when the branch was only pushed or the repository has no main branch, the branch is kept: the worktree is still deleted, and the command returns `ok: false`, `branchDeleted: false` and a `message` explaining why. Report it to the user instead of retrying. With `--force-branch`, the branch is deleted even if it is not merged (`git branch -D`): its unmerged commits are lost, so never add it without the user's explicit agreement. `--force` only discards uncommitted changes in the worktree and never deletes an unmerged branch.
 - The reply adds `branch` and `branchDeleted`. The repository's main branch and a branch checked out in another worktree are never deleted, nor is a branch whose state can't be checked: the command fails before deleting anything.
 - The project's main folder and the worktree of the calling terminal cannot be deleted. Run the command from another worktree.

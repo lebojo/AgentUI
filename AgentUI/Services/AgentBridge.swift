@@ -128,11 +128,11 @@ import AppKit
         if request.force != true, try await GitService.hasLocalChanges(at: worktree.path) {
             throw WorkspaceError(message: String(localized: "The worktree “\(worktree.displayName)” has uncommitted changes or untracked files. Run again with --force to erase them."))
         }
-        guard request.deleteBranch == true else {
+        guard request.deleteBranch == true || request.forceBranch == true else {
             try await store.deleteWorktree(projectID: project.id, worktreeID: worktreeID)
             return BridgeResponse(ok: true, projectID: project.id, worktreeID: worktreeID, path: worktree.path)
         }
-        let cleanup = try await store.deleteWorktree(projectID: project.id, worktreeID: worktreeID, branch: request.force == true ? .force : .merged)
+        let cleanup = try await store.deleteWorktree(projectID: project.id, worktreeID: worktreeID, branch: request.forceBranch == true ? .force : .merged)
         return BridgeResponse(ok: cleanup.failure == nil, message: cleanup.failure ?? cleanup.notice, projectID: project.id, worktreeID: worktreeID,
                               path: worktree.path, branch: cleanup.branch, branchDeleted: cleanup.isDeleted)
     }
