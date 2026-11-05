@@ -360,21 +360,21 @@ import Foundation
 
         let shared = root.appendingPathComponent("cleanup-shared-main")
         _ = try await GitService.run(["worktree", "add", "-q", "-f", shared.path, "main"], at: project.path)
-        let sharedBranch = await GitService.worktreeBranch(at: shared.path, project: project)
+        let sharedBranch = await GitBranchProtection.worktreeBranch(at: shared.path, checkedOutElsewhere: [])
         try require(sharedBranch == .protected("main", .defaultBranch),
                     "The branch of the project's main folder is never deletable from another worktree")
         try await GitService.removeWorktree(project: project, path: shared.path)
         let merged = try await GitService.createWorktree(project: project, branch: "cleanup/merged", root: root)
-        let mergedBranch = await GitService.worktreeBranch(at: merged.path, project: project)
+        let mergedBranch = await GitBranchProtection.worktreeBranch(at: merged.path, checkedOutElsewhere: [])
         try require(mergedBranch == .deletable("cleanup/merged"), "A merged worktree branch is deletable")
         _ = try await GitService.run(["update-ref", "refs/remotes/origin/cleanup/merged", "HEAD"], at: project.path)
         _ = try await GitService.run(["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/cleanup/merged"], at: project.path)
-        let remoteDefaultBranch = await GitService.worktreeBranch(at: merged.path, project: project)
+        let remoteDefaultBranch = await GitBranchProtection.worktreeBranch(at: merged.path, checkedOutElsewhere: [])
         try require(remoteDefaultBranch == .protected("cleanup/merged", .defaultBranch), "The branch a remote HEAD points to is the default branch")
         _ = try await GitService.run(["symbolic-ref", "--delete", "refs/remotes/origin/HEAD"], at: project.path)
         _ = try await GitService.run(["update-ref", "-d", "refs/remotes/origin/cleanup/merged"], at: project.path)
         try await GitService.removeWorktree(project: project, path: merged.path)
-        try await GitService.deleteBranch("cleanup/merged", .merged, project: project)
+        try await deleteBranch("cleanup/merged", .merged, project: project)
         let mergedLeft = try await GitService.run(["branch", "--list", "cleanup/merged"], at: project.path)
         try require(mergedLeft.isEmpty, "A merged branch is deleted with its worktree")
 
@@ -382,22 +382,22 @@ import Foundation
         _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "--allow-empty", "-m", "Work"], at: unmerged.path)
         try await GitService.removeWorktree(project: project, path: unmerged.path)
         do {
-            try await GitService.deleteBranch("cleanup/unmerged", .merged, project: project)
+            try await deleteBranch("cleanup/unmerged", .merged, project: project)
             throw WorkspaceError(message: "FAIL: unmerged branch deleted")
         } catch let error as WorkspaceError {
             try require(error.message.contains("isn’t fully merged") && error.message.contains("git branch -D cleanup/unmerged"), "An unmerged branch is refused with a clear message")
         }
         let unmergedLeft = try await GitService.run(["branch", "--list", "cleanup/unmerged"], at: project.path)
         try require(!unmergedLeft.isEmpty, "An unmerged branch is kept")
-        try await GitService.deleteBranch("cleanup/unmerged", .force, project: project)
+        try await deleteBranch("cleanup/unmerged", .force, project: project)
         let forcedLeft = try await GitService.run(["branch", "--list", "cleanup/unmerged"], at: project.path)
         try require(forcedLeft.isEmpty, "Forcing deletes an unmerged branch")
 
         let detached = try await GitService.createWorktree(project: project, branch: "cleanup/detached", root: root)
         _ = try await GitService.run(["checkout", "--detach"], at: detached.path)
-        let detachedBranch = await GitService.worktreeBranch(at: detached.path, project: project)
+        let detachedBranch = await GitBranchProtection.worktreeBranch(at: detached.path, checkedOutElsewhere: [])
         try require(detachedBranch == WorktreeBranch.none, "A detached worktree has no branch to delete")
-        let missingBranch = await GitService.worktreeBranch(at: root.appendingPathComponent("cleanup-missing").path, project: project)
+        let missingBranch = await GitBranchProtection.worktreeBranch(at: root.appendingPathComponent("cleanup-missing").path, checkedOutElsewhere: [])
         try require(missingBranch == .unreadable && missingBranch.deletableName == nil && missingBranch.refusal != nil,
                     "A branch that can't be checked is never deleted, and the deletion stops before removing anything")
         try await GitService.removeWorktree(project: project, path: detached.path)
@@ -412,19 +412,28 @@ import Foundation
         let localProject = Project(url: local)
         let linkedMain = root.appendingPathComponent("cleanup-local-main")
         _ = try await GitService.run(["worktree", "add", "-q", linkedMain.path, "main"], at: local.path)
-        let linkedMainBranch = await GitService.worktreeBranch(at: linkedMain.path, project: localProject)
+        let linkedMainBranch = await GitBranchProtection.worktreeBranch(at: linkedMain.path, checkedOutElsewhere: [])
         try require(linkedMainBranch == .protected("main", .defaultBranch), "main is the default branch of a local-only repository with packed refs")
         let linkedFeature = root.appendingPathComponent("cleanup-local-feature")
         _ = try await GitService.run(["worktree", "add", "-q", "-f", linkedFeature.path, "feature"], at: local.path)
-        let linkedFeatureBranch = await GitService.worktreeBranch(at: linkedFeature.path, project: localProject)
+        let linkedFeatureBranch = await GitBranchProtection.worktreeBranch(at: linkedFeature.path, checkedOutElsewhere: [])
         try require(linkedFeatureBranch == .protected("feature", .checkedOutElsewhere), "The branch of the primary folder is protected")
         let topic = try await GitService.createWorktree(project: localProject, branch: "topic", root: root)
-        let topicBranch = await GitService.worktreeBranch(at: topic.path, project: localProject)
+        let topicBranch = await GitBranchProtection.worktreeBranch(at: topic.path, checkedOutElsewhere: [])
         try require(topicBranch == .deletable("topic"), "Git reports a topic branch as deletable")
         _ = try await GitService.run(["checkout", "-q", "--detach"], at: topic.path)
-        let detachedTopic = await GitService.worktreeBranch(at: topic.path, project: localProject)
+        let detachedTopic = await GitBranchProtection.worktreeBranch(at: topic.path, checkedOutElsewhere: [])
         try require(detachedTopic == WorktreeBranch.none, "Git reports no branch for a detached worktree")
         try require(DefaultBranch.names(remoteHeads: ["develop"]) == ["main", "master", "develop"], "main, master and remote HEADs are default branches")
+        let reftable = local.appendingPathComponent(".git/reftable")
+        try FileManager.default.createDirectory(at: reftable, withIntermediateDirectories: true)
+        let reftableBranch = await GitBranchProtection.report(at: topic.path, checkedOutElsewhere: [])
+        let reftableCandidates = GitRepository.containing(topic.path).flatMap(GitBranchProtection.mergeCandidates(of:))
+        try require(reftableBranch == .unreadable && reftableCandidates == nil,
+                    "A repository whose references aren't stored in files is never judged, so its branch is never deleted")
+        try FileManager.default.removeItem(at: reftable)
+        try require(BranchCleanup.unchecked.failure != nil && BranchCleanup.unchecked.branch == nil && !BranchCleanup.unchecked.isDeleted,
+                    "A branch that couldn't be checked is reported as kept")
         print("PASS branch deletion with a worktree: merged, unmerged, forced, default and detached")
         try await defaultBranchMergeTests(root: root)
     }
@@ -473,7 +482,7 @@ import Foundation
         _ = try await GitService.run(["push", "-q", "-u", "origin", "merge/pushed"], at: pushed.path)
         try await GitService.removeWorktree(project: project, path: pushed.path)
         do {
-            try await GitService.deleteBranch("merge/pushed", .merged, project: project)
+            try await deleteBranch("merge/pushed", .merged, project: project)
             throw WorkspaceError(message: "FAIL: pushed but unmerged branch deleted")
         } catch let error as WorkspaceError {
             try require(error.message.contains("isn’t fully merged") && error.message.contains("git branch -D merge/pushed"),
@@ -489,7 +498,7 @@ import Foundation
         try await commit("Landed work", at: landed.path)
         _ = try await GitService.run(["branch", "-f", "main", "merge/landed"], at: local.path)
         try await GitService.removeWorktree(project: project, path: landed.path)
-        try await GitService.deleteBranch("merge/landed", .merged, project: project)
+        try await deleteBranch("merge/landed", .merged, project: project)
         let landedLeft = try await GitService.run(["branch", "--list", "merge/landed"], at: local.path)
         try require(landedLeft.isEmpty, "A branch merged into main is deleted while the main folder is on another branch")
 
@@ -498,11 +507,11 @@ import Foundation
         try await commit("Merged on the server", at: upstreamOnly.path)
         _ = try await GitService.run(["push", "-q", "origin", "merge/upstream:main"], at: upstreamOnly.path)
         try await GitService.removeWorktree(project: project, path: upstreamOnly.path)
-        try await GitService.deleteBranch("merge/upstream", .merged, project: project)
+        try await deleteBranch("merge/upstream", .merged, project: project)
         let upstreamLeft = try await GitService.run(["branch", "--list", "merge/upstream"], at: local.path)
         try require(upstreamLeft.isEmpty, "A branch merged into the remote main branch is deleted before the local main is updated")
 
-        try await GitService.deleteBranch("merge/pushed", .force, project: project)
+        try await deleteBranch("merge/pushed", .force, project: project)
         let forcedLeft = try await GitService.run(["branch", "--list", "merge/pushed"], at: local.path)
         try require(forcedLeft.isEmpty, "Forcing deletes a pushed but unmerged branch")
 
@@ -512,7 +521,7 @@ import Foundation
         try await commit("Initial", at: trunk.path)
         _ = try await GitService.run(["branch", "topic"], at: trunk.path)
         do {
-            try await GitService.deleteBranch("topic", .merged, project: Project(url: trunk))
+            try await deleteBranch("topic", .merged, project: Project(url: trunk))
             throw WorkspaceError(message: "FAIL: branch deleted without a known main branch")
         } catch let error as WorkspaceError {
             try require(error.message.contains("main branch couldn’t be found") && error.message.contains("git branch -D topic"),
@@ -521,6 +530,11 @@ import Foundation
         let topicLeft = try await GitService.run(["branch", "--list", "topic"], at: trunk.path)
         try require(!topicLeft.isEmpty, "A branch is kept when the main branch is unknown")
         print("PASS merged means merged into the repository's main branch")
+    }
+
+    private static func deleteBranch(_ branch: String, _ removal: BranchRemoval, project: Project) async throws {
+        let candidates = GitRepository.containing(project.path).flatMap(GitBranchProtection.mergeCandidates(of:)) ?? []
+        try await GitService.deleteBranch(branch, removal, mergingInto: candidates, project: project)
     }
 
     private static func commit(_ message: String, at path: String) async throws {

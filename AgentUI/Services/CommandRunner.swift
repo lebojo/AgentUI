@@ -12,9 +12,21 @@ enum CommandRunner {
 
     static func cancelAll() { registry.cancelAll() }
 
+    struct Output: Sendable {
+        let data: Data
+        let isTruncated: Bool
+    }
+
     static func run(_ executable: URL, _ arguments: [String], at path: String,
                     timeout: TimeInterval, limit: Int, readOnly: Bool, overflow: OutputOverflow = .stop,
                     gitConfiguration: [String: String] = [:]) async throws -> Data {
+        try await output(executable, arguments, at: path, timeout: timeout, limit: limit, readOnly: readOnly,
+                         overflow: overflow, gitConfiguration: gitConfiguration).data
+    }
+
+    static func output(_ executable: URL, _ arguments: [String], at path: String,
+                       timeout: TimeInterval, limit: Int, readOnly: Bool, overflow: OutputOverflow = .stop,
+                       gitConfiguration: [String: String] = [:]) async throws -> Output {
         let job = Job()
         let id = UUID()
         registry.add(job, id: id)
@@ -40,7 +52,7 @@ enum CommandRunner {
 
     @concurrent private static func execute(_ job: Job, executable: URL, arguments: [String], at path: String,
                                             timeout: TimeInterval, limit: Int, readOnly: Bool, overflow: OutputOverflow,
-                                            gitConfiguration: [String: String]) async throws -> Data {
+                                            gitConfiguration: [String: String]) async throws -> Output {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("agentui-command-\(UUID())")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -90,7 +102,8 @@ enum CommandRunner {
             let diagnostic = String(decoding: try reader.read(upToCount: 4096) ?? Data(), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
             throw ReadCommandError(message: diagnostic.isEmpty ? String(localized: "The command failed (status \(status)).") : diagnostic)
         }
-        return data.count > limit ? Data(data.prefix(limit)) : data
+        let exceedsLimit = data.count > limit
+        return Output(data: exceedsLimit ? Data(data.prefix(limit)) : data, isTruncated: isTruncated || exceedsLimit)
     }
 
     private static func waitForExit(of pid: pid_t, on queue: DispatchQueue) async -> Bool {

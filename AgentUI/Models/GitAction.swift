@@ -19,8 +19,8 @@ enum GitAction: Equatable, Sendable {
         case .commit(let title, let message):
             ["commit", "--message", title] + (message.isEmpty ? [] : ["--message", message])
         case .push: ["push"]
-        case .pushUpstream(let upstream): ["push", upstream.remote, "HEAD:refs/heads/" + upstream.branch]
-        case .publish(let remote, let branch): ["push", "--set-upstream", remote, "HEAD:refs/heads/" + branch]
+        case .pushUpstream(let upstream): ["push", "--", upstream.remote, "HEAD:refs/heads/" + upstream.branch]
+        case .publish(let remote, let branch): ["push", "--set-upstream", "--", remote, "HEAD:refs/heads/" + branch]
         }
     }
 

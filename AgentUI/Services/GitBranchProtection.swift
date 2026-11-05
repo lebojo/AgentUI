@@ -1,12 +1,28 @@
 import Foundation
 
+struct BranchProtectionReport: Equatable, Sendable {
+    static let unreadable = BranchProtectionReport(branch: .unreadable, mergeCandidates: [])
+
+    let branch: WorktreeBranch
+    let mergeCandidates: [String]
+}
+
 enum GitBranchProtection {
-    @concurrent static func worktreeBranch(at path: String, checkedOutElsewhere known: Set<String>) async -> WorktreeBranch {
-        guard let repository = GitRepository.containing(path) else { return .unreadable }
+    @concurrent static func report(at path: String, checkedOutElsewhere known: Set<String>) async -> BranchProtectionReport {
+        guard let repository = GitRepository.containing(path), let heads = remoteHeads(of: repository) else { return .unreadable }
         let gitDirectory = WorkspacePath.canonical(repository.gitDirectory)
         let elsewhere = checkedOutBranches(in: repository.commonDirectory).filter { $0.key != gitDirectory }.values
-        return WorktreeBranch(repository.branch, defaultBranches: defaultBranches(in: repository.commonDirectory),
-                              checkedOutElsewhere: known.union(elsewhere))
+        let branch = WorktreeBranch(repository.branch, defaultBranches: DefaultBranch.names(remoteHeads: heads.map(\.name)),
+                                    checkedOutElsewhere: known.union(elsewhere))
+        return BranchProtectionReport(branch: branch, mergeCandidates: DefaultBranch.references(remoteHeads: heads))
+    }
+
+    static func worktreeBranch(at path: String, checkedOutElsewhere known: Set<String>) async -> WorktreeBranch {
+        await report(at: path, checkedOutElsewhere: known).branch
+    }
+
+    static func mergeCandidates(of repository: GitRepository) -> [String]? {
+        remoteHeads(of: repository).map(DefaultBranch.references(remoteHeads:))
     }
 
     static func isDefaultBranch(_ branch: String, of remote: String, in commonDirectory: URL) -> Bool {
@@ -15,17 +31,19 @@ enum GitBranchProtection {
             || symbolicTarget(of: commonDirectory.appendingPathComponent(prefix + "HEAD")) == prefix + branch
     }
 
-    private static func defaultBranches(in commonDirectory: URL) -> Set<String> {
-        DefaultBranch.names(remoteHeads: remoteHeads(in: commonDirectory).map(\.name))
-    }
-
-    private static func remoteHeads(in commonDirectory: URL) -> [DefaultBranch.RemoteHead] {
-        let remotes = commonDirectory.appendingPathComponent("refs/remotes")
+    private static func remoteHeads(of repository: GitRepository) -> [DefaultBranch.RemoteHead]? {
+        guard storesReferencesInFiles(repository) else { return nil }
+        let remotes = repository.commonDirectory.appendingPathComponent("refs/remotes")
         let files = FileManager.default.enumerator(atPath: remotes.path)?.compactMap { $0 as? String } ?? []
         let listing = files.filter { $0.hasSuffix("/HEAD") }.sorted().compactMap { file in
             symbolicTarget(of: remotes.appendingPathComponent(file)).map { "refs/remotes/\(file)\t\($0)" }
         }
         return DefaultBranch.remoteHeads(in: listing.joined(separator: "\n"))
+    }
+
+    private static func storesReferencesInFiles(_ repository: GitRepository) -> Bool {
+        repository.branch.name != ".invalid"
+            && !FileManager.default.fileExists(atPath: repository.commonDirectory.appendingPathComponent("reftable").path)
     }
 
     private static func checkedOutBranches(in commonDirectory: URL) -> [String: String] {

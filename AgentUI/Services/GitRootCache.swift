@@ -3,6 +3,11 @@ import Foundation
 actor GitRootCache {
     typealias Resolver = @Sendable (String) async throws -> String
 
+    struct Location: Sendable {
+        let root: String
+        let repository: GitRepository?
+    }
+
     static let shared = GitRootCache()
 
     private struct Entry {
@@ -18,11 +23,21 @@ actor GitRootCache {
     }
 
     func root(at path: String) async throws -> String {
-        let discovered = GitRepository.containing(path)?.root.path
-        if let discovered, let entry = entries[path], entry.discoveredRoot == discovered { return entry.root }
-        let root = try await resolve(path)
-        entries[path] = discovered.map { Entry(discoveredRoot: $0, root: root) }
-        return root
+        try await location(at: path).root
+    }
+
+    func location(at path: String) async throws -> Location {
+        let discovered = GitRepository.containing(path)
+        let discoveredRoot = discovered?.root.path
+        let root: String
+        if let discoveredRoot, let entry = entries[path], entry.discoveredRoot == discoveredRoot {
+            root = entry.root
+        } else {
+            root = try await resolve(path)
+            entries[path] = discoveredRoot.map { Entry(discoveredRoot: $0, root: root) }
+        }
+        let repository = discoveredRoot == root ? discovered : GitRepository.containing(root)
+        return Location(root: root, repository: repository)
     }
 
     @concurrent static func topLevel(at path: String) async throws -> String {

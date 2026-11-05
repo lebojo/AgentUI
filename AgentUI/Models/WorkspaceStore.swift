@@ -434,9 +434,13 @@ import Observation
               let project = projects.first(where: { $0.id == projectID }),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }),
               !worktree.isPrimary else { return nil }
+        return await branchProtection(of: worktree, in: project).branch.deletableName
+    }
+
+    private func branchProtection(of worktree: Worktree, in project: Project) async -> BranchProtectionReport {
         let branches = sessions.branchesByPath
-        let elsewhere = project.worktrees.filter { $0.id != worktreeID }.compactMap { branches[$0.path] }.filter { !$0.isDetached }.map(\.name)
-        return await GitBranchProtection.worktreeBranch(at: worktree.path, checkedOutElsewhere: Set(elsewhere)).deletableName
+        let elsewhere = project.worktrees.filter { $0.id != worktree.id }.compactMap { branches[$0.path] }.filter { !$0.isDetached }.map(\.name)
+        return await GitBranchProtection.report(at: worktree.path, checkedOutElsewhere: Set(elsewhere))
     }
 
     func remove(_ removal: Removal, branch: BranchRemoval = .keep) {
@@ -633,9 +637,10 @@ import Observation
             busyProjects.remove(projectID)
             removingWorktrees.remove(worktreeID)
         }
-        let branch = removal == .keep ? WorktreeBranch.none : await GitService.worktreeBranch(at: worktree.path, project: project)
-        let keptBranch = handling == .keep ? Self.keptCleanup(of: branch) : nil
-        if keptBranch == nil, let refusal = branch.refusal { throw WorkspaceError(message: refusal) }
+        let protection = removal == .keep ? BranchProtectionReport(branch: .none, mergeCandidates: [])
+            : await branchProtection(of: worktree, in: project)
+        let keptBranch = handling == .keep ? Self.keptCleanup(of: protection.branch) : nil
+        if keptBranch == nil, let refusal = protection.branch.refusal { throw WorkspaceError(message: refusal) }
         let started = worktree.terminals.filter { sessions.isRunning($0.id) }
         for terminal in started { sessions.close(terminal.id) }
         do {
@@ -646,14 +651,15 @@ import Observation
         }
         forgetWorktree(worktreeID, of: projectID)
         if let keptBranch { return keptBranch }
-        return await deleteBranch(branch, removal, of: project)
+        return await deleteBranch(protection, removal, of: project)
     }
 
     private static func keptCleanup(of branch: WorktreeBranch) -> BranchCleanup? {
         switch branch {
         case .protected(let name, .defaultBranch): .kept(name, reason: String(localized: "“\(name)” is the repository’s main branch."))
         case .protected(let name, .checkedOutElsewhere): .kept(name, reason: String(localized: "“\(name)” is checked out in another worktree."))
-        case .deletable, .none, .unreadable: nil
+        case .unreadable: .unchecked
+        case .deletable, .none: nil
         }
     }
 
@@ -669,10 +675,10 @@ import Observation
         save()
     }
 
-    private func deleteBranch(_ branch: WorktreeBranch, _ removal: BranchRemoval, of project: Project) async -> BranchCleanup {
-        guard let name = branch.deletableName else { return .untouched }
+    private func deleteBranch(_ protection: BranchProtectionReport, _ removal: BranchRemoval, of project: Project) async -> BranchCleanup {
+        guard let name = protection.branch.deletableName else { return .untouched }
         do {
-            try await GitService.deleteBranch(name, removal, project: project)
+            try await GitService.deleteBranch(name, removal, mergingInto: protection.mergeCandidates, project: project)
             return .deleted(name)
         } catch {
             return .kept(name, reason: error.localizedDescription)

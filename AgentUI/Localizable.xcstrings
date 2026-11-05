@@ -694,6 +694,16 @@
         }
       }
     },
+    "The worktree was deleted, but its branch couldn’t be checked, so it was kept." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le worktree a été supprimé, mais sa branche n’a pas pu être vérifiée : elle a donc été conservée."
+          }
+        }
+      }
+    },
     "The worktree was deleted, but not its branch. %@" : {
       "localizations" : {
         "fr" : {

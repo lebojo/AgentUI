@@ -69,6 +69,13 @@ enum InspectorTests {
         let endless = try await CommandRunner.run(shell, ["-c", "yes status line; exit 1"], at: root.path, timeout: 10, limit: 1024, readOnly: true, overflow: .truncate)
         try require(endless.count == 1024 && String(decoding: endless, as: UTF8.self).hasPrefix("status line\n"),
                     "A truncated read stops the command and keeps the beginning of its output")
+        let endlessOutput = try await CommandRunner.output(shell, ["-c", "yes status line; exit 1"], at: root.path, timeout: 10, limit: 1024, readOnly: true,
+                                                           overflow: .truncate)
+        let exact = try await CommandRunner.output(shell, ["-c", "printf 1234"], at: root.path, timeout: 10, limit: 4, readOnly: true, overflow: .truncate)
+        let over = try await CommandRunner.output(shell, ["-c", "printf 12345"], at: root.path, timeout: 10, limit: 4, readOnly: true, overflow: .truncate)
+        try require(endlessOutput.isTruncated && !exact.isTruncated && exact.data == Data("1234".utf8)
+                        && over.isTruncated && over.data == Data("1234".utf8),
+                    "Output that exactly fills the limit is complete, output beyond it is reported as truncated")
         print("PASS write commands discard oversized output instead of stopping")
 
         try await branchComparison(root: root)
@@ -296,7 +303,10 @@ enum InspectorTests {
         try require(snapshot.push == .push && GitTracking(upstream: "origin/main", tracksSameBranch: true).push(branch: "main") == nil
                     && GitTracking(upstream: nil).push(branch: "main") == nil
                     && GitTracking(upstream: nil, remote: "fork").push(branch: "main") == .publish(remote: "fork", branch: "main")
-                    && GitTracking(upstream: nil, remote: "origin", goneUpstream: "origin/main").push(branch: "main") == nil
+                    && GitTracking(upstream: nil, remote: "origin", goneUpstream: "origin/main", mergeState: .merged).push(branch: "main") == nil
+                    && GitTracking(upstream: nil, remote: "origin", goneUpstream: "origin/main", mergeState: .unmerged).push(branch: "main") == .publish(remote: "origin", branch: "main")
+                    && GitTracking(upstream: nil, remote: "origin", goneUpstream: "origin/main", mergeState: .unknown).push(branch: "main") == .publish(remote: "origin", branch: "main")
+                    && GitTracking(upstream: nil, remote: "origin", goneUpstream: "origin/main").push(branch: "main") == .publish(remote: "origin", branch: "main")
                     && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "abc", isDetached: true), headSHA: "abc", changes: [],
                                         tracking: GitTracking(upstream: nil)).push == nil
                     && LocalGitSnapshot(root: "/r", branch: GitBranch(name: "main"), headSHA: nil, changes: [], tracking: GitTracking(upstream: nil)).push == nil,
@@ -305,6 +315,11 @@ enum InspectorTests {
                     && GitAction.stage(["a"]).retries(.stage(["a"])) && !GitAction.stage(["b"]).retries(.stage(["a"]))
                     && !GitAction.stageAll.retries(.stage(["a"])) && GitAction.commit(title: "b", message: "").retries(.commit(title: "a", message: "")),
                     "A Git failure names its action and only the same action retried clears it")
+        try require(LocalGitSnapshot(root: "/r", branch: nil, headSHA: nil, changes: [], containsStagedChanges: true).hasStagedChanges
+                    && !LocalGitSnapshot(root: "/r", branch: nil, headSHA: nil, changes: [], containsStagedChanges: false).hasStagedChanges
+                    && LocalGitSnapshot(root: "/r", branch: nil, headSHA: nil,
+                                        changes: [GitChange(path: "a", originalPath: nil, indexStatus: "M", worktreeStatus: " ")]).hasStagedChanges,
+                    "Staged files beyond the listed ones still count as staged")
         let foreign = GitTracking(upstream: "origin/main", ahead: 3, remote: "origin", tracksSameBranch: false)
         try require(!foreign.isPublished && !foreign.hasUnpushedCommits && foreign.push(branch: "feature") == .publish(remote: "origin", branch: "feature")
                     && GitTracking(upstream: "origin/main", ahead: 3).push(branch: "feature") == nil
@@ -326,6 +341,12 @@ enum InspectorTests {
                     && remotes([("remote.origin.url", "v"), ("branch.main.remote", "gone")]).pushRemote(for: "main") == "origin"
                     && remotes([("remote.--upload-pack=x.url", "v")]).pushRemote(for: "main") == nil,
                     "Publish to the configured push remote, else origin, else the only remote, never an option-like name")
+        let optionLike = remotes([("remote.--upload-pack=x.url", "v"), ("branch.fix.remote", "--upload-pack=x"), ("branch.fix.merge", "refs/heads/bugfix")])
+        try require(optionLike.upstream(of: "fix") == nil && optionLike.url(ofRemote: "--upload-pack=x") == nil
+                    && remotes([("remote.origin.url", "v"), ("branch.fix.remote", "origin"), ("branch.fix.merge", "refs/heads/bugfix")]).upstream(of: "fix")
+                        == GitUpstream(remote: "origin", branch: "bugfix")
+                    && GitAction.pushUpstream(GitUpstream(remote: "-x", branch: "b")).arguments == ["push", "--", "-x", "HEAD:refs/heads/b"],
+                    "An option-like remote is never an upstream, and remotes are passed after --")
         let tracked = { (remote: String, merge: String) in
             remotes([("remote.origin.url", "v"), ("branch.Feature/x.remote", remote), ("branch.Feature/x.merge", merge)]).tracksSameBranch("Feature/x")
         }
@@ -337,7 +358,7 @@ enum InspectorTests {
                     && GitAction.commit(title: " ", description: "Body") == nil
                     && GitAction.commit(title: "T", message: "").arguments == ["commit", "--message", "T"]
                     && GitAction.commit(title: "T", message: "$(rm -rf /)").arguments == ["commit", "--message", "T", "--message", "$(rm -rf /)"]
-                    && GitAction.publish(remote: "fork", branch: "feature").arguments == ["push", "--set-upstream", "fork", "HEAD:refs/heads/feature"]
+                    && GitAction.publish(remote: "fork", branch: "feature").arguments == ["push", "--set-upstream", "--", "fork", "HEAD:refs/heads/feature"]
                     && GitAction.push.arguments == ["push"] && GitAction.publish(remote: "o", branch: "b").updatesRemote
                     && GitAction.unstageAll.arguments == ["reset", "--quiet", "--", "."]
                     && GitAction.stage(["-rf"]).arguments == ["--literal-pathspecs", "add", "--", "-rf"],
@@ -356,14 +377,14 @@ enum InspectorTests {
         try "two\n".write(to: repository.appendingPathComponent("two.txt"), atomically: true, encoding: .utf8)
         try await InspectorService.perform(.stage(["src/app/one.txt"]), at: repository.path)
         var local = try await InspectorService.localGit(at: repository.path)
-        try require(local.stagedChanges.map(\.path) == ["src/app/one.txt"] && local.unstagedChanges.map(\.path) == ["two.txt"] && local.push == nil,
+        try require(local.hasStagedChanges && local.stagedChanges.map(\.path) == ["src/app/one.txt"] && local.unstagedChanges.map(\.path) == ["two.txt"] && local.push == nil,
                     "Stage one file on an unborn branch")
         guard let staged = local.stagedChanges.first else { fatalError("Missing staged change") }
         let stagedDiff = try await InspectorService.diff(staged, at: repository.path, including: [.staged])
         try require(stagedDiff.sections.map(\.kind) == [.staged], "Staged rows preview only the index diff")
         try await InspectorService.perform(.unstage(["src/app/one.txt"]), at: repository.path)
         local = try await InspectorService.localGit(at: repository.path)
-        try require(local.stagedChanges.isEmpty && local.unstagedChanges.count == 2, "Unstage works before the first commit")
+        try require(local.stagedChanges.isEmpty && !local.hasStagedChanges && local.unstagedChanges.count == 2, "Unstage works before the first commit")
         try await InspectorService.perform(.stageAll, at: repository.path)
         try await InspectorService.perform(.unstageAll, at: repository.path)
         local = try await InspectorService.localGit(at: repository.path)
@@ -535,10 +556,11 @@ enum InspectorTests {
             return try await GitRootCache.topLevel(at: path)
         }
         let first = try await cache.root(at: nested.path)
-        let second = try await cache.root(at: nested.path)
+        let second = try await cache.location(at: nested.path)
         let afterRepeat = await resolutions.value
-        try require(first == WorkspacePath.canonical(repository) && second == first && afterRepeat == 1,
-                    "The repository root of an inspected path is resolved once while its repository stays in place")
+        try require(first == WorkspacePath.canonical(repository) && second.root == first && second.repository?.root.path == first
+                        && second.repository?.branch.name == "main" && afterRepeat == 1,
+                    "The repository root of an inspected path is resolved once while its repository stays in place, with its repository")
         _ = try await GitService.run(["init", "-q", "-b", "main"], at: nested.path)
         let inner = try await cache.root(at: nested.path)
         let afterNested = await resolutions.value
@@ -552,6 +574,39 @@ enum InspectorTests {
         let afterRemoval = await resolutions.value
         try require(afterRemoval == 3, "A removed repository is resolved by Git again")
         print("PASS repository roots are cached per inspected path")
+        try await branchMergeCache(root: root)
+    }
+
+    private static func branchMergeCache(root: URL) async throws {
+        let require = CoreTests.require
+        let repository = root.appendingPathComponent("merge cache repository")
+        try FileManager.default.createDirectory(at: repository, withIntermediateDirectories: true)
+        _ = try await GitService.run(["init", "-q", "-b", "main"], at: repository.path)
+        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Base"],
+                                     at: repository.path)
+        _ = try await GitService.run(["checkout", "-q", "-b", "topic"], at: repository.path)
+        _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "-q", "--allow-empty", "-m", "Work"],
+                                     at: repository.path)
+        let head = try await GitService.run(["rev-parse", "HEAD"], at: repository.path)
+        let checks = ResolutionCount()
+        let cache = BranchMergeCache(targets: { try await GitService.mergeTargets(among: $0, at: $1) },
+                                     merged: { branch, targets, path in
+                                         await checks.increment()
+                                         return try await GitService.isMerged(branch, into: targets, at: path)
+                                     })
+        guard let found = GitRepository.containing(repository.path) else { throw WorkspaceError(message: "FAIL: missing repository") }
+        let first = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path)
+        let second = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path)
+        let afterRepeat = await checks.value
+        try require(first == .unmerged && second == .unmerged && afterRepeat == 1, "The merge state of a branch is computed once while nothing changes")
+        _ = try await GitService.run(["branch", "-f", "main", "topic"], at: repository.path)
+        let landed = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path)
+        let afterLanding = await checks.value
+        try require(landed == .merged && afterLanding == 2, "Moving the main branch invalidates the cached merge state")
+        _ = try await GitService.run(["branch", "-m", "main", "trunk"], at: repository.path)
+        let unknown = await cache.state(of: "topic", headSHA: head, in: found, at: found.root.path)
+        try require(unknown == .unknown, "Without a main branch, the merge state is unknown")
+        print("PASS the merge state of a branch is cached until its references change")
     }
 
     private actor ResolutionCount {

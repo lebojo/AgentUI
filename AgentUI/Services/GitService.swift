@@ -45,29 +45,6 @@ enum GitService {
         }
     }
 
-    @concurrent static func worktreeBranch(at path: String, project: Project) async -> WorktreeBranch {
-        async let head = run(["rev-parse", "--symbolic-full-name", "HEAD"], at: path, timeout: 10)
-        async let worktrees = run(["worktree", "list", "--porcelain", "-z"], at: project.path, timeout: 10)
-        async let heads = remoteHeads(at: project.path)
-        do {
-            let reference = try await head
-            let branch = reference.hasPrefix("refs/heads/") ? GitBranch(name: String(reference.dropFirst("refs/heads/".count))) : nil
-            return WorktreeBranch(branch, defaultBranches: DefaultBranch.names(remoteHeads: try await heads.map(\.name)),
-                                  checkedOutElsewhere: checkedOutBranches(in: try await worktrees, excluding: path))
-        } catch {
-            return .unreadable
-        }
-    }
-
-    private static func remoteHeads(at path: String) async throws -> [DefaultBranch.RemoteHead] {
-        DefaultBranch.remoteHeads(in: try await run(["for-each-ref", "--format=%(refname)%09%(symref)", "refs/remotes/*/HEAD"], at: path, timeout: 10))
-    }
-
-    private static func checkedOutBranches(in porcelain: String, excluding path: String) -> Set<String> {
-        let own = WorkspacePath.canonical(URL(fileURLWithPath: path))
-        return Set(worktreeEntries(in: porcelain).filter { $0.path != own }.compactMap(\.branch))
-    }
-
     static func worktreeEntries(in porcelain: String) -> [GitWorktreeEntry] {
         var entries: [GitWorktreeEntry] = []
         for field in porcelain.split(separator: "\0") {
@@ -80,14 +57,15 @@ enum GitService {
         return entries
     }
 
-    @concurrent static func deleteBranch(_ branch: String, _ removal: BranchRemoval, project: Project) async throws {
+    @concurrent static func deleteBranch(_ branch: String, _ removal: BranchRemoval, mergingInto candidates: [String],
+                                         project: Project) async throws {
         guard let arguments = removal.arguments(for: branch) else { return }
-        if removal.requiresMerge { try await requireMergedIntoDefaultBranch(branch, at: project.path) }
+        if removal.requiresMerge { try await requireMerged(branch, into: candidates, at: project.path) }
         _ = try await run(arguments, at: project.path, timeout: 20)
     }
 
-    private static func requireMergedIntoDefaultBranch(_ branch: String, at path: String) async throws {
-        let targets = try await defaultBranchReferences(at: path)
+    private static func requireMerged(_ branch: String, into candidates: [String], at path: String) async throws {
+        let targets = try await mergeTargets(among: candidates, at: path)
         guard !targets.isEmpty else {
             throw WorkspaceError(message: String(localized: "The repository’s main branch couldn’t be found, so the branch “\(branch)” wasn’t deleted. If its commits are no longer needed, delete it with git branch -D \(branch)."))
         }
@@ -96,23 +74,15 @@ enum GitService {
         }
     }
 
-    @concurrent static func hasWorkOutsideDefaultBranch(_ branch: String, at path: String) async -> Bool {
-        guard let targets = try? await defaultBranchReferences(at: path), !targets.isEmpty,
-              let merged = try? await isMerged(branch, into: targets, at: path) else { return false }
-        return !merged
+    static func mergeTargets(among candidates: [String], at path: String) async throws -> [String] {
+        let output = try await run(["for-each-ref", "--format=%(refname)%09%(upstream)%09%(upstream:track)"] + candidates, at: path, timeout: 10)
+        return DefaultBranch.mergeTargets(in: output, candidates: candidates)
     }
 
-    private static func isMerged(_ branch: String, into targets: [String], at path: String) async throws -> Bool {
+    static func isMerged(_ branch: String, into targets: [String], at path: String) async throws -> Bool {
         let reference = "refs/heads/" + branch
         let merged = try await run(["for-each-ref", "--format=%(refname)"] + targets.map { "--merged=" + $0 } + [reference], at: path, timeout: 20)
         return merged.split(whereSeparator: \.isNewline).contains { $0 == reference }
-    }
-
-    private static func defaultBranchReferences(at path: String) async throws -> [String] {
-        let heads = try await remoteHeads(at: path)
-        let candidates = DefaultBranch.references(remoteHeads: heads)
-        let output = try await run(["for-each-ref", "--format=%(refname)%09%(upstream)%09%(upstream:track)"] + candidates, at: path, timeout: 10)
-        return DefaultBranch.mergeTargets(in: output, candidates: candidates)
     }
 
     static func hasLocalChanges(at path: String) async throws -> Bool {

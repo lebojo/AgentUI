@@ -163,13 +163,13 @@ struct GitTracking: Codable, Equatable, Sendable {
     var tracksSameBranch: Bool?
     var goneUpstream: String?
     var namedUpstream: GitUpstream?
-    var hasUnmergedWork: Bool?
+    var mergeState: BranchMergeState?
 
     var isPublished: Bool { upstream != nil && (tracksSameBranch == true || namedUpstream != nil) }
     var hasUnpushedCommits: Bool { isPublished && ahead > 0 }
 
     func push(branch: String) -> GitAction? {
-        if goneUpstream != nil { return hasUnmergedWork == true ? remote.map { .publish(remote: $0, branch: branch) } : nil }
+        if goneUpstream != nil { return mergeState == .merged ? nil : remote.map { .publish(remote: $0, branch: branch) } }
         if upstream != nil, let namedUpstream { return ahead > 0 ? .pushUpstream(namedUpstream) : nil }
         guard isPublished else { return remote.map { .publish(remote: $0, branch: branch) } }
         return ahead > 0 ? .push : nil
@@ -203,12 +203,12 @@ struct GitRemoteConfiguration: Equatable, Sendable {
     }
 
     func url(ofRemote name: String) -> String? {
-        remotes.first { $0.name == name }?.url
+        Self.isSafeRemoteName(name) ? remotes.first { $0.name == name }?.url : nil
     }
 
     func upstream(of branch: String) -> GitUpstream? {
         let prefix = "refs/heads/"
-        guard let remote = values["branch.\(branch).remote"], remotes.contains(where: { $0.name == remote }),
+        guard let remote = values["branch.\(branch).remote"], Self.isSafeRemoteName(remote), remotes.contains(where: { $0.name == remote }),
               let merge = values["branch.\(branch).merge"], merge.hasPrefix(prefix), merge.count > prefix.count else { return nil }
         return GitUpstream(remote: remote, branch: String(merge.dropFirst(prefix.count)))
     }
@@ -224,7 +224,7 @@ struct GitRemoteConfiguration: Equatable, Sendable {
     }
 
     func pushRemote(for branch: String) -> String? {
-        let names = remotes.map(\.name).filter { !$0.hasPrefix("-") }
+        let names = remotes.map(\.name).filter(Self.isSafeRemoteName)
         let preferred = [values["branch.\(branch).pushremote"], values["remote.pushdefault"], values["branch.\(branch).remote"], "origin"]
         if let name = preferred.compactMap({ $0 }).first(where: names.contains) { return name }
         return names.count == 1 ? names.first : nil
@@ -233,6 +233,10 @@ struct GitRemoteConfiguration: Equatable, Sendable {
     func tracksSameBranch(_ branch: String) -> Bool {
         guard let remote = values["branch.\(branch).remote"], remotes.contains(where: { $0.name == remote }) else { return false }
         return values["branch.\(branch).merge"] == "refs/heads/" + branch
+    }
+
+    private static func isSafeRemoteName(_ name: String) -> Bool {
+        !name.isEmpty && !name.hasPrefix("-")
     }
 
     private static func isTrackingSetting(_ key: String) -> Bool {
@@ -292,11 +296,13 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
     private(set) var changes: [GitChange]
     var omittedChanges = 0
     var isTruncated: Bool?
+    var containsStagedChanges: Bool?
     var tracking: GitTracking?
     var webAddress: RemoteWebAddress?
     var pushWebAddress: RemoteWebAddress?
 
     var omission: WorkingTreeOmission { WorkingTreeOmission(count: omittedChanges, isTruncated: isTruncated == true) }
+    var hasStagedChanges: Bool { containsStagedChanges ?? changes.contains(where: \.isStaged) }
     var stagedChanges: [GitChange] { changes.filter(\.isStaged) }
     var unstagedChanges: [GitChange] { changes.filter(\.isUnstaged) }
     var push: GitAction? {

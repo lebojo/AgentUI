@@ -45,11 +45,11 @@ enum BranchRemoval: Sendable {
 }
 
 enum BranchCleanup: Equatable, Sendable {
-    case untouched, deleted(String), kept(String, reason: String)
+    case untouched, unchecked, deleted(String), kept(String, reason: String)
 
     var branch: String? {
         switch self {
-        case .untouched: nil
+        case .untouched, .unchecked: nil
         case .deleted(let name), .kept(let name, _): name
         }
     }
@@ -64,7 +64,10 @@ enum BranchCleanup: Equatable, Sendable {
     }
 
     var failure: String? {
-        guard case .kept(_, let reason) = self else { return nil }
-        return String(localized: "The worktree was deleted, but not its branch. \(reason)")
+        switch self {
+        case .untouched, .deleted: nil
+        case .unchecked: String(localized: "The worktree was deleted, but its branch couldn’t be checked, so it was kept.")
+        case .kept(_, let reason): String(localized: "The worktree was deleted, but not its branch. \(reason)")
+        }
     }
 }

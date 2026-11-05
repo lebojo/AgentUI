@@ -11,8 +11,8 @@ swift_flags=(-parse-as-library -swift-version 6 -enable-upcoming-feature Nonisol
 trap 'rm -f "$test_binary" "$store_binary" "$conversation_binary" "$remote_binary" "$claude_binary"' EXIT
 xcrun swiftc "${swift_flags[@]}" \
   AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/BridgeProtocol.swift AgentUI/Models/FloatingTerminal.swift \
-  AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Models/DiscoveredWorktree.swift AgentUI/Models/RepositoryImport.swift AgentUI/Models/GitBranch.swift AgentUI/Models/WorktreeBranch.swift AgentUI/Services/DefaultBranch.swift AgentUI/Services/AgentCLI.swift AgentUI/Services/BridgeMailbox.swift AgentUI/Services/FileSystemWatcher.swift \
-  AgentUI/Models/InspectorModels.swift AgentUI/Models/GitAction.swift AgentUI/Models/GitChangeFolder.swift AgentUI/Models/RemoteWebAddress.swift AgentUI/Models/GitDiff.swift AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/GitConfiguration.swift AgentUI/Services/GitFilterGuard.swift AgentUI/Services/GitStatus.swift AgentUI/Services/GitRootCache.swift AgentUI/Services/GitBranchProtection.swift AgentUI/Services/FileEvents.swift AgentUI/Services/InspectorService.swift \
+  AgentUI/Services/GitService.swift AgentUI/Services/GitRepository.swift AgentUI/Models/DiscoveredWorktree.swift AgentUI/Models/RepositoryImport.swift AgentUI/Models/GitBranch.swift AgentUI/Models/WorktreeBranch.swift AgentUI/Models/BranchMergeState.swift AgentUI/Services/DefaultBranch.swift AgentUI/Services/AgentCLI.swift AgentUI/Services/BridgeMailbox.swift AgentUI/Services/FileSystemWatcher.swift \
+  AgentUI/Models/InspectorModels.swift AgentUI/Models/GitAction.swift AgentUI/Models/GitChangeFolder.swift AgentUI/Models/RemoteWebAddress.swift AgentUI/Models/GitDiff.swift AgentUI/Services/ReadCommand.swift AgentUI/Services/CommandRunner.swift AgentUI/Services/GitConfiguration.swift AgentUI/Services/GitFilterGuard.swift AgentUI/Services/GitStatus.swift AgentUI/Services/GitRootCache.swift AgentUI/Services/GitBranchProtection.swift AgentUI/Services/BranchMergeCache.swift AgentUI/Services/FileEvents.swift AgentUI/Services/InspectorService.swift \
   AgentUI/Models/InspectorStore.swift AgentUI/Models/InspectorPreviews.swift AgentUI/Services/WorkspaceWriter.swift \
   AgentUI/Models/UsageModels.swift AgentUI/Models/UsageStore.swift AgentUI/Services/UsageService.swift \
   AgentUI/Models/AgentConversation.swift AgentUI/Models/AgentLaunch.swift AgentUI/Models/TerminalTheme.swift AgentUI/Models/Removal.swift AgentUI/Models/RemovalConfirmations.swift AgentUI/Models/TerminalAppearance.swift \
@@ -39,7 +39,7 @@ xcrun swiftc "${swift_flags[@]}" \
 
 xcrun swiftc "${swift_flags[@]}" \
   AgentUI/Models/Workspace.swift AgentUI/Services/WorkspaceDisk.swift AgentUI/Models/TerminalLayout.swift AgentUI/Models/SidebarAppearance.swift AgentUI/Models/GitBranch.swift \
-  AgentUI/Models/InspectorModels.swift AgentUI/Models/GitAction.swift AgentUI/Models/RemoteWebAddress.swift AgentUI/Models/GitDiff.swift AgentUI/Models/AgentConversation.swift \
+  AgentUI/Models/InspectorModels.swift AgentUI/Models/GitAction.swift AgentUI/Models/RemoteWebAddress.swift AgentUI/Models/BranchMergeState.swift AgentUI/Models/GitDiff.swift AgentUI/Models/AgentConversation.swift \
   AgentUI/Models/Data/RemoteProtocol.swift AgentUI/Models/Data/RemoteTerminalSnapshot.swift AgentUI/Models/Data/TerminalGridSize.swift AgentUI/Models/Data/SessionMessage.swift \
   AgentUI/Models/Data/RemoteGridRequests.swift "AgentUI/Extensions/Collection+TerminalFocusReport.swift" \
   AgentUI/Models/Data/PairingInvitation.swift AgentUI/Models/Data/SavedHost.swift AgentUI/Models/Data/LocalAddress.swift AgentUI/Core/Remote/QRCode.swift \
