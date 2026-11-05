@@ -33,6 +33,7 @@ import Observation
     @ObservationIgnored private var recentResumes: [String: (terminal: UUID, at: ContinuousClock.Instant)] = [:]
     @ObservationIgnored private var restoredSessions = false
     @ObservationIgnored private(set) var draggedTerminal: UUID?
+    private var draggedTerminalWorktree: UUID?
     private let writer: WorkspaceWriter
     var errorMessage: String?
     var unmergedRemoval: UnmergedRemoval?
@@ -517,10 +518,16 @@ import Observation
 
     func beginDragging(_ terminalID: UUID) {
         draggedTerminal = terminalID
+        draggedTerminalWorktree = worktree(containing: terminalID)?.id
     }
 
     func endDragging() {
         draggedTerminal = nil
+        draggedTerminalWorktree = nil
+    }
+
+    func acceptsTerminalInsert(in worktreeID: UUID) -> Bool {
+        !isReadOnly && (draggedTerminalWorktree ?? worktreeID) == worktreeID
     }
 
     func canMoveTerminal(_ id: UUID, beside target: UUID) -> Bool {

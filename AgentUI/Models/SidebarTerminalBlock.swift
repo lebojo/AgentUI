@@ -10,7 +10,8 @@ struct SidebarTerminalBlock: Identifiable, Equatable, Sendable {
     var singleTerminal: TerminalRecord? { isSplit ? nil : terminals[0] }
 
     func contains(_ id: UUID?) -> Bool { terminals.contains { $0.id == id } }
-    func selectionTag(for selection: UUID?) -> UUID { terminals.first { $0.id == selection }?.id ?? id }
+    func selectedMember(_ selection: UUID?) -> UUID? { terminals.first { $0.id == selection }?.id }
+    func selectionTag(for selection: UUID?) -> UUID { selectedMember(selection) ?? id }
 }
 
 extension Worktree {

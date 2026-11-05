@@ -5,7 +5,7 @@ struct SidebarSplitBlockLabel: View {
 
     let block: SidebarTerminalBlock
 
-    private var focusedID: UUID? { block.terminals.first { $0.id == store.selection }?.id }
+    private var focusedID: UUID? { block.selectedMember(store.selection) }
     private var symbolName: String { block.axis == .vertical ? "rectangle.split.1x2" : "rectangle.split.2x1" }
 
     var body: some View {

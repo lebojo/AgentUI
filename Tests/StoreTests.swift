@@ -221,10 +221,14 @@ private final class ChangeFlag: @unchecked Sendable {
         let foreign = otherWorktree.worktrees[0].terminals[0].id
         try require(!split.canMoveTerminal(foreign, beside: first) && !split.moveTerminal(foreign, beside: first, edge: .leading)
                     && split.layout(for: foreign) == .terminal(foreign), "Terminals of another worktree cannot be combined")
+        let firstWorktree = split.worktree(containing: first)!.id, foreignWorktree = otherWorktree.worktrees[0].id
+        try require(split.acceptsTerminalInsert(in: firstWorktree) && split.acceptsTerminalInsert(in: foreignWorktree),
+                    "Without a known drag, every terminal list accepts a dropped terminal")
         split.beginDragging(first)
-        try require(split.draggedTerminal == first, "Remember the dragged terminal")
+        try require(split.draggedTerminal == first && split.acceptsTerminalInsert(in: firstWorktree) && !split.acceptsTerminalInsert(in: foreignWorktree),
+                    "Remember the dragged terminal, and only its own worktree's list accepts it")
         split.endDragging()
-        try require(split.draggedTerminal == nil, "A drop forgets the dragged terminal")
+        try require(split.draggedTerminal == nil && split.acceptsTerminalInsert(in: foreignWorktree), "A drop forgets the dragged terminal")
         try await split.flushPersistence()
         let reloadedDrops = try WorkspaceDisk.load(from: splitFile)
         try require(reloadedDrops == split.state, "Dropped layouts persist")
@@ -249,6 +253,7 @@ private final class ChangeFlag: @unchecked Sendable {
             try require(blocks().map(\.axis) == [.vertical, .horizontal, nil], "A block keeps its split axis")
             try require(blocks()[0].contains(e) && !blocks()[0].contains(b), "A block knows its terminals")
             try require(blocks()[0].selectionTag(for: e) == e && blocks()[0].selectionTag(for: d) == first && blocks()[0].singleTerminal == nil
+                            && blocks()[0].selectedMember(e) == e && blocks()[0].selectedMember(d) == nil
                             && blocks()[2].singleTerminal?.id == d && blocks()[2].selectionTag(for: nil) == d,
                         "A split block is selected through its focused pane, a single row through its terminal")
             func moveBlocks(_ source: IndexSet, to destination: Int) {
