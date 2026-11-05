@@ -1,8 +1,8 @@
 ---
 name: agentui
-description: Drive the AgentUI macOS app with the `agentui` CLI. Use when the AGENTUI_INSTANCE environment variable is set (you are in an AgentUI terminal), or when the user asks to use AgentUI from another terminal. Use it to start another agent in parallel on its own branch (`agentui worktree create`), to ask another agent for a review or a second opinion in the same worktree (`agentui terminal create`), to run a long process such as a dev server or watcher in a visible terminal, to send a message to another agent's terminal, read its output or wait for it to finish (`agentui terminal send`, `read`, `wait`), to add a project to the sidebar, to list projects, worktrees and terminals, or to delete a worktree once its branch is merged into the main branch. Prefer it over raw `git worktree add`, background jobs or a new shell when AgentUI is running.
+description: Drive the AgentUI macOS app with the `agentui` CLI. Use when the AGENTUI_INSTANCE environment variable is set (you are in an AgentUI terminal), or when the user asks to use AgentUI from another terminal. Use it to start another agent in parallel on its own branch (`agentui worktree create`), to ask another agent for a review or a second opinion in the same worktree (`agentui terminal create`), to run a long process such as a dev server or watcher in a visible terminal, to send a message or keys to another agent's terminal, read its reply or wait for it to finish (`agentui terminal send`, `read`, `wait`), to close a terminal (`agentui terminal close`), to add a project to the sidebar, to list projects, worktrees and terminals, or to delete a worktree once its branch is merged into the main branch, including your own worktree when the user asks you to merge your work and delete it. Prefer it over raw `git worktree add`, background jobs or a new shell when AgentUI is running.
 metadata:
-  version: "11"
+  version: "12"
 ---
 
 # AgentUI CLI
@@ -29,7 +29,7 @@ This skill may be newer or older than the installed app. `agentui --help` is the
 - **Review or second opinion.** Another agent reads the current worktree: `agentui terminal create --name Review -- <agent> "<prompt>"`.
 - **Follow-up with a child.** Reply to a child that waits for input, ask it to fix its findings, or collect its result: `agentui terminal send`, `wait` and `read` with the `terminalID` returned at creation.
 - **Long-running process.** A dev server, test watcher or log tail that the user should see: `agentui terminal create --name "Dev server" -- npm run dev`, instead of a background job in your own shell.
-- **Cleanup.** Delete a worktree whose branch is merged into the main branch, after the user agrees.
+- **Cleanup.** Close the child terminals whose work is collected. Delete a worktree whose branch is merged into the main branch, after the user agrees, or your own worktree as your last action when the user asks you to merge and delete it.
 
 ## When not to use it
 
@@ -55,7 +55,7 @@ agentui terminal close --terminal UUID [--force]
 - Without `--project` or `--worktree`, commands target the current project and worktree. `--project` alone targets that project's main folder; `--worktree` alone finds its project.
 - `agentui list` prints the whole workspace as JSON: `projects[].id`, `projects[].path`, `projects[].worktrees[]` with `id`, `name` (the branch), `path`, `isPrimary` and `terminals[]`.
 - Every other command prints `{"ok": true, "projectID": …, "worktreeID": …, "terminalID": …, "path": …}`. On failure: `{"ok": false, "message": …}` and a non-zero exit code. Read `message` and fix the call instead of retrying blindly.
-- If the command times out after 120 seconds, the operation may still finish: run `agentui list` before trying again.
+- If a command times out after 120 seconds (`terminal wait`: its `--timeout` plus 30 seconds), the operation may still finish: run `agentui list` before trying again.
 
 ## Starting a child agent
 
@@ -73,7 +73,7 @@ agentui terminal close --terminal UUID [--force]
 
 ## Talking to another terminal
 
-Address a terminal with the `terminalID` returned by `terminal create` or `worktree create`, or found in `agentui list`. These commands work on any terminal of the workspace, not only the ones you created, but never on your own (`AGENTUI_TERMINAL_ID`).
+Address a terminal with the `terminalID` returned by `terminal create` or `worktree create`, or found in `agentui list`. These commands work on any terminal of the workspace, not only the ones you created. `send` and `wait` refuse your own terminal (`AGENTUI_TERMINAL_ID`); `read` and `close` accept it.
 
 ```sh
 agentui terminal send --terminal "$CHILD" --enter -- "Fix the findings of your review, then commit."
@@ -92,7 +92,7 @@ agentui terminal read --terminal "$CHILD" --reply
 - Only send what the user asked for or what the task clearly calls for. Never approve a child's permission prompt, or answer for the user, unless they asked you to; report the prompt to them instead.
 - To send the same message to several children, run `send` once per terminal.
 - Sending to a terminal that has exited fails: create a new one, or resume the agent there.
-- `close` stops the terminal's processes and removes it from the sidebar. Without `--force`, it refuses while the terminal's agent is `working`. Close the terminals you created once their work is collected; ask the user before closing one you didn't create, and before using `--force`.
+- `close` stops the terminal's processes and removes it from the sidebar. Without `--force`, it refuses while the terminal's agent is `working`. Close the terminals you created once their work is collected; ask the user before closing one you didn't create, and before using `--force`. Closing your own terminal (`--terminal "$AGENTUI_TERMINAL_ID"`) replies first, then stops you: make it your last action.
 
 ## Limits
 
@@ -108,4 +108,14 @@ agentui terminal read --terminal "$CHILD" --reply
 - Add `--delete-branch` to delete the branch too, only when the user asked for it. The branch is deleted only if it is merged into the repository's main branch (`main`, `master` or a remote's `HEAD` branch, locally or on the remote once fetched). Otherwise, for example when the branch was only pushed or the repository has no main branch, nothing is removed: the command returns `ok: false` and a `message` explaining why. Report it to the user instead of retrying; with their agreement, run again without `--delete-branch` to delete only the worktree and keep the branch. With `--force-branch`, the branch is deleted even if it is not merged (`git branch -D`): its unmerged commits are lost, so never add it without the user's explicit agreement. `--force-branch` requires `--delete-branch`: on its own, the command fails before removing anything. `--force` only discards uncommitted changes in the worktree and never deletes an unmerged branch.
 - The repository's main branch and a branch checked out in another worktree are never deleted, nor is a branch whose state can't be checked: the command fails before deleting anything.
 - Once the worktree is deleted, the reply is `ok: true` with `removed: true`, plus `branch` and `branchDeleted` when a branch was asked for. `ok: false` always means nothing was removed. If the branch was kept anyway, for example because a commit landed on it after the merge check, `branchDeleted` is `false` and `message` says why: report it to the user, the worktree is already gone.
-- The project's main folder and the worktree of the calling terminal cannot be deleted. Run the command from another worktree.
+- The project's main folder cannot be deleted.
+
+### Deleting your own worktree
+
+When the user asks you to finish your work and delete your worktree ("merge into main and delete this worktree"), you can do it from the worktree itself: `agentui worktree delete --worktree "$AGENTUI_WORKTREE_ID"`, with `--delete-branch` if the user asked for the branch to go too.
+
+- To merge into the main branch first: it is checked out in the project's main folder, not in your worktree, so merge there with `git -C <main folder> merge <your branch>`, using the `path` of the worktree with `isPrimary: true` in `agentui list`. Do not check out the main branch in your own worktree: Git refuses a branch checked out elsewhere. If the main folder has uncommitted changes or the merge conflicts, stop and ask the user.
+- Everything is checked first, with the same rules as above. If the command refuses (`ok: false`), nothing is removed and you keep running: report the `message` to the user.
+- Otherwise the reply is `ok: true` with `closesCaller: true`, then your terminal closes: you stop right away, without another turn, and the worktree is deleted. You can't report the final result.
+- So make it your very last action: merge, push or whatever else the user asked, check that the worktree has no uncommitted changes, and tell the user what you did and that this terminal is about to close before running the command. Never add `--force` to get past uncommitted changes there unless the user explicitly agreed to lose them.
+- The other terminals of the worktree close too. If the deletion still fails after the reply, AgentUI shows the error and reopens the worktree's terminals.

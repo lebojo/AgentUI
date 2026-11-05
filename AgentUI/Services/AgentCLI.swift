@@ -27,15 +27,15 @@ enum AgentCLI {
     With --delete-branch, the branch is deleted too if it’s merged into the repository’s main branch; otherwise nothing is removed. Add --force-branch to delete it even if it isn’t, losing its unmerged commits.
     The repository’s main branch and a branch checked out elsewhere are never deleted.
     Without --force, a worktree with uncommitted changes or untracked files is kept; --force never deletes an unmerged branch.
-    A project’s main folder and the current terminal’s worktree can’t be deleted.
+    A project’s main folder can’t be deleted. From its own worktree, the command replies once everything is checked, then closes the current terminal and deletes the worktree.
     terminal send types TEXT into another terminal, or the standard input with --stdin. With --enter, the text is submitted as one message, like pressing Return; --enter alone just presses Return.
     --key presses keys one after the other, in order: enter, escape, tab, shift-tab, backspace, delete, space, up, down, left, right, home, end, page-up, page-down, ctrl-a … ctrl-z.
     terminal read prints the last lines of a terminal (50 by default, 10,000 at most) as output.
     For Claude, Codex and Copilot, --reply prints instead the agent’s answer to the last message as output, and --messages N the last N messages of its conversation (200 at most) as messages.
     terminal wait returns once the terminal has printed nothing for --idle SECONDS (5 by default), or once its command has exited with --exit. It gives up after --timeout SECONDS (120 by default, 3,600 at most) with ok: false.
     Their replies include running, exitCode and, for a recognized agent, agent and status (working, ready or waitingForInput).
-    terminal close stops the terminal’s processes and removes it. Without --force, it refuses while its agent is working.
-    The current terminal can’t send to, wait for or close itself.
+    terminal close stops the terminal’s processes and removes it. Without --force, it refuses while its agent is working. The current terminal closes itself after the reply.
+    The current terminal can’t send to or wait for itself.
     """)
 
     static func run(arguments: [String]) -> Int32 {
@@ -122,6 +122,7 @@ enum AgentCLI {
         var request = BridgeRequest(id: UUID(), action: "", projectID: environment["AGENTUI_PROJECT_ID"].flatMap(UUID.init(uuidString:)),
                                     worktreeID: environment["AGENTUI_WORKTREE_ID"].flatMap(UUID.init(uuidString:)), command: [])
         request.directory = currentDirectory
+        request.callerTerminalID = environment["AGENTUI_TERMINAL_ID"].flatMap(UUID.init(uuidString:))
         if arguments == ["list"] { request.action = "list"; return request }
         if arguments.count == 3, arguments[0...1] == ["project", "add"] {
             request.action = "project.add"
@@ -129,7 +130,7 @@ enum AgentCLI {
             return request
         }
         if arguments.count >= 2, ["send", "read", "wait", "close"].contains(arguments[1]), arguments[0] == "terminal" {
-            return try parseTerminalCommand(arguments, into: request, callerID: environment["AGENTUI_TERMINAL_ID"].flatMap(UUID.init(uuidString:)))
+            return try parseTerminalCommand(arguments, into: request)
         }
         let commands = [["terminal", "create"], ["worktree", "create"], ["worktree", "delete"]]
         guard arguments.count >= 2, commands.contains(Array(arguments[0...1])) else {
@@ -137,7 +138,6 @@ enum AgentCLI {
         }
         request.action = arguments[0] + "." + arguments[1]
         let isDeletion = request.action == "worktree.delete"
-        let currentWorktreeID = request.worktreeID
         let options = arguments.prefix { $0 != "--" }
         let explicitlyTargetsProject = options.contains("--project")
         if explicitlyTargetsProject || isDeletion { request.worktreeID = nil }
@@ -166,17 +166,14 @@ enum AgentCLI {
         }
         if isDeletion {
             _ = try request.branchRemoval
-            guard let target = request.worktreeID else {
+            guard request.worktreeID != nil else {
                 throw WorkspaceError(message: String(localized: "Specify the worktree to delete: --worktree UUID (see agentui list)."))
-            }
-            if target == currentWorktreeID {
-                throw WorkspaceError(message: String(localized: "This terminal belongs to the worktree being deleted. Run the command from another worktree."))
             }
         }
         return request
     }
 
-    private static func parseTerminalCommand(_ arguments: [String], into base: BridgeRequest, callerID: UUID?) throws -> BridgeRequest {
+    private static func parseTerminalCommand(_ arguments: [String], into base: BridgeRequest) throws -> BridgeRequest {
         var request = base
         request.action = "terminal." + arguments[1]
         request.projectID = nil
@@ -246,7 +243,7 @@ enum AgentCLI {
         if request.action == "terminal.send", !readsInput, request.text?.isEmpty ?? true, request.pressesEnter != true, request.keys == nil {
             throw WorkspaceError(message: String(localized: "Nothing to send: add the text after --, --stdin, --enter or --key."))
         }
-        if target == callerID, request.action != "terminal.read" {
+        if target == request.callerTerminalID, ["terminal.send", "terminal.wait"].contains(request.action) {
             throw WorkspaceError(message: String(localized: "This is the current terminal. Pass the UUID of another terminal."))
         }
         return request

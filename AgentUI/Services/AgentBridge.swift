@@ -6,6 +6,7 @@ import AppKit
     private let store: WorkspaceStore
     private var watcher: FileSystemWatcher?
     private var active: Set<UUID> = []
+    private var delivered: Set<UUID> = []
 
     init(store: WorkspaceStore) throws {
         self.store = store
@@ -72,9 +73,30 @@ import AppKit
             }
             response = result
         } catch { response = BridgeResponse(ok: false, message: error.localizedDescription) }
+        guard delivered.remove(id) == nil else {
+            if !response.ok, let message = response.message { store.errorMessage = message }
+            return
+        }
         do {
-            try await BridgeMailbox.write(response, to: directory.appendingPathComponent("\(id.uuidString).response"))
+            try await BridgeMailbox.write(response, to: responseFile(for: id))
         } catch { store.errorMessage = String(localized: "Couldn’t reply to agentui: \(error.localizedDescription)") }
+    }
+
+    private func responseFile(for id: UUID) -> URL {
+        directory.appendingPathComponent("\(id.uuidString).response")
+    }
+
+    private func replyBeforeClosingCaller(_ response: BridgeResponse, to id: UUID) async {
+        var response = response
+        response.closesCaller = true
+        let file = responseFile(for: id)
+        do { try await BridgeMailbox.write(response, to: file) } catch { return }
+        delivered.insert(id)
+        let deadline = ContinuousClock.now + .seconds(5)
+        while FileManager.default.fileExists(atPath: file.path), ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        try? await Task.sleep(for: .milliseconds(200))
     }
 
     private func execute(_ request: BridgeRequest) async throws -> BridgeResponse {
@@ -129,7 +151,8 @@ import AppKit
         if let projectID = request.projectID, projectID != project.id {
             throw WorkspaceError(message: String(localized: "This worktree doesn’t belong to the specified project."))
         }
-        if currentLocation?.worktreeID == worktreeID {
+        let closesCaller = store.context(for: request.callerTerminalID)?.worktree.id == worktreeID
+        if !closesCaller, currentLocation?.worktreeID == worktreeID {
             throw WorkspaceError(message: String(localized: "The current folder belongs to the worktree to delete. Run the command from another folder."))
         }
         let branchRemoval = try request.branchRemoval
@@ -138,7 +161,12 @@ import AppKit
         }
         let cleanup: BranchCleanup
         do {
-            cleanup = try await store.deleteWorktree(projectID: project.id, worktreeID: worktreeID, branch: branchRemoval)
+            cleanup = try await store.deleteWorktree(projectID: project.id, worktreeID: worktreeID, branch: branchRemoval) {
+                guard closesCaller else { return }
+                let message = String(localized: "Everything is checked: this terminal closes now, then the worktree is deleted.")
+                await replyBeforeClosingCaller(BridgeResponse(ok: true, message: message, projectID: project.id, worktreeID: worktreeID,
+                                                              path: worktree.path), to: request.id)
+            }
         } catch let error as UnmergedBranchError {
             throw WorkspaceError(message: String(localized: "\(error.localizedDescription) Run again with --force-branch to delete it anyway, or without --delete-branch to keep it."))
         }
@@ -188,12 +216,14 @@ import AppKit
         let id = try existingTerminal(request.terminalID)
         guard store.startableContext(for: id) != nil else { throw WorkspaceError(message: String(localized: "This worktree is being deleted.")) }
         var response = await state(of: id)
-        if request.force != true, response.status == AgentStatus.working.identifier {
+        let closesCaller = id == request.callerTerminalID
+        if !closesCaller, request.force != true, response.status == AgentStatus.working.identifier {
             throw WorkspaceError(message: String(localized: "The agent in this terminal is working. Wait for it with agentui terminal wait, or run again with --force to stop it."))
         }
-        store.closeTerminal(id)
         response.running = false
         response.removed = true
+        if closesCaller { await replyBeforeClosingCaller(response, to: request.id) }
+        store.closeTerminal(id)
         return response
     }
 

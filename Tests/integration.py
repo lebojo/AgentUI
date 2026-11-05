@@ -161,12 +161,33 @@ try:
     assert 'ended' in cli('terminal','send','--terminal',echo_id,'--enter','--','again',ok=False)['message']
     assert 'not found' in cli('terminal','read','--terminal',str(uuid.uuid4()),ok=False)['message']
     closable = cli('terminal','create','--project',pid,'--worktree',wid,'--name','À fermer')
-    cli('terminal','close','--terminal',closable['terminalID'],ok=False,extra_env={'AGENTUI_TERMINAL_ID': closable['terminalID']})
     closed = cli('terminal','close','--terminal',closable['terminalID'])
     assert closed['removed'] and not closed['running'], closed
     assert closable['terminalID'] not in [t['id'] for p in cli('list')['workspace']['projects'] for w in p['worktrees'] for t in w['terminals']]
     cli('terminal','close','--terminal',closable['terminalID'],ok=False)
     print('PASS an agent sends input to another terminal, presses keys, reads its output, waits for it and closes it', flush=True)
+
+    def from_terminal(script, output, branch=None):
+        create = ('worktree','create','--project',pid,'--branch',branch) if branch else ('terminal','create','--project',pid,'--worktree',wid)
+        created = cli(*create,'--','/bin/zsh','-c',script + ' > "$1"; sleep 30','agentui-test',str(output))
+        wait_for(lambda: output.exists() and output.stat().st_size > 0, 'reply in the closing terminal')
+        return created, json.loads(output.read_text())
+    terminals = lambda: [t['id'] for p in cli('list')['workspace']['projects'] for w in p['worktrees'] for t in w['terminals']]
+    worktrees = lambda: [w['id'] for p in cli('list')['workspace']['projects'] for w in p['worktrees']]
+    itself, reply = from_terminal('"$AGENTUI_CLI" terminal close --terminal "$AGENTUI_TERMINAL_ID"', root / 'close-self.json')
+    assert reply['ok'] and reply['closesCaller'] and reply['removed'], reply
+    wait_for(lambda: itself['terminalID'] not in terminals(), 'terminal closed after its reply')
+    dirty, refusal = from_terminal('touch draft.txt; "$AGENTUI_CLI" worktree delete --worktree "$AGENTUI_WORKTREE_ID"', root / 'dirty-self.json',
+                                   branch='feature/self-dirty')
+    assert not refusal['ok'] and 'force' in refusal['message'] and dirty['worktreeID'] in worktrees(), refusal
+    assert dirty['terminalID'] in terminals() and pathlib.Path(dirty['path']).is_dir()
+    merged, reply = from_terminal('"$AGENTUI_CLI" worktree delete --worktree "$AGENTUI_WORKTREE_ID" --delete-branch', root / 'delete-self.json',
+                                  branch='feature/self-merged')
+    assert reply['ok'] and reply['closesCaller'] and reply['worktreeID'] == merged['worktreeID'], reply
+    wait_for(lambda: merged['worktreeID'] not in worktrees() and not pathlib.Path(merged['path']).exists(), 'own worktree deleted after the reply')
+    wait_for(lambda: not git('branch','--list','feature/self-merged'), 'merged branch deleted with its own worktree')
+    cli('worktree','delete','--worktree',dirty['worktreeID'],'--force')
+    print('PASS an agent closes its own terminal and deletes its own worktree, after the reply and only once everything is checked', flush=True)
 
     worktree = cli('worktree','create','--project',pid,'--branch','feature/native-sidebar','--name','Interface')
     assert pathlib.Path(worktree['path']).is_dir() and git('branch','--show-current') == 'main'

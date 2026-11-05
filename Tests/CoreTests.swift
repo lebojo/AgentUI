@@ -137,8 +137,11 @@ import Foundation
         catch let error as WorkspaceError { try require(!error.message.hasPrefix("FAIL"), "--delete-branch only applies to deletion") }
         do { _ = try AgentCLI.parse(["worktree", "delete"], environment: env); throw WorkspaceError(message: "FAIL: implicit deletion accepted") }
         catch let error as WorkspaceError { try require(error.message.contains("--worktree UUID"), "Deletion never targets the current worktree implicitly") }
-        do { _ = try AgentCLI.parse(["worktree", "delete", "--worktree", worktreeID.uuidString], environment: env); throw WorkspaceError(message: "FAIL: self deletion accepted") }
-        catch let error as WorkspaceError { try require(error.message.contains("another worktree"), "A terminal cannot delete its own worktree") }
+        let terminalID = UUID()
+        let selfDeletion = try AgentCLI.parse(["worktree", "delete", "--worktree", worktreeID.uuidString],
+                                              environment: env.merging(["AGENTUI_TERMINAL_ID": terminalID.uuidString]) { $1 })
+        try require(selfDeletion.worktreeID == worktreeID && selfDeletion.callerTerminalID == terminalID,
+                    "A terminal may delete its own worktree: the app replies before closing it")
         let inherited = try AgentCLI.parse(["terminal", "create"], environment: env, currentDirectory: "/tmp")
         try require(inherited.projectID == projectID && inherited.directory == "/tmp", "An AgentUI terminal keeps its context and sends its directory")
         let worktreeOnly = try AgentCLI.parse(["terminal", "create", "--worktree", explicitID.uuidString], environment: env)
@@ -192,6 +195,8 @@ import Foundation
         try require(reply.reply == true && history.messages == 5, "terminal read --reply and --messages")
         let close = try AgentCLI.parse(["terminal", "close", "--terminal", childID.uuidString, "--force"], environment: callerEnv)
         try require(close.action == "terminal.close" && close.force == true && close.terminalID == childID, "terminal close --force")
+        let closeSelf = try AgentCLI.parse(["terminal", "close", "--terminal", callerID.uuidString], environment: callerEnv)
+        try require(closeSelf.callerTerminalID == callerID, "A terminal may close itself")
         let refusedTerminalOptions: [([String], String)] = [
             (["terminal", "send", "--terminal", childID.uuidString, "--key", "f13"], "Unknown key"),
             (["terminal", "send", "--terminal", childID.uuidString, "--key", "up", "--enter"], "--key"),
@@ -199,7 +204,6 @@ import Foundation
             (["terminal", "send", "--terminal", childID.uuidString] + Array(repeating: ["--key", "up"], count: 51).flatMap { $0 }, "Too many keys"),
             (["terminal", "read", "--terminal", childID.uuidString, "--reply", "--lines", "3"], "only one"),
             (["terminal", "read", "--terminal", childID.uuidString, "--messages", "201"], "--messages"),
-            (["terminal", "close", "--terminal", callerID.uuidString], "current terminal"),
             (["terminal", "close", "--terminal", childID.uuidString, "--enter"], "--enter"),
         ]
         for (arguments, expected) in refusedTerminalOptions {

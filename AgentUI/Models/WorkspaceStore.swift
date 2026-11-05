@@ -645,7 +645,8 @@ import Observation
         try await GitService.fetchRemotes(project: project)
     }
 
-    @discardableResult func deleteWorktree(projectID: UUID, worktreeID: UUID, branch removal: BranchRemoval = .keep) async throws -> BranchCleanup {
+    @discardableResult func deleteWorktree(projectID: UUID, worktreeID: UUID, branch removal: BranchRemoval = .keep,
+                                           beforeClosingTerminals: () async -> Void = {}) async throws -> BranchCleanup {
         guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: String(localized: "A Git operation is already in progress on this project.")) }
         guard let project = projects.first(where: { $0.id == projectID }),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }) else {
@@ -663,6 +664,7 @@ import Observation
         let keptBranch = removal.confirmedBranch.flatMap(protection.branch.cleanup(confirming:))
         if removal.confirmedBranch == nil, let refusal = protection.branch.refusal { throw WorkspaceError(message: refusal) }
         let deletion = keptBranch == nil ? try await branchDeletion(protection, removal, at: project.path) : nil
+        await beforeClosingTerminals()
         let started = worktree.terminals.filter { sessions.isRunning($0.id) }
         for terminal in started { sessions.close(terminal.id) }
         do {

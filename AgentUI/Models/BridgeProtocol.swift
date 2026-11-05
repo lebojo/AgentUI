@@ -9,6 +9,7 @@ struct BridgeRequest: Codable, Sendable {
     var branch: String?
     var path: String?
     var directory: String?
+    var callerTerminalID: UUID?
     var command: [String]
     var force: Bool?
     var deleteBranch: Bool?
@@ -50,6 +51,7 @@ struct BridgeResponse: Codable, Sendable {
     var path: String?
     var workspace: Workspace?
     var removed: Bool?
+    var closesCaller: Bool?
     var branch: String?
     var branchDeleted: Bool?
     var output: String?
