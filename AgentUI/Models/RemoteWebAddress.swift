@@ -3,7 +3,6 @@ import Foundation
 struct RemoteWebAddress: Codable, Equatable, Sendable {
     private static let webSchemes = ["https", "http"]
     private static let gitSchemes = ["ssh", "git", "git+ssh", "ssh+git"]
-    private static let queryCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~/")
 
     let scheme: String
     let host: String
@@ -54,8 +53,8 @@ struct RemoteWebAddress: Codable, Equatable, Sendable {
         case .gitlab:
             var components = head.components
             components.path = "/\(head.path)/-/merge_requests/new"
-            components.percentEncodedQuery = "merge_request%5Bsource_branch%5D=\(Self.queryValue(branch))"
-                + "&merge_request%5Btarget_branch%5D=\(Self.queryValue(base))"
+            components.percentEncodedQuery = "merge_request%5Bsource_branch%5D=\(branch.percentEncodedQueryValue)"
+                + "&merge_request%5Btarget_branch%5D=\(base.percentEncodedQueryValue)"
             return components.url
         case nil:
             return nil
@@ -73,9 +72,5 @@ struct RemoteWebAddress: Codable, Equatable, Sendable {
     private func source(of branch: String, from head: RemoteWebAddress) -> String {
         guard head.host == host, head.path != path, let owner = head.segments.first, let name = head.segments.last else { return branch }
         return name == segments.last ? "\(owner):\(branch)" : "\(owner):\(name):\(branch)"
-    }
-
-    private static func queryValue(_ value: String) -> String {
-        value.addingPercentEncoding(withAllowedCharacters: queryCharacters) ?? value
     }
 }

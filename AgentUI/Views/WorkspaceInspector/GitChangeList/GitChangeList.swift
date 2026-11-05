@@ -26,7 +26,12 @@ struct GitChangeList: View {
                     .foregroundStyle(Palette.textSecondary).font(Typography.body)
             }
             ForEach(visibleRows) { row in
-                GitChangeOutlineRow(collapsed: $collapsed, row: row, root: root, scope: scope, source: source)
+                GitChangeOutlineRow(depth: row.depth) {
+                    switch row.content {
+                    case .folder(let path, let name): GitChangeFolderRow(isCollapsed: $collapsed[contains: path], name: name, path: path)
+                    case .file(let change): GitChangeRow(change: change, root: root, scope: scope, source: source)
+                    }
+                }
             }
             if omitted > 0 {
                 InspectorNotice(title: "Truncated List", message: "\(omitted) more changes not shown on this device", symbol: "ellipsis.circle")

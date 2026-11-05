@@ -9,9 +9,8 @@ struct GitChangeFolderRow: View {
     var body: some View {
         Button { isCollapsed.toggle() } label: {
             HStack(spacing: Spacing.xs) {
-                Image(systemName: "chevron.right")
+                Image(systemName: isCollapsed ? "chevron.forward" : "chevron.down")
                     .font(Typography.xs).foregroundStyle(Palette.textSecondary)
-                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
                     .frame(width: IconSize.xs)
                 Label(name, systemImage: "folder").lineLimit(1).truncationMode(.middle)
             }

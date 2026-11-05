@@ -736,8 +736,10 @@ enum InspectorTests {
         let github = addresses[0]?.newChangeRequestURL(branch: "feature/new #1", base: "main")?.absoluteString
         try require(github == "https://github.com/owner/app/compare/main...feature/new%20%231?expand=1", "Build the GitHub compare page for a new pull request")
         let gitlab = addresses[1]?.newChangeRequestURL(branch: "feat/a+b", base: "develop")?.absoluteString
-        try require(gitlab == "https://gitlab.example.com/group/sub/project/-/merge_requests/new?merge_request%5Bsource_branch%5D=feat/a%2Bb&merge_request%5Btarget_branch%5D=develop",
+        try require(gitlab == "https://gitlab.example.com/group/sub/project/-/merge_requests/new?merge_request%5Bsource_branch%5D=feat%2Fa%2Bb&merge_request%5Btarget_branch%5D=develop",
                     "Build the GitLab new merge request page with source and target branches")
+        try require("feat/a+b&c=d;e?f#g h-é._~".percentEncodedQueryValue == "feat%2Fa%2Bb%26c%3Dd%3Be%3Ff%23g%20h-%C3%A9._~",
+                    "A query value keeps only unreserved characters, so separators and plus signs never change its meaning")
         try require(addresses[4]?.newChangeRequestURL(branch: "x", base: "main")?.absoluteString.hasPrefix("http://gitlab.local:8080/group/project/-/") == true
                     && RemoteWebAddress(remoteURL: "git@bitbucket.org:team/app.git")?.newChangeRequestURL(branch: "x", base: "main") == nil,
                     "Keep HTTP ports and skip unknown providers")

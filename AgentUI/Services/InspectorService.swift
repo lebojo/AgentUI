@@ -194,7 +194,7 @@ enum InspectorService {
         var changeRequestError: String?
         if let branch, !branch.isDetached {
             do {
-                let requests = try await api("projects/:id/merge_requests?source_branch=\(queryValue(branch.name))&order_by=updated_at&per_page=20",
+                let requests = try await api("projects/:id/merge_requests?source_branch=\(branch.name.percentEncodedQueryValue)&order_by=updated_at&per_page=20",
                                              as: [GitLabMergeRequest].self)
                 if let summary = requests.first(where: \.isOpen) ?? requests.first {
                     let request = try await api("projects/:id/merge_requests/\(summary.iid)", as: GitLabMergeRequest.self)
@@ -211,17 +211,12 @@ enum InspectorService {
         var checksError: String?
         if let headSHA {
             do {
-                runs = try await api("projects/:id/pipelines?sha=\(queryValue(headSHA))&per_page=10", as: [GitLabPipeline].self).map(\.run)
+                runs = try await api("projects/:id/pipelines?sha=\(headSHA.percentEncodedQueryValue)&per_page=10", as: [GitLabPipeline].self).map(\.run)
             } catch is CancellationError { throw CancellationError() }
             catch { checksError = error.localizedDescription }
         }
         return RemoteSnapshot(hosting: .gitlab, repository: repository, changeRequest: changeRequest, runs: runs,
                               changeRequestError: changeRequestError, checksError: checksError)
-    }
-
-    private static func queryValue(_ value: String) -> String {
-        let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
-        return value.addingPercentEncoding(withAllowedCharacters: unreserved) ?? value
     }
 
     @concurrent static func github(at path: String, branch: GitBranch?, headSHA: String?, executable override: URL? = nil) async throws -> RemoteSnapshot {
