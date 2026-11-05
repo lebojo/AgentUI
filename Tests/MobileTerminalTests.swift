@@ -100,11 +100,9 @@ private struct Viewport: View {
                     "A larger text size requests fewer columns: \(requested)")
         let phoneGrid = requested[fitted]
         view.insertText("y")
-        try require(requested.count == fitted + 2 && requested.last == phoneGrid, "Typing on the phone reclaims its grid when the host uses another one")
-        view.insertText("y")
-        try require(requested.count == fitted + 2, "Further typing waits for the host instead of re-sending the grid on every key: \(requested)")
-        session.reclaimGrid()
-        try require(requested.count == fitted + 3 && requested.last == phoneGrid, "A new stream re-sends the last requested grid")
+        try require(requested.count == fitted + 1, "Typing never sends a grid: the Mac decides when typing claims it back: \(requested)")
+        session.resendGrid()
+        try require(requested.count == fitted + 2 && requested.last == phoneGrid, "A new stream re-sends the last requested grid")
         let viewport = ancestorViewport()!
         try require(abs(viewport.zoomScale - min(1, viewport.bounds.width / session.canvasSize.width)) < 0.01, "Terminal initially fits the phone width")
         viewport.setZoomScale(1.5, animated: false)
@@ -116,16 +114,8 @@ private struct Viewport: View {
         view.layoutIfNeeded()
         try require(terminal.cols == 43 && terminal.rows == 13 && terminal.applicationCursor, "Only a host resize changes the grid, preserving modes")
         view.insertText("w")
-        view.insertText("w")
-        try require(requested.count == fitted + 4 && requested.last == phoneGrid, "Typing reclaims the grid once each time the host moves to another one: \(requested)")
-        apply("", columns: phoneGrid.columns, rows: phoneGrid.rows)
         try await Task.sleep(for: .milliseconds(300))
-        controller.view.layoutIfNeeded()
-        view.insertText("z")
-        try require(requested.count == fitted + 4, "Typing never re-sends a grid the host already uses: \(requested)")
-        apply("", columns: 43, rows: 13)
-        view.insertText("z")
-        try require(requested.count == fitted + 5, "Once the host used the phone grid, losing it again lets typing reclaim it: \(requested)")
-        return "PASS iOS emulator mode preservation\nPASS suppress mirrored replies and forward real keyboard input\nPASS host grid survives UIKit attachment, rotation and keyboard-sized viewports\nPASS host resize preserves modes\nPASS fit-to-width and zoom preserve the host grid\nPASS the phone requests the grid that fits its screen and text size, and reclaims it when typing"
+        try require(requested.count == fitted + 2, "A host grid change alone never makes the phone request its grid again: \(requested)")
+        return "PASS iOS emulator mode preservation\nPASS suppress mirrored replies and forward real keyboard input\nPASS host grid survives UIKit attachment, rotation and keyboard-sized viewports\nPASS host resize preserves modes\nPASS fit-to-width and zoom preserve the host grid\nPASS the phone requests the grid that fits its screen and text size, and re-sends it on a new stream"
     }
 }

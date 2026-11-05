@@ -179,5 +179,72 @@ import Foundation
         try require(kept.count > 10_000, "A trimmed list keeps as many entries as fit")
         try require(Int(kept[0]).map { $0 + kept.count - 1 } == entries.count, "A trimmed list reports how many entries were left out")
         print("PASS version rejections and oversized lists fit the mobile protocol")
+
+        try testRemoteGridRequests()
+        print("PASS a phone grid applies until the Mac takes it back, and only typing on the phone claims it again")
+        try testPinnedFrameSize()
+        print("PASS the pinned terminal frame makes SwiftTerm compute exactly the phone grid")
+    }
+
+    static func testRemoteGridRequests() throws {
+        let phone = UUID()
+        let tablet = UUID()
+        let portrait = TerminalGridSize(columns: 45, rows: 50)
+        let landscape = TerminalGridSize(columns: 100, rows: 20)
+        let tabletGrid = TerminalGridSize(columns: 120, rows: 40)
+        try require([UInt8]("\u{1b}[I".utf8).isTerminalFocusReport && Data("\u{1b}[O".utf8).isTerminalFocusReport,
+                    "Focus-in and focus-out reports are recognised")
+        try require(![UInt8]("\u{1b}[Ix".utf8).isTerminalFocusReport && !Data("I".utf8).isTerminalFocusReport && !Data().isTerminalFocusReport,
+                    "Typed text is never a focus report")
+        var grids = RemoteGridRequests()
+        grids.takeBack()
+        try require(grids.isEmpty && grids.size == nil, "Using an unwatched terminal on the Mac leaves no state behind")
+        grids.request(portrait, by: phone)
+        try require(grids.size == portrait, "A phone grid applies as soon as the phone asks")
+        grids.request(tabletGrid, by: tablet)
+        try require(grids.size == tabletGrid, "The latest viewer grid applies")
+        grids.receive(Data("x".utf8), from: phone)
+        try require(grids.size == portrait, "Typing on a phone gives the terminal its grid")
+        grids.takeBack()
+        try require(grids.size == nil && !grids.isEmpty, "Using the terminal on the Mac returns it to the Mac grid")
+        grids.request(landscape, by: phone)
+        try require(grids.size == nil, "Rotating the phone or changing its text size never takes the terminal back from the Mac")
+        grids.receive(Data("\u{1b}[O".utf8), from: phone)
+        grids.receive(Data("\u{1b}[I".utf8), from: phone)
+        try require(grids.size == nil, "Focus reports sent when the phone keyboard opens or closes are not typing")
+        grids.withdraw(phone)
+        grids.request(landscape, by: phone)
+        try require(grids.size == nil, "A phone reconnecting after a network blip doesn't take the terminal back")
+        grids.receive(Data("y".utf8), from: UUID())
+        try require(grids.size == nil, "Typing from a viewer without a grid, such as Chat, claims nothing")
+        grids.receive(Data("y".utf8), from: phone)
+        try require(grids.size == landscape, "Typing on the phone claims its latest grid again")
+        grids.withdraw(phone)
+        try require(grids.size == tabletGrid, "When a phone leaves the terminal or switches to Chat, the next viewer grid applies")
+        grids.withdraw(tablet)
+        try require(grids.isEmpty && grids.size == nil, "The Mac grid returns once no viewer shows the terminal")
+    }
+
+    static func testPinnedFrameSize() throws {
+        let grids = [TerminalGridSize(columns: 20, rows: 5), TerminalGridSize(columns: 45, rows: 50),
+                     TerminalGridSize(columns: 80, rows: 24), TerminalGridSize(columns: 211, rows: 63), TerminalGridSize(columns: 400, rows: 200)]
+        for cell in [CGSize(width: 7, height: 14), CGSize(width: 7.2246, height: 16.5), CGSize(width: 7.8, height: 17),
+                     CGSize(width: 8.4375, height: 19.2), CGSize(width: 15.6, height: 31.0001)] {
+            for scroller: CGFloat in [0, 15, 16] {
+                for current in [(columns: 1, rows: 1), (columns: 87, rows: 31), (columns: 400, rows: 200)] {
+                    let optimal = CGSize(width: cell.width * CGFloat(current.columns) + scroller, height: cell.height * CGFloat(current.rows))
+                    for grid in grids {
+                        guard let size = grid.frameSize(scaling: optimal, columns: current.columns, rows: current.rows, scrollerWidth: scroller) else {
+                            throw RemoteError(message: "FAIL: No frame for \(grid) with cell \(cell)")
+                        }
+                        try require(Int((size.width - scroller) / cell.width) == grid.columns && Int(size.height / cell.height) == grid.rows,
+                                    "SwiftTerm fits \(grid.columns)x\(grid.rows) in the pinned frame \(size) for cell \(cell)")
+                        try require(size.width == size.width.rounded() && size.height == size.height.rounded(), "The pinned frame is point aligned")
+                    }
+                }
+            }
+        }
+        try require(TerminalGridSize(columns: 80, rows: 24).frameSize(scaling: .zero, columns: 0, rows: 0, scrollerWidth: 15) == nil,
+                    "An empty terminal has no pinned frame")
     }
 }

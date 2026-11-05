@@ -14,8 +14,6 @@ import Observation
     @ObservationIgnored private var applyingOutput = false
     @ObservationIgnored private var viewport = CGSize.zero
     @ObservationIgnored private var requestedGrid: TerminalGridSize?
-    @ObservationIgnored private var hostGridChanges = 0
-    @ObservationIgnored private var reclaimedHostGridChange: Int?
     @ObservationIgnored private var gridRequest: Task<Void, Never>?
     @ObservationIgnored private let sendInput: (Data) -> Void
     @ObservationIgnored private let requestGrid: (TerminalGridSize) -> Void
@@ -29,12 +27,6 @@ import Observation
         super.init()
         view?.font = .monospacedSystemFont(ofSize: TerminalAppearance.defaultFontSize, weight: .regular)
         view?.terminalDelegate = self
-    }
-
-    private var hostUsesRequestedGrid: Bool {
-        guard let view, let requestedGrid else { return false }
-        let terminal = view.getTerminal()
-        return terminal.cols == requestedGrid.columns && terminal.rows == requestedGrid.rows
     }
 
     private var fittingGrid: TerminalGridSize? {
@@ -70,9 +62,7 @@ import Observation
         let terminal = view.getTerminal()
         if terminal.cols != snapshot.columns || terminal.rows != snapshot.rows {
             terminal.resize(cols: snapshot.columns, rows: snapshot.rows)
-            hostGridChanges += 1
         }
-        if hostUsesRequestedGrid { reclaimedHostGridChange = nil }
         updateCanvasSize()
         if !snapshot.output.isEmpty { view.feed(byteArray: Array(snapshot.output)[...]) }
         return true
@@ -94,9 +84,8 @@ import Observation
         scheduleGridRequest()
     }
 
-    func reclaimGrid() {
+    func resendGrid() {
         guard let requestedGrid else { return }
-        reclaimedHostGridChange = hostGridChanges
         requestGrid(requestedGrid)
     }
 
@@ -123,7 +112,6 @@ import Observation
 
     func send(source: TerminalView, data: ArraySlice<UInt8>) {
         guard !applyingOutput else { return }
-        if !hostUsesRequestedGrid, reclaimedHostGridChange != hostGridChanges { reclaimGrid() }
         sendInput(Data(data))
     }
     func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {}

@@ -220,8 +220,8 @@ import Observation
                             repositoryRevision += 1
                             conversationRevision += 1
                         }
+                        if selection == selectedID { session?.resendGrid() }
                         sendQueuedInputs()
-                        if selection == selectedID { session?.reclaimGrid() }
                     }
                     switch event {
                     case .workspace(let value):

@@ -83,6 +83,11 @@ import SwiftTerm
             }
             let bytes = Array((request.command.joined(separator: "\n") + "\n").utf8)
             session.view.process.send(data: bytes[...])
+        case "debug.typeLocally":
+            guard let id = request.name.flatMap(UUID.init(uuidString:)), let session = store.sessions.session(id) else {
+                throw WorkspaceError(message: "Test terminal is not running")
+            }
+            session.view.send(source: session.view, data: Array(request.command.joined().utf8)[...])
         case "debug.flush":
             try await store.flushPersistence()
         case "debug.cancelWorktree":

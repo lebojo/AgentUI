@@ -6051,12 +6051,12 @@
         }
       }
     },
-    "While you view a terminal, the Mac resizes it to fit this screen. It returns to its own size when you leave or use it on the Mac." : {
+    "While you view a terminal, the Mac resizes it to fit this screen. It returns to its own size when you leave or use it on the Mac, until you type here again." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pendant que tu regardes un terminal, le Mac l’ajuste à cet écran. Il reprend sa taille quand tu le quittes ou que tu l’utilises sur le Mac."
+            "value" : "Pendant que tu regardes un terminal, le Mac l’ajuste à cet écran. Il reprend sa taille quand tu le quittes ou que tu l’utilises sur le Mac, jusqu’à ce que tu tapes à nouveau ici."
           }
         }
       }

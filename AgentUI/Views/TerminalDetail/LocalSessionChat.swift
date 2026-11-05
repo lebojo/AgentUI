@@ -5,11 +5,9 @@ struct LocalSessionChat: View {
 
     var body: some View {
         SessionChatView(messages: session.transcript.messages, source: session.transcript.source, isEnabled: !session.hasExited) { text in
-            session.usedLocally()
-            try await session.send(Data((text + "\r").utf8), message: text)
+            try await session.send(Data((text + "\r").utf8), message: text, from: .local)
         } control: { data in
-            session.usedLocally()
-            try await session.send(data)
+            try await session.send(data, from: .local)
         }
         .task(id: session.identity) {
             session.acquireChat()

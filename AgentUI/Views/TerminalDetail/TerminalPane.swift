@@ -40,13 +40,12 @@ struct TerminalPane: View {
                 if displayMode == .chat, session.agent != nil {
                     LocalSessionChat(session: session)
                         .simultaneousGesture(TapGesture().onEnded { select() })
+                        .overlay(alignment: .topTrailing) { RemoteGridBadge(session: session) }
                 } else {
                     NativeTerminalView(session: session, appearance: settings.terminal, isFocused: isFocused) { select() }
                     .id(ObjectIdentifier(session))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .overlay(alignment: .topTrailing) {
-                        if session.remoteGrid != nil { RemoteGridBadge(session: session) }
-                    }
+                    .overlay(alignment: .topTrailing) { RemoteGridBadge(session: session) }
                     if displayMode == .chat, !session.hasExited, !installedAgents.agents.isEmpty {
                         AgentShortcutBar(agents: installedAgents.agents) { agent in launch(agent, in: session) }
                             .disabled(session.isLaunchingAgent)
@@ -76,9 +75,8 @@ struct TerminalPane: View {
 
     private func launch(_ agent: ConversationAgent, in session: TerminalSession) {
         select()
-        session.usedLocally()
         Task {
-            do { try await session.launch(agent, skippingPermissions: settings.agentLaunch.skipsPermissions) }
+            do { try await session.launch(agent, skippingPermissions: settings.agentLaunch.skipsPermissions, from: .local) }
             catch { store.errorMessage = error.localizedDescription }
         }
     }

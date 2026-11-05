@@ -11,7 +11,7 @@ struct MobileTerminalSettingsSection: View {
         } header: {
             Text("Terminal")
         } footer: {
-            Text("While you view a terminal, the Mac resizes it to fit this screen. It returns to its own size when you leave or use it on the Mac.")
+            Text("While you view a terminal, the Mac resizes it to fit this screen. It returns to its own size when you leave or use it on the Mac, until you type here again.")
         }
     }
 }

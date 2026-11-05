@@ -3,6 +3,11 @@ import SwiftTerm
 import Observation
 
 @MainActor @Observable final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
+    enum InputOrigin: Sendable {
+        case local
+        case remote
+    }
+
     let view: ActivityTerminalView
     private(set) var hasExited = false
     private(set) var exitCode: Int32?
@@ -43,7 +48,7 @@ import Observation
         view = ActivityTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
         super.init()
         view.processDelegate = self
-        view.pasted = { [weak self] in self?.usedLocally() }
+        view.usedLocally = { [weak self] in self?.usedLocally() }
         view.received = { [weak self] data in
             guard let self else { return }
             self.mirrorModes.append(data)
@@ -112,25 +117,25 @@ import Observation
         transcript.update(screen: view.getTerminal().recentText(limit: 65_536))
     }
 
-    func send(_ data: Data, message: String? = nil) async throws {
+    func send(_ data: Data, message: String? = nil, from origin: InputOrigin) async throws {
         guard data.count <= 65_536 else { throw WorkspaceError(message: String(localized: "Message too long (64 KB maximum).")) }
         let previous = pendingWrite
         let next = Task {
             _ = await previous?.result
-            try await write(data, message: message)
+            try await write(data, message: message, from: origin)
         }
         pendingWrite = next
         try await next.value
     }
 
-    func launch(_ agent: ConversationAgent, skippingPermissions: Bool) async throws {
+    func launch(_ agent: ConversationAgent, skippingPermissions: Bool, from origin: InputOrigin) async throws {
         guard self.agent == nil, !isLaunchingAgent, isShellInForeground else {
             throw WorkspaceError(message: String(localized: "The terminal isn’t at the shell prompt. Finish the current command before launching an agent."))
         }
         isLaunchingAgent = true
         defer { isLaunchingAgent = false }
         let command = agent.launchCommand(skippingPermissions: skippingPermissions).joined(separator: " ")
-        try await send(Data(("\u{15}" + command + "\r").utf8))
+        try await send(Data(("\u{15}" + command + "\r").utf8), from: origin)
         try await waitForForegroundCommand()
     }
 
@@ -145,33 +150,40 @@ import Observation
         }
     }
 
-    private func write(_ data: Data, message: String?) async throws {
+    private func write(_ data: Data, message: String?, from origin: InputOrigin) async throws {
         guard !hasExited else { throw WorkspaceError(message: String(localized: "This session has ended.")) }
         guard let message else {
-            view.send(source: view, data: Array(data)[...])
+            deliver(Array(data)[...], from: origin)
             return
         }
         guard !isShellInForeground else { throw WorkspaceError(message: String(localized: "The agent stopped: the message wasn’t sent to the shell.")) }
         updateTranscript()
         let sentID = transcript.sent(message)
         guard data.last == 13, view.getTerminal().bracketedPasteMode else {
-            view.send(source: view, data: Array(data)[...])
+            deliver(Array(data)[...], from: origin)
             return
         }
-        do { try await submitAsSinglePaste(data.dropLast()) } catch {
+        do { try await submitAsSinglePaste(data.dropLast(), from: origin) } catch {
             if let sentID { transcript.withdraw(sentID) }
             throw error
         }
     }
 
-    private func submitAsSinglePaste(_ text: Data) async throws {
+    private func submitAsSinglePaste(_ text: Data, from origin: InputOrigin) async throws {
         var paste = Data("\u{1b}[200~".utf8)
         paste.append(text)
         paste.append(Data("\u{1b}[201~".utf8))
-        view.send(source: view, data: Array(paste)[...])
+        deliver(Array(paste)[...], from: origin)
         try await Task.sleep(for: .milliseconds(50))
         guard !hasExited else { throw WorkspaceError(message: String(localized: "This session has ended.")) }
-        view.send(source: view, data: [13][...])
+        deliver([13][...], from: origin)
+    }
+
+    private func deliver(_ bytes: ArraySlice<UInt8>, from origin: InputOrigin) {
+        switch origin {
+        case .local: view.send(source: view, data: bytes)
+        case .remote: view.sendRemoteInput(bytes)
+        }
     }
 
     func screen() -> TerminalScreen {
@@ -199,7 +211,6 @@ import Observation
     }
 
     func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {
-        view.fitRemoteGrid()
         outputRevision += 1
         scheduleTranscriptRefresh()
     }
@@ -246,11 +257,6 @@ import Observation
 }
 
 @MainActor @Observable final class TerminalSessions {
-    private struct RemoteGrid {
-        let viewer: UUID
-        let size: TerminalGridSize
-    }
-
     private var entries: [UUID: TerminalSession] = [:]
     var environment: [String: String] = [:]
     private(set) var branchesByPath: [String: GitBranch] = [:]
@@ -259,7 +265,7 @@ import Observation
     @ObservationIgnored private var agentWatchers = 0
     @ObservationIgnored private var agentPolling: Task<Void, Never>?
     @ObservationIgnored private let subagentCatalog = ClaudeSubagents()
-    @ObservationIgnored private var remoteGrids: [UUID: [RemoteGrid]] = [:]
+    @ObservationIgnored private var remoteGrids: [UUID: RemoteGridRequests] = [:]
 
     func branch(for terminalID: UUID, initialPath: String) -> GitBranch? {
         if let session = entries[terminalID] { return session.branch }
@@ -418,9 +424,9 @@ import Observation
         let session = TerminalSession(context: context, command: resume?.command ?? command, keepsShell: resume != nil, environment: environment)
         session.resume = resume
         let id = context.terminal.id
-        session.usedLocally = { [weak self] in self?.dropRemoteGrids(of: id) }
+        session.usedLocally = { [weak self] in self?.updateRemoteGrid(of: id) { $0.takeBack() } }
         entries[id] = session
-        applyRemoteGrid(of: id)
+        updateRemoteGrid(of: id) { _ in }
         return session
     }
     func close(_ id: UUID) {
@@ -434,27 +440,23 @@ import Observation
     }
 
     func requestGrid(_ size: TerminalGridSize, for terminal: UUID, viewer: UUID) {
-        var grids = remoteGrids[terminal, default: []]
-        grids.removeAll { $0.viewer == viewer }
-        grids.append(RemoteGrid(viewer: viewer, size: size))
-        remoteGrids[terminal] = grids
-        applyRemoteGrid(of: terminal)
+        updateRemoteGrid(of: terminal) { $0.request(size, by: viewer) }
     }
 
     func releaseGrid(of terminal: UUID, viewer: UUID) {
-        guard var grids = remoteGrids[terminal] else { return }
-        grids.removeAll { $0.viewer == viewer }
+        updateRemoteGrid(of: terminal) { $0.withdraw(viewer) }
+    }
+
+    func receiveRemoteInput(_ data: Data, for terminal: UUID, viewer: UUID) {
+        updateRemoteGrid(of: terminal) { $0.receive(data, from: viewer) }
+    }
+
+    private func updateRemoteGrid(of terminal: UUID, _ change: (inout RemoteGridRequests) -> Void) {
+        var grids = remoteGrids[terminal] ?? RemoteGridRequests()
+        change(&grids)
         remoteGrids[terminal] = grids.isEmpty ? nil : grids
-        applyRemoteGrid(of: terminal)
-    }
-
-    private func dropRemoteGrids(of terminal: UUID) {
-        guard remoteGrids.removeValue(forKey: terminal) != nil else { return }
-        applyRemoteGrid(of: terminal)
-    }
-
-    private func applyRemoteGrid(of terminal: UUID) {
-        entries[terminal]?.remoteGrid = remoteGrids[terminal]?.last?.size
+        guard let session = entries[terminal], session.remoteGrid != grids.size else { return }
+        session.remoteGrid = grids.size
     }
 }
 

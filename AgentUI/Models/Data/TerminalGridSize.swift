@@ -16,4 +16,13 @@ struct TerminalGridSize: Codable, Hashable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(columns: container.decode(Int.self, forKey: .columns), rows: container.decode(Int.self, forKey: .rows))
     }
+
+    func frameSize(scaling frame: CGSize, columns currentColumns: Int, rows currentRows: Int, scrollerWidth: CGFloat) -> CGSize? {
+        guard currentColumns > 0, currentRows > 0 else { return nil }
+        let cellWidth = (frame.width - scrollerWidth) / CGFloat(currentColumns)
+        let cellHeight = frame.height / CGFloat(currentRows)
+        guard cellWidth > 2, cellHeight > 2 else { return nil }
+        return CGSize(width: ceil(cellWidth * (CGFloat(columns) + 0.5) + scrollerWidth),
+                      height: ceil(cellHeight * (CGFloat(rows) + 0.5)))
+    }
 }

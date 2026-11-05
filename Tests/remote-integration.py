@@ -248,6 +248,14 @@ try:
         read_grid(sock, 47, 19)
         rpc("input", id=terminal, data=base64.b64encode(b"stty size\r").decode())
         read_grid(sock, 47, 19, b"19 47")
+        bridge("debug.typeLocally", name=terminal, command=["\x15"])
+        read_grid(sock, *mac_grid)
+        send(sock, {"resizeTerminal": dict(terminal=terminal, size=dict(columns=51, rows=17))})
+        rpc("input", id=terminal, data=base64.b64encode(b"echo MAC_KEEPS_GRID\r").decode())
+        read_grid(sock, *mac_grid, b"MAC_KEEPS_GRID")
+        send(sock, {"streamInput": dict(request=str(uuid.uuid4()).upper(), terminal=terminal,
+                                       data=base64.b64encode(b"\x15").decode(), message=None)})
+        read_grid(sock, 51, 17)
         send(sock, {"resizeTerminal": dict(terminal=terminal, size=dict(columns=3, rows=1))})
         read_grid(sock, 20, 5)
     with watch(terminal, chat=False) as sock:
@@ -256,7 +264,8 @@ try:
             send(sock, {"resizeTerminal": dict(terminal=terminal, size=dict(columns=columns, rows=12))})
     with watch(terminal, chat=False) as sock:
         read_grid(sock, *mac_grid)
-    print("PASS a phone resizes the PTY while it watches, sizes are clamped and the Mac grid returns afterwards, even right after a burst", flush=True)
+    print("PASS a phone resizes the PTY while it watches, the Mac takes it back by typing until the phone types, sizes are clamped "
+          "and the Mac grid returns afterwards, even right after a burst", flush=True)
 
     with watch(terminal, chat=False) as sock:
         original = read(sock)["terminal"]["_0"]["identity"]

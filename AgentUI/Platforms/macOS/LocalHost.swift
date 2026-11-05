@@ -296,11 +296,14 @@ import SystemConfiguration
                     case .streamInput(let requestID, let terminalID, let data, let message) where terminalID == terminal:
                         let failure: String?
                         do {
+                            try requireWritable()
+                            store.sessions.receiveRemoteInput(data, for: terminalID, viewer: viewer)
                             _ = try await handle(.input(id: terminalID, data: data, message: message))
                             failure = nil
                         } catch { failure = error.localizedDescription }
                         try await RemoteChannel.push(RemoteEvent.inputResult(request: requestID, error: failure), on: connection)
                     case .resizeTerminal(let terminalID, let size) where terminalID == terminal:
+                        guard isWritable, !streamsChat(store.sessions.session(terminalID)) else { continue }
                         store.sessions.requestGrid(size, for: terminalID, viewer: viewer)
                     default: return
                     }
@@ -354,6 +357,7 @@ import SystemConfiguration
                 watchedChat?.releaseChat()
                 watchedChat = chat ? session : nil
                 watchedChat?.acquireChat()
+                if chat, let terminal { store.sessions.releaseGrid(of: terminal, viewer: viewer) }
                 streamed = StreamedSession(identity: session?.identity, chat: chat)
                 continuation.yield(())
             }
@@ -400,7 +404,7 @@ import SystemConfiguration
         case .input(let id, let data, let message):
             try requireWritable()
             guard data.count <= 65_536, (message?.utf8.count ?? 0) <= 65_536 else { throw RemoteError(message: String(localized: "Message too long.")) }
-            try await startedSession(id).send(data, message: message)
+            try await startedSession(id).send(data, message: message, from: .remote)
             return try .success(true)
         case .newTerminal(let project, let worktree):
             try requireWritable()
@@ -450,7 +454,7 @@ import SystemConfiguration
         case .launchAgent(let id, let agent):
             try requireWritable()
             let session = try startedSession(id)
-            try await session.launch(agent, skippingPermissions: settings?.agentLaunch.skipsPermissions ?? false)
+            try await session.launch(agent, skippingPermissions: settings?.agentLaunch.skipsPermissions ?? false, from: .remote)
             return try .success(true)
         case .resume(let id, let conversation):
             try requireWritable()
@@ -464,8 +468,10 @@ import SystemConfiguration
         }
     }
 
+    private var isWritable: Bool { store?.isReadOnly != true }
+
     private func requireWritable() throws {
-        guard store?.isReadOnly != true else { throw RemoteError(message: String(localized: "The Mac’s organization is read-only.")) }
+        guard isWritable else { throw RemoteError(message: String(localized: "The Mac’s organization is read-only.")) }
     }
 
     private func context(_ id: UUID) throws -> TerminalContext {

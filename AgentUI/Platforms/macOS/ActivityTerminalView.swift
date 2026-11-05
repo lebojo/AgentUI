@@ -3,67 +3,55 @@ import SwiftTerm
 
 final class ActivityTerminalView: SharedProcessTerminalView {
     private(set) var lastOutput = Date.distantPast
-    var pasted: () -> Void = {}
+    var usedLocally: () -> Void = {}
     var remoteGrid: TerminalGridSize? {
         didSet {
             guard remoteGrid != oldValue else { return }
-            if remoteGrid == nil {
-                ptyGrid = nil
-                setFrameSize(frame.size)
-            } else {
-                fitRemoteGrid()
-            }
+            setFrameSize(oldValue == nil ? frame.size : hostedSize)
         }
     }
-    private var ptyGrid: TerminalGridSize?
-
-    override func dataReceived(slice: ArraySlice<UInt8>) {
-        lastOutput = .now
-        super.dataReceived(slice: slice)
-    }
-
-    override func setFrameSize(_ newSize: NSSize) {
-        super.setFrameSize(newSize)
-        fitRemoteGrid()
-    }
-
-    override func paste(_ sender: Any) {
-        pasted()
-        super.paste(sender)
-    }
-
-    override func getWindowSize() -> winsize {
-        let size = super.getWindowSize()
-        guard let remoteGrid, size.ws_col > 0, size.ws_row > 0 else { return size }
-        return winsize(ws_row: UInt16(remoteGrid.rows), ws_col: UInt16(remoteGrid.columns),
-                       ws_xpixel: UInt16(clamping: Int(size.ws_xpixel) / Int(size.ws_col) * remoteGrid.columns),
-                       ws_ypixel: UInt16(clamping: Int(size.ws_ypixel) / Int(size.ws_row) * remoteGrid.rows))
-    }
-
-    func fitRemoteGrid() {
-        let terminal = getTerminal()
-        guard let remoteGrid, terminal.cols != remoteGrid.columns || terminal.rows != remoteGrid.rows else { return }
-        let restoresPtyGrid = ptyGrid == remoteGrid
-        selectNone()
-        terminal.resize(cols: remoteGrid.columns, rows: remoteGrid.rows)
-        sizeChanged(source: terminal)
-        ptyGrid = remoteGrid
-        if restoresPtyGrid { askForegroundProcessToRedraw() }
-        invalidateSearchAndAccessibility()
-    }
+    private var hostedSize = NSSize.zero
+    private var answersHost = false
+    private var forwardsRemoteInput = false
 
     var visibleLines: [String] {
         let terminal = getTerminal()
         return (0..<terminal.rows).compactMap { terminal.getLine(row: $0)?.translateToString(trimRight: true) }
     }
 
-    private func askForegroundProcessToRedraw() {
-        guard process.running else { return }
-        let group = tcgetpgrp(process.childfd)
-        if group > 0 { kill(-group, SIGWINCH) }
+    override func dataReceived(slice: ArraySlice<UInt8>) {
+        lastOutput = .now
+        answersHost = true
+        defer { answersHost = false }
+        super.dataReceived(slice: slice)
     }
 
-    private func invalidateSearchAndAccessibility() {
-        feed(byteArray: [])
+    override func setFrameSize(_ newSize: NSSize) {
+        hostedSize = newSize
+        guard let pinned = remoteGrid.flatMap(frameSize(for:)) else { return super.setFrameSize(newSize) }
+        if pinned != frame.size { super.setFrameSize(pinned) }
+    }
+
+    override func send(source: TerminalView, data: ArraySlice<UInt8>) {
+        super.send(source: source, data: data)
+        guard !answersHost, !forwardsRemoteInput, !data.isTerminalFocusReport else { return }
+        usedLocally()
+    }
+
+    func sendRemoteInput(_ data: ArraySlice<UInt8>) {
+        forwardsRemoteInput = true
+        defer { forwardsRemoteInput = false }
+        send(source: self, data: data)
+    }
+
+    func refitRemoteGrid() {
+        guard remoteGrid != nil else { return }
+        setFrameSize(hostedSize)
+    }
+
+    private func frameSize(for grid: TerminalGridSize) -> NSSize? {
+        let terminal = getTerminal()
+        return grid.frameSize(scaling: getOptimalFrameSize().size, columns: terminal.cols, rows: terminal.rows,
+                              scrollerWidth: NSScroller.scrollerWidth(for: .regular, scrollerStyle: scrollerStyle))
     }
 }

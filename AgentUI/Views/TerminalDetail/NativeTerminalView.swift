@@ -18,30 +18,19 @@ struct NativeTerminalView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> NSView {
-        let host = NSView()
-        host.setAccessibilityLabel(String(localized: "Interactive Terminal"))
         let terminal = session.view
-        terminal.removeFromSuperview()
-        terminal.translatesAutoresizingMaskIntoConstraints = false
-        host.addSubview(terminal)
-        NSLayoutConstraint.activate([
-            terminal.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: 12),
-            terminal.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -8),
-            terminal.topAnchor.constraint(equalTo: host.topAnchor, constant: 10),
-            terminal.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -8)
-        ])
+        let host = TerminalHostView(terminal: terminal)
+        host.setAccessibilityLabel(String(localized: "Interactive Terminal"))
         applyAppearance(context: context)
         let coordinator = context.coordinator
         coordinator.focus = focus
         coordinator.wasFocused = isFocused
-        coordinator.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown, .keyUp]) { [weak host, weak session] event in
-            guard let host, let session, event.window === host.window else { return event }
+        coordinator.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown, .keyUp]) { [weak host] event in
+            guard let host, event.window === host.window else { return event }
             if event.type == .keyDown || event.type == .keyUp {
-                guard host.window?.firstResponder === session.view else { return event }
-                if event.type == .keyDown, !event.modifierFlags.contains(.command) { session.usedLocally() }
-                return session.view.routeKey(event)
+                guard host.window?.firstResponder === host.terminal else { return event }
+                return host.terminal.routeKey(event)
             } else if host.bounds.contains(host.convert(event.locationInWindow, from: nil)) {
-                session.usedLocally()
                 coordinator.focus()
             }
             return event
@@ -69,5 +58,6 @@ struct NativeTerminalView: NSViewRepresentable {
         context.coordinator.appliedAppearance = appearance
         context.coordinator.appliedColorScheme = colorScheme
         session.view.apply(appearance)
+        session.view.refitRemoteGrid()
     }
 }
