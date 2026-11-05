@@ -3,6 +3,7 @@ import Foundation
 
 @MainActor protocol TerminalOutputReceiver: AnyObject {
     func terminalReceived(_ slice: ArraySlice<UInt8>)
+    func terminalUsedLocally()
 }
 
 class SharedProcessTerminalView: LocalProcessTerminalView {

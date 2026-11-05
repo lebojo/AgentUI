@@ -54,7 +54,6 @@ import Observation
         super.init()
         view.processDelegate = self
         view.outputReceiver = self
-        view.usedLocally = { [weak self] in self?.takeBackGrid() }
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
             hasExited = true
@@ -86,6 +85,10 @@ import Observation
         mirrorModes.append(slice)
         outputRevision += 1
         scheduleTranscriptRefresh()
+    }
+
+    func terminalUsedLocally() {
+        takeBackGrid()
     }
 
     func takeBackGrid() {

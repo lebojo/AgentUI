@@ -3,7 +3,6 @@ import SwiftTerm
 
 final class ActivityTerminalView: SharedProcessTerminalView {
     private(set) var lastOutput = Date.distantPast
-    var usedLocally: () -> Void = {}
     var remoteGrid: TerminalGridSize? {
         didSet {
             guard remoteGrid != oldValue else { return }
@@ -35,7 +34,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
     override func send(source: TerminalView, data: ArraySlice<UInt8>) {
         super.send(source: source, data: data)
         guard remoteGrid != nil, !answersHost, !forwardsRemoteInput, !data.isTerminalFocusReport else { return }
-        usedLocally()
+        outputReceiver?.terminalUsedLocally()
     }
 
     func sendRemoteInput(_ data: ArraySlice<UInt8>) {
