@@ -10,7 +10,7 @@ extension TerminalView {
     }
 
     func routeKey(_ event: NSEvent) -> NSEvent? {
-        guard let route = TerminalKeyRoute(key: event.specialKey, modifiers: event.modifierFlags,
+        guard !hasMarkedText(), let route = TerminalKeyRoute(key: event.specialKey, modifiers: event.modifierFlags,
                                            optionAsMeta: UserDefaults.standard.bool(forKey: TerminalKeyRoute.metaKeySetting),
                                            screen: keyRouteScreen) else { return event }
         switch route {
