@@ -18,7 +18,7 @@ xcrun swiftc "${swift_flags[@]}" \
   AgentUI/Models/AgentConversation.swift AgentUI/Models/AgentLaunch.swift AgentUI/Models/TerminalTheme.swift AgentUI/Models/Removal.swift AgentUI/Models/RemovalConfirmations.swift AgentUI/Models/TerminalAppearance.swift \
   AgentUI/Models/InstallationStatus.swift AgentUI/Platforms/macOS/TerminalKeyRoute.swift AgentUI/Services/AgentSkillInstaller.swift AgentUI/Services/CommandLineInstaller.swift AgentUI/Services/LoginShell.swift \
   AgentUI/Services/AgentProcess.swift AgentUI/Services/ConversationTranscripts.swift AgentUI/Models/AgentStatus.swift \
-  AgentUI/Services/ClaudeSubagents.swift AgentUI/Models/Subagent.swift \
+  AgentUI/Services/ClaudeSubagents.swift AgentUI/Models/Subagent.swift "AgentUI/Extensions/String+HomeAbbreviation.swift" \
   Tests/RegressionTests.swift Tests/RefreshTests.swift Tests/InspectorTests.swift Tests/UsageTests.swift Tests/SettingsTests.swift Tests/CoreTests.swift -o "$test_binary"
 "$test_binary"
 

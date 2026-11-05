@@ -156,6 +156,7 @@ import Foundation
 
         try await agentProcessTests(root: root)
         try terminalLayoutTests()
+        try homeAbbreviationTests()
 
         let repository = importRoot.appendingPathComponent("API")
         _ = try await GitService.run(["init", "-b", "main"], at: repository.path)
@@ -719,6 +720,17 @@ import Foundation
         try require(pair.moving(c, beside: a, edge: .top) == .split(.horizontal, [.split(.vertical, [.terminal(c), .terminal(a)]), .terminal(b)]),
                     "Moving a terminal from elsewhere inserts it")
         print("PASS terminal layout drops")
+    }
+
+    static func homeAbbreviationTests() throws {
+        let home = NSHomeDirectory()
+        try require(home.abbreviatingHome == "~" && (home + "/").abbreviatingHome == "~" && (home + "/Projects/App").abbreviatingHome == "~/Projects/App",
+                    "Abbreviate the home folder and paths inside it")
+        try require((home + "y").abbreviatingHome == home + "y" && (home + "y/App").abbreviatingHome == home + "y/App",
+                    "Keep a sibling folder that only shares the home prefix")
+        try require(("/Volumes/Backup" + home).abbreviatingHome == "/Volumes/Backup" + home && "/tmp/App".abbreviatingHome == "/tmp/App",
+                    "Keep the home path when it appears after the start")
+        print("PASS home folder abbreviation")
     }
 
     static func agentChild(of pid: Int32) -> Int32 {

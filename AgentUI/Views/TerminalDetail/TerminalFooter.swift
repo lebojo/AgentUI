@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct TerminalFooter: View {
@@ -8,7 +7,7 @@ struct TerminalFooter: View {
     var body: some View {
         HStack(spacing: Spacing.m) {
             Image(systemName: "folder").foregroundStyle(Palette.textSecondary)
-            Text((session?.currentDirectory ?? path).replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+            Text((session?.currentDirectory ?? path).abbreviatingHome)
                 .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
             Spacer(minLength: Spacing.l)
             Text("⌘T  New Terminal   ⌘D  Split").foregroundStyle(Palette.textSecondary)
