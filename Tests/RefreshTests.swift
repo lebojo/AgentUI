@@ -135,6 +135,18 @@ import Foundation
         _ = await stubborn.result
         let stubbornDelay = stubbornCancelledAt.duration(to: .now)
         try CoreTests.require(stubbornDelay >= .seconds(1) && stubbornDelay < .seconds(5), "A command ignoring the stop request is killed after a grace period")
+        let helperFile = repository.appendingPathComponent("helper.pid")
+        let spawning = "(trap '' TERM; exec sleep 600) & echo $! > helper.pid; trap 'exit 143' TERM; while true; do sleep 0.05; done"
+        let leader = Task {
+            _ = try await CommandRunner.run(URL(fileURLWithPath: "/bin/sh"), ["-c", spawning], at: repository.path, timeout: 3600, limit: 0, readOnly: false)
+        }
+        try await wait(until: { ((try? String(contentsOf: helperFile, encoding: .utf8)) ?? "").hasSuffix("\n") }, "A command starts a helper ignoring TERM")
+        let helper = try pid_t(String(contentsOf: helperFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        try CoreTests.require(helper > 0 && kill(helper, 0) == 0, "The helper runs in the command's process group")
+        leader.cancel()
+        _ = await leader.result
+        try await wait(until: { kill(helper, 0) == -1 && errno == ESRCH }, "A stopped command takes down the helpers of its process group", timeout: .seconds(1))
+        try? fm.removeItem(at: helperFile)
         print("PASS cancelled command cleanup")
 
         let listings = Counter()

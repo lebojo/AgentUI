@@ -76,6 +76,20 @@ enum InspectorTests {
                             "A hook's final error survives, after the end of its output, the output discarded before it exits")
             }
         }
+        for (script, expected) in [("echo nothing to commit; exit 1", "nothing to commit"),
+                                   ("yes progress | head -c 180000; echo nothing added to commit; sleep 0.2; exit 1", "progress\nnothing added to commit"),
+                                   ("exit 3", "The command failed (exit code 3)."),
+                                   ("kill -9 $$", "The command was interrupted by signal 9 (\(String(cString: strsignal(9)))).")] {
+            do {
+                _ = try await CommandRunner.run(shell, ["-c", script], at: root.path, timeout: 10, limit: 0, readOnly: false, overflow: .discard)
+                throw WorkspaceError(message: "FAIL: failing write accepted")
+            } catch let error as ReadCommandError {
+                try require(error.message.hasSuffix(expected), "A failing write reports its output when it has no error output, or its exit code: \(error.message)")
+            }
+        }
+        try require(CommandRunner.ExitStatus(waitStatus: 256) == .exited(1) && CommandRunner.ExitStatus(waitStatus: 0) == .exited(0)
+                        && CommandRunner.ExitStatus(waitStatus: 15) == .signalled(15),
+                    "A wait status reads as an exit code or a signal")
         do {
             _ = try await CommandRunner.run(shell, ["-c", noisy], at: root.path, timeout: 10, limit: 1024, readOnly: true)
             throw WorkspaceError(message: "FAIL: oversized read accepted")

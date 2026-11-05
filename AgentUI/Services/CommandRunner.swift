@@ -19,6 +19,23 @@ enum CommandRunner {
         let isTruncated: Bool
     }
 
+    enum ExitStatus: Equatable, Sendable {
+        case exited(Int32)
+        case signalled(Int32)
+
+        init(waitStatus: Int32) {
+            let signal = waitStatus & 0x7f
+            self = signal == 0 ? .exited((waitStatus >> 8) & 0xff) : .signalled(signal)
+        }
+
+        var failureMessage: String {
+            switch self {
+            case .exited(let code): String(localized: "The command failed (exit code \(code)).")
+            case .signalled(let signal): String(localized: "The command was interrupted by signal \(signal) (\(String(cString: strsignal(signal)))).")
+            }
+        }
+    }
+
     static func run(_ executable: URL, _ arguments: [String], at path: String,
                     timeout: TimeInterval, limit: Int, readOnly: Bool, overflow: OutputOverflow = .stop,
                     gitConfiguration: [String: String] = [:]) async throws -> Data {
@@ -61,7 +78,7 @@ enum CommandRunner {
         let outURL = directory.appendingPathComponent("stdout"), errURL = directory.appendingPathComponent("stderr")
         FileManager.default.createFile(atPath: outURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
         FileManager.default.createFile(atPath: errURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
-        let output = try FileHandle(forWritingTo: outURL), error = try FileHandle(forUpdating: errURL)
+        let output = try FileHandle(forUpdating: outURL), error = try FileHandle(forUpdating: errURL)
         defer { try? output.close(); try? error.close() }
         _ = fcntl(output.fileDescriptor, F_SETFL, O_APPEND)
         _ = fcntl(error.fileDescriptor, F_SETFL, O_APPEND)
@@ -79,7 +96,7 @@ enum CommandRunner {
             let outOverflows = fstat(outFD, &outStat) == 0 && outStat.st_size > limit
             let errOverflows = fstat(errFD, &errStat) == 0 && errStat.st_size > diagnosticLimit
             if overflow == .discard {
-                if outOverflows { _ = ftruncate(outFD, 0) }
+                if outStat.st_size > diagnosticLimit { keepTail(of: outFD, size: outStat.st_size) }
                 if errOverflows { keepTail(of: errFD, size: errStat.st_size) }
             } else if overflow == .truncate, outOverflows {
                 return job.stop(.truncated)
@@ -99,15 +116,20 @@ enum CommandRunner {
         let data = try reader.read(upToCount: limit + 1) ?? Data()
         guard data.count <= limit || overflow != .stop else { throw ReadCommandError(message: String(localized: "The output exceeds the display limit. Open this content in your editor.")) }
         guard status == 0 || isTruncated else {
-            let reader = try FileHandle(forReadingFrom: errURL)
-            defer { try? reader.close() }
-            if overflow == .discard, let end = try? reader.seekToEnd(), end > 4096 { try reader.seek(toOffset: end - 4096) }
-            else { try reader.seek(toOffset: 0) }
-            let diagnostic = String(decoding: try reader.read(upToCount: 4096) ?? Data(), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-            throw ReadCommandError(message: diagnostic.isEmpty ? String(localized: "The command failed (status \(status)).") : diagnostic)
+            let errors = try diagnostic(at: errURL, fromEnd: overflow == .discard)
+            let diagnostic = errors.isEmpty ? try diagnostic(at: outURL, fromEnd: true) : errors
+            throw ReadCommandError(message: diagnostic.isEmpty ? ExitStatus(waitStatus: status).failureMessage : diagnostic)
         }
         let exceedsLimit = data.count > limit
         return Output(data: exceedsLimit ? Data(data.prefix(limit)) : data, isTruncated: isTruncated || exceedsLimit)
+    }
+
+    private static func diagnostic(at url: URL, fromEnd: Bool) throws -> String {
+        let reader = try FileHandle(forReadingFrom: url)
+        defer { try? reader.close() }
+        if fromEnd, let end = try? reader.seekToEnd(), end > 4096 { try reader.seek(toOffset: end - 4096) }
+        else { try reader.seek(toOffset: 0) }
+        return String(decoding: try reader.read(upToCount: 4096) ?? Data(), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func keepTail(of descriptor: Int32, size: off_t) {
@@ -238,6 +260,7 @@ enum CommandRunner {
         func finish(status: inout Int32) throws -> Bool {
             lock.lock()
             defer { lock.unlock() }
+            if reason != nil { killGroup() }
             if let pid {
                 var result: pid_t
                 repeat { result = waitpid(pid, &status, 0) } while result == -1 && errno == EINTR

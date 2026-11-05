@@ -914,6 +914,26 @@
         }
       }
     },
+    "The command failed (exit code %d)." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La commande a échoué (code de sortie %d)."
+          }
+        }
+      }
+    },
+    "The command was interrupted by signal %d (%@)." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La commande a été interrompue par le signal %d (%@)."
+          }
+        }
+      }
+    },
     "The remote branch was deleted" : {
       "localizations" : {
         "fr" : {
@@ -5757,16 +5777,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La commande n’a pas répondu à temps. L’opération a été interrompue."
-          }
-        }
-      }
-    },
-    "The command failed (status %d)." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La commande a échoué (statut %d)."
           }
         }
       }
