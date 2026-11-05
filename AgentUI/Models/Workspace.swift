@@ -50,6 +50,13 @@ struct Worktree: Identifiable, Codable, Equatable, Sendable {
     func layout(containing terminalID: UUID) -> TerminalLayout? {
         layouts.first { $0.contains(terminalID) }
     }
+
+    func layouts(moving terminalID: UUID, beside target: UUID, edge: DropEdge) -> [TerminalLayout] {
+        let targetLayout = layout(containing: target)
+        let moved = (targetLayout ?? .terminal(target)).moving(terminalID, beside: target, edge: edge)
+        let placed = layouts.compactMap { $0.contains(target) ? moved : $0.removing(terminalID) }
+        return (targetLayout == nil ? placed + [moved] : placed).filter(\.isSplit)
+    }
 }
 
 extension Worktree {

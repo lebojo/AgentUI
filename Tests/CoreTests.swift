@@ -257,6 +257,11 @@ import Foundation
         _ = try await GitService.run(["init", "-b", "develop"], at: unborn.path)
         try require(GitRepository.containing(unborn.path)?.branch.name == "develop", "Unborn branch before first commit")
         try require(GitRepository.containing(importRoot.path) == nil, "No badge outside a repository")
+        let main = GitRepository.containing(repository.path)
+        try require(GitRepository.containing(worktree.path)?.divergentBranch(from: main) == GitBranch(name: "feature/agent-tests")
+                        && GitRepository.containing(source.path)?.divergentBranch(from: main) == nil
+                        && GitRepository.containing(unborn.path)?.divergentBranch(from: main) == nil,
+                    "Only another worktree of the same repository diverges from a worktree's branch")
         print("PASS branch metadata, nested cwd, live switch, detached and unborn HEAD")
 
         let nested = importRoot.appendingPathComponent("Clients/Mobile")
@@ -385,6 +390,9 @@ import Foundation
         _ = try await GitService.run(["checkout", "--detach"], at: detached.path)
         let detachedBranch = await GitService.worktreeBranch(at: detached.path, project: project)
         try require(detachedBranch == WorktreeBranch.none, "A detached worktree has no branch to delete")
+        let missingBranch = await GitService.worktreeBranch(at: root.appendingPathComponent("cleanup-missing").path, project: project)
+        try require(missingBranch == .unreadable && missingBranch.deletableName == nil && missingBranch.refusal != nil,
+                    "A branch that can't be checked is never deleted, and the deletion stops before removing anything")
         try await GitService.removeWorktree(project: project, path: detached.path)
         _ = try await GitService.run(["branch", "-D", "cleanup/detached"], at: project.path)
 
@@ -419,8 +427,16 @@ import Foundation
         try require(heads == [DefaultBranch.RemoteHead(name: "develop", reference: "refs/remotes/origin/develop"),
                               DefaultBranch.RemoteHead(name: "trunk", reference: "refs/remotes/gh/team/trunk")],
                     "Remote HEADs name their default branch, even when the remote name has a slash")
-        let candidates = DefaultBranch.candidateReferences(names: ["main", "master"], remoteHeads: [DefaultBranch.RemoteHead(name: "main", reference: "refs/remotes/origin/main")])
-        try require(candidates == ["refs/heads/main", "refs/heads/master", "refs/remotes/origin/main"], "Default branch candidates are local and remote references")
+        let candidates = DefaultBranch.references(remoteHeads: [DefaultBranch.RemoteHead(name: "main", reference: "refs/remotes/origin/main")])
+        try require(candidates == ["refs/remotes/origin/main", "refs/heads/main", "refs/heads/master", "refs/remotes/origin/master"],
+                    "Default branch candidates are remote HEADs, then local and origin main or master")
+        try require(DefaultBranch.references(remoteHeads: heads.reversed()).prefix(4)
+                        == ["refs/remotes/origin/develop", "refs/remotes/gh/team/trunk", "refs/heads/develop", "refs/heads/trunk"],
+                    "origin's HEAD comes first, then other remotes' HEADs and their local branches")
+        try require(DefaultBranch.preferredReferences(remoteHead: "refs/remotes/origin/develop")
+                        == DefaultBranch.references(remoteHeads: [DefaultBranch.RemoteHead(name: "develop", reference: "refs/remotes/origin/develop")])
+                        && DefaultBranch.preferredReferences(remoteHead: nil) == ["refs/heads/main", "refs/heads/master", "refs/remotes/origin/main", "refs/remotes/origin/master"],
+                    "The inspector's compare base follows the same main branch rule")
         let targets = DefaultBranch.mergeTargets(in: """
         refs/heads/main\trefs/remotes/origin/main\t
         refs/heads/main/old\t\t

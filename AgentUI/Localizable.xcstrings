@@ -454,6 +454,16 @@
         }
       }
     },
+    "The worktree’s branch couldn’t be checked, so it won’t be deleted. Nothing was removed." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La branche du worktree n’a pas pu être vérifiée, elle ne sera donc pas supprimée. Rien n’a été supprimé."
+          }
+        }
+      }
+    },
     "This terminal is on a different branch from its worktree" : {
       "localizations" : {
         "fr" : {

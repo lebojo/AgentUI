@@ -420,12 +420,15 @@ import Observation
         removal.projectID.map(busyProjects.contains) ?? false
     }
 
-    func deletableBranch(for removal: Removal) async -> String? {
+    func deletableBranch(for removal: Removal) -> String? {
         guard case .worktree(let projectID, let worktreeID, _) = removal,
               let project = projects.first(where: { $0.id == projectID }),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }),
               !worktree.isPrimary else { return nil }
-        return await GitService.worktreeBranch(at: worktree.path, project: project).deletableName
+        let branches = sessions.branchesByPath
+        let elsewhere = project.worktrees.filter { $0.id != worktreeID }.compactMap { branches[$0.path] }.filter { !$0.isDetached }.map(\.name)
+        return WorktreeBranch(branches[worktree.path], defaultBranches: DefaultBranch.names(remoteHeads: []),
+                              checkedOutElsewhere: Set(elsewhere)).deletableName
     }
 
     func remove(_ removal: Removal, branch: BranchRemoval = .keep) {
@@ -506,13 +509,11 @@ import Observation
     @discardableResult func moveTerminal(_ id: UUID, beside target: UUID, edge: DropEdge) -> Bool {
         draggedTerminal = nil
         guard canMoveTerminal(id, beside: target), let worktree = worktree(containing: id) else { return false }
-        let moved = layout(for: target).moving(id, beside: target, edge: edge)
-        updateWorktree(worktree.id) { worktree in
-            let hasTargetLayout = worktree.layouts.contains { $0.contains(target) }
-            let layouts = worktree.layouts.compactMap { $0.contains(target) ? moved : $0.removing(id) } + (hasTargetLayout ? [] : [moved])
-            worktree.layouts = layouts.filter(\.isSplit)
+        let layouts = worktree.layouts(moving: id, beside: target, edge: edge)
+        if layouts != worktree.layouts {
+            updateWorktree(worktree.id) { $0.layouts = layouts }
+            save()
         }
-        save()
         selection = id
         return true
     }

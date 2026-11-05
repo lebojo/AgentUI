@@ -2,7 +2,6 @@ import SwiftUI
 
 struct TerminalSettingsPane: View {
     @AppStorage("sessionDisplayMode") private var displayMode: SessionDisplayMode = .terminal
-    @AppStorage(TerminalKeyRoute.metaKeySetting) private var optionAsMetaKey = false
 
     @Environment(SettingsStore.self) private var settings
 
@@ -35,13 +34,7 @@ struct TerminalSettingsPane: View {
                 .pickerStyle(.segmented)
                 Toggle("Blinking", isOn: $settings.terminal.cursorBlinks)
             }
-            Section {
-                Toggle("Use Option as Meta key", isOn: $optionAsMetaKey)
-            } header: {
-                Text("Keyboard")
-            } footer: {
-                Text("When off, Option types characters such as @, [ or ~. Option with the arrow keys, Delete or Return always acts as Meta.")
-            }
+            TerminalKeyboardSettingsSection()
             Section {
                 TerminalPaletteEditor(appearance: $settings.terminal)
             } header: {

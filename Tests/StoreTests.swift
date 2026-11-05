@@ -10,6 +10,13 @@ import Observation
     var onAgentsRefreshed: (() -> Void)?
     func agentResumes() -> [UUID: AgentResume?] { [:] }
     func subagent(_ id: UUID?) -> SubagentSelection? { nil }
+    var branchesByPath: [String: GitBranch] = [:]
+
+    func readBranches(of projects: [Project]) {
+        let paths = projects.flatMap(\.worktrees).map(\.path)
+        branchesByPath = Dictionary(paths.compactMap { path in GitRepository.containing(path).map { (path, $0.branch) } },
+                                    uniquingKeysWith: { first, _ in first })
+    }
 }
 
 private final class ChangeFlag: @unchecked Sendable {
@@ -198,6 +205,9 @@ private final class ChangeFlag: @unchecked Sendable {
         try require(split.moveTerminal(pane3, beside: first, edge: .leading)
                     && split.layout(for: first) == .split(.horizontal, [.terminal(pane3), .terminal(first), .terminal(pane2)]),
                     "Rearrange panes within a layout")
+        let rearranged = split.projects
+        try require(split.moveTerminal(pane3, beside: first, edge: .leading) && split.projects == rearranged && split.selection == pane3,
+                    "Dropping a pane where it already is leaves the workspace untouched")
         _ = try split.splitTerminal(pane4, axis: .vertical)
         try require(split.worktree(containing: first)?.layouts.count == 2, "A worktree can hold several layouts")
         try require(split.moveTerminal(pane4, beside: pane2, edge: .bottom)
@@ -369,9 +379,10 @@ private final class ChangeFlag: @unchecked Sendable {
         print("PASS worktree folder adoption")
 
         let reviewRemoval = Removal.worktree(projectID: grouped.id, worktreeID: review.id, name: review.name)
-        let reviewBranch = await groups.deletableBranch(for: reviewRemoval)
+        groups.sessions.readBranches(of: groups.projects)
+        let reviewBranch = groups.deletableBranch(for: reviewRemoval)
         try require(reviewBranch == "review/one", "The removal dialog offers to delete a worktree's branch")
-        let mainBranch = await groups.deletableBranch(for: .worktree(projectID: grouped.id, worktreeID: groupedProject().worktrees[0].id, name: "Main"))
+        let mainBranch = groups.deletableBranch(for: .worktree(projectID: grouped.id, worktreeID: groupedProject().worktrees[0].id, name: "Main"))
         try require(mainBranch == nil, "The main folder never offers to delete its branch")
         let reviewCleanup = try await groups.deleteWorktree(projectID: grouped.id, worktreeID: review.id, branch: .merged)
         let reviewLeft = try await GitService.run(["branch", "--list", "review/one"], at: gitRoot.path)
@@ -392,7 +403,8 @@ private final class ChangeFlag: @unchecked Sendable {
         }
         _ = try await GitService.run(["checkout", "-q", "-b", "feature"], at: lonelyRoot.path)
         _ = try await GitService.run(["checkout", "-q", "main"], at: extra.path)
-        let onMainBranch = await groups.deletableBranch(for: .worktree(projectID: lonelyProject.id, worktreeID: onMain.id, name: onMain.name))
+        groups.sessions.readBranches(of: groups.projects)
+        let onMainBranch = groups.deletableBranch(for: .worktree(projectID: lonelyProject.id, worktreeID: onMain.id, name: onMain.name))
         try require(onMainBranch == nil, "The removal dialog never offers to delete main in a local-only repository")
         do {
             try await groups.deleteWorktree(projectID: lonelyProject.id, worktreeID: onMain.id, branch: .force)

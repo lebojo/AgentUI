@@ -18,8 +18,10 @@ struct RemovalConfirmation: View {
                 .dialogSuppressionToggle("Don’t ask again", isSuppressed: $skipsConfirmation)
             dialog(allowingSkip: false)
         }
-        .onChange(of: removal) { skipsConfirmation = false }
-        .task(id: removal) { await preparePrompt() }
+        .onChange(of: removal) {
+            skipsConfirmation = false
+            prompt = removal.map { Prompt(removal: $0, deletableBranch: store.deletableBranch(for: $0)) }
+        }
     }
 
     private func dialog(allowingSkip: Bool) -> some View {
@@ -29,13 +31,6 @@ struct RemovalConfirmation: View {
                 Button("Delete Worktree and Branch", role: .destructive) { confirm(.merged) }
             }
         } message: { Text(removal?.message(deletableBranch: branch) ?? "") }
-    }
-
-    private func preparePrompt() async {
-        guard let removal else { prompt = nil; return }
-        let branch = await store.deletableBranch(for: removal)
-        guard !Task.isCancelled else { return }
-        prompt = Prompt(removal: removal, deletableBranch: branch)
     }
 
     private func isPresented(allowingSkip: Bool) -> Binding<Bool> {

@@ -55,7 +55,7 @@ enum GitService {
             return WorktreeBranch(branch, defaultBranches: DefaultBranch.names(remoteHeads: try await heads.map(\.name)),
                                   checkedOutElsewhere: checkedOutBranches(in: try await worktrees, excluding: path))
         } catch {
-            return .none
+            return .unreadable
         }
     }
 
@@ -97,7 +97,7 @@ enum GitService {
 
     private static func defaultBranchReferences(at path: String) async throws -> [String] {
         let heads = try await remoteHeads(at: path)
-        let candidates = DefaultBranch.candidateReferences(names: DefaultBranch.names(remoteHeads: heads.map(\.name)), remoteHeads: heads)
+        let candidates = DefaultBranch.references(remoteHeads: heads)
         let output = try await run(["for-each-ref", "--format=%(refname)%09%(upstream)%09%(upstream:track)"] + candidates, at: path, timeout: 10)
         return DefaultBranch.mergeTargets(in: output, candidates: candidates)
     }

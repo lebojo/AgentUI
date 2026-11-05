@@ -37,7 +37,13 @@ struct GitRepository: Sendable {
         } else {
             return nil
         }
-        return GitRepository(root: url, branch: branch, gitDirectory: gitDirectory, commonDirectory: common)
+        return GitRepository(root: url, branch: branch, gitDirectory: gitDirectory,
+                             commonDirectory: URL(fileURLWithPath: WorkspacePath.canonical(common)))
+    }
+
+    func divergentBranch(from worktree: GitRepository?) -> GitBranch? {
+        guard let worktree, commonDirectory.path == worktree.commonDirectory.path, branch != worktree.branch else { return nil }
+        return branch
     }
 
     static func containing(_ path: String) -> GitRepository? {

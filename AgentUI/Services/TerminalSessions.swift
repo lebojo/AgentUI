@@ -30,14 +30,15 @@ import Observation
 
     private(set) var currentDirectory: String
     private(set) var branch: GitBranch?
+    private(set) var divergentBranch: GitBranch?
     private(set) var agent: AgentProcess?
     private(set) var agentKind: ConversationAgent?
     private(set) var agentStatus: AgentStatus?
     private(set) var subagents: [Subagent] = []
     @ObservationIgnored private(set) var hadAgent = false
     @ObservationIgnored var resume: AgentResume?
-    @ObservationIgnored var usedLocally: () -> Void = {}
-    var remoteGrid: TerminalGridSize? {
+    @ObservationIgnored fileprivate(set) var usedLocally: () -> Void = {}
+    fileprivate(set) var remoteGrid: TerminalGridSize? {
         didSet { view.remoteGrid = remoteGrid }
     }
 
@@ -225,9 +226,10 @@ import Observation
         journalMonitor.attach(nil)
         self.exitCode = exitCode.flatMap { $0 & 0x7f == 0 ? ($0 >> 8) & 0xff : nil }
     }
-    func updateRepository(directory: String, branch: GitBranch?) {
+    func updateRepository(directory: String, branch: GitBranch?, divergentBranch: GitBranch?) {
         if currentDirectory != directory { currentDirectory = directory }
         if self.branch != branch { self.branch = branch }
+        if self.divergentBranch != divergentBranch { self.divergentBranch = divergentBranch }
     }
 
     func updateAgent(_ process: AgentProcess?, subagents: [Subagent]) {
@@ -273,8 +275,8 @@ import Observation
     }
 
     func divergentBranch(for terminalID: UUID, worktreePath: String) -> GitBranch? {
-        guard let current = entries[terminalID]?.branch, current != branchesByPath[worktreePath] else { return nil }
-        return current
+        guard let session = entries[terminalID], session.path == worktreePath else { return nil }
+        return session.divergentBranch
     }
 
     func refreshRepositories(worktreePaths: [String]) async {
@@ -283,14 +285,14 @@ import Observation
         defer { refreshingRepositories = false }
         let locations = entries.map { id, session in
             Location(id: id, identity: session.identity, pid: session.hasExited ? 0 : session.view.process.shellPid,
-                     fallback: session.currentDirectory)
+                     fallback: session.currentDirectory, worktreePath: session.path)
         }
         let result = await Self.inspect(worktreePaths: worktreePaths, locations: locations)
         guard !Task.isCancelled else { return }
         if branchesByPath != result.branches { branchesByPath = result.branches }
         for value in result.sessions {
             guard let session = entries[value.id], session.identity == value.identity else { continue }
-            session.updateRepository(directory: value.directory, branch: value.branch)
+            session.updateRepository(directory: value.directory, branch: value.branch, divergentBranch: value.divergentBranch)
         }
     }
 
@@ -299,6 +301,7 @@ import Observation
         let identity: UUID
         let pid: Int32
         let fallback: String
+        let worktreePath: String
     }
 
     private struct SessionRepository: Sendable {
@@ -306,21 +309,24 @@ import Observation
         let identity: UUID
         let directory: String
         let branch: GitBranch?
+        let divergentBranch: GitBranch?
     }
 
     @concurrent nonisolated private static func inspect(worktreePaths: [String], locations: [Location]) async -> (branches: [String: GitBranch], sessions: [SessionRepository]) {
-        var cache: [String: GitBranch?] = [:]
-        func branch(at path: String) -> GitBranch? {
+        var cache: [String: GitRepository?] = [:]
+        func repository(at path: String) -> GitRepository? {
             if let cached = cache[path] { return cached }
-            let value = GitRepository.containing(path)?.branch
+            let value = GitRepository.containing(path)
             cache[path] = .some(value)
             return value
         }
         var branches: [String: GitBranch] = [:]
-        for path in Set(worktreePaths) { branches[path] = branch(at: path) }
+        for path in Set(worktreePaths) { branches[path] = repository(at: path)?.branch }
         let sessions = locations.map { location in
             let directory = TerminalProcessDirectory.read(pid: location.pid) ?? location.fallback
-            return SessionRepository(id: location.id, identity: location.identity, directory: directory, branch: branch(at: directory))
+            let current = repository(at: directory)
+            return SessionRepository(id: location.id, identity: location.identity, directory: directory, branch: current?.branch,
+                                     divergentBranch: current?.divergentBranch(from: repository(at: location.worktreePath)))
         }
         return (branches, sessions)
     }
