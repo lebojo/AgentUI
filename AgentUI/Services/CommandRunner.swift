@@ -4,7 +4,7 @@ import os
 
 enum CommandRunner {
     enum OutputOverflow: Sendable {
-        case stop, discard
+        case stop, discard, truncate
     }
 
     private static let registry = Registry()
@@ -66,6 +66,8 @@ enum CommandRunner {
             if overflow == .discard {
                 if outOverflows { _ = ftruncate(outFD, 0) }
                 if errOverflows { _ = ftruncate(errFD, 0) }
+            } else if overflow == .truncate, outOverflows {
+                return job.stop(.truncated)
             } else if outOverflows || errOverflows {
                 return job.stop(.outputLimit)
             }
@@ -75,12 +77,12 @@ enum CommandRunner {
         defer { timer.cancel(); queue.sync {} }
         if await !waitForExit(of: pid, on: queue) { job.stop(.waitFailure) }
         var status: Int32 = 0
-        try job.finish(status: &status)
+        let isTruncated = try job.finish(status: &status)
         let reader = try FileHandle(forReadingFrom: outURL)
         defer { try? reader.close() }
         let data = try reader.read(upToCount: limit + 1) ?? Data()
-        guard data.count <= limit || overflow == .discard else { throw ReadCommandError(message: String(localized: "The output exceeds the display limit. Open this content in your editor.")) }
-        guard status == 0 else {
+        guard data.count <= limit || overflow != .stop else { throw ReadCommandError(message: String(localized: "The output exceeds the display limit. Open this content in your editor.")) }
+        guard status == 0 || isTruncated else {
             let reader = try FileHandle(forReadingFrom: errURL)
             defer { try? reader.close() }
             if overflow == .discard, let end = try? reader.seekToEnd(), end > 4096 { try reader.seek(toOffset: end - 4096) }
@@ -122,7 +124,7 @@ enum CommandRunner {
         var failed = false
     }
 
-    private enum StopReason { case cancelled, timeout, outputLimit, waitFailure }
+    private enum StopReason { case cancelled, timeout, outputLimit, truncated, waitFailure }
 
     private final class Registry: Sendable {
         private let jobs = OSAllocatedUnfairLock<[UUID: Job]>(initialState: [:])
@@ -183,7 +185,7 @@ enum CommandRunner {
             if let pid { kill(-pid, SIGKILL) }
         }
 
-        func finish(status: inout Int32) throws {
+        func finish(status: inout Int32) throws -> Bool {
             lock.lock()
             defer { lock.unlock() }
             if let pid {
@@ -197,7 +199,8 @@ enum CommandRunner {
             case .timeout: throw ReadCommandError(message: String(localized: "The command didn’t respond in time. The operation was interrupted."))
             case .outputLimit: throw ReadCommandError(message: String(localized: "The output exceeds the display limit. The operation was interrupted."))
             case .waitFailure: throw ReadCommandError(message: String(localized: "Couldn’t follow the command. The operation was interrupted."))
-            case nil: break
+            case .truncated: return true
+            case nil: return false
             }
         }
 

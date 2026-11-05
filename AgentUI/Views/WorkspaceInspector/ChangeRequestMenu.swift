@@ -52,7 +52,8 @@ struct ChangeRequestMenu: View {
                 Button(askAgentTitle, systemImage: "sparkles") {
                     source.runAgent(prompt: \.changeRequest, name: terminalName, context: context)
                 }
-                if let url = model.local?.webAddress?.newChangeRequestURL(branch: branch, base: base.hostedName, from: model.local?.pushWebAddress) {
+                if let url = model.local?.webAddress?.newChangeRequestURL(branch: tracking?.remoteBranch(for: branch) ?? branch, base: base.hostedName,
+                                                                        from: model.local?.pushWebAddress) {
                     Button("Open in Browser", systemImage: "safari") { openURL(url) }
                         .disabled(tracking?.isPublished != true)
                         .help(browserHelp)

@@ -54,6 +54,46 @@
         }
       }
     },
+    "%lld more changes aren’t listed." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more change isn’t listed."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more changes aren’t listed."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld autre modification n’est pas listée."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld autres modifications ne sont pas listées."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Actions" : {
       "localizations" : {
         "fr" : {
@@ -100,6 +140,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Demander à l’agent de créer la PR/MR"
+          }
+        }
+      }
+    },
+    "At least %lld more changes aren’t listed." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "At least %lld more change isn’t listed."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "At least %lld more changes aren’t listed."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Au moins %lld autre modification n’est pas listée."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Au moins %lld autres modifications ne sont pas listées."
+                }
+              }
+            }
           }
         }
       }
@@ -534,6 +614,16 @@
         }
       }
     },
+    "Stage All and Unstage All also apply to them." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout indexer et Tout désindexer s’y appliquent aussi."
+          }
+        }
+      }
+    },
     "Staged Changes · %lld" : {
       "localizations" : {
         "fr" : {
@@ -580,6 +670,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La branche « %@ » n’est pas entièrement fusionnée. Si ses commits ne sont plus utiles, supprimez-la avec git branch -D %@."
+          }
+        }
+      }
+    },
+    "The remote branch was deleted" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La branche distante a été supprimée"
           }
         }
       }

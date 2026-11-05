@@ -12,6 +12,13 @@ enum InspectorTests {
                     && status.changes[2].isUntracked && status.changes[3].originalPath == "copied from" && status.changes[3].status == "CM"
                     && status.changes[4].isConflicted && status.changes[5].isStaged && !status.changes[5].isUnstaged,
                     "Porcelain v2 parsing preserves renames, copies, conflicts, spaces, Unicode and newlines")
+        let cut = GitStatus.parse(Data(["# branch.oid 1234", porcelainEntry("1", ".M", 8, "kept"), porcelainEntry("2", "R.", 9, "renamed"), "origi"]
+            .joined(separator: "\0").utf8), isTruncated: true)
+        try require(cut.isTruncated && cut.headSHA == "1234" && cut.changes.map(\.path) == ["kept"],
+                    "A truncated status keeps its complete records and drops the cut one")
+        try require(WorkingTreeOmission(count: 3, isTruncated: true).message(includingBulkActions: false).contains("3")
+                    && WorkingTreeOmission(count: 3, isTruncated: false).message(includingBulkActions: true) != WorkingTreeOmission(count: 3, isTruncated: false).message(includingBulkActions: false),
+                    "The working tree notice counts the hidden changes and mentions the bulk actions only when they exist")
         let file = repository.appendingPathComponent("tracked file.txt")
         try "before\n".write(to: file, atomically: true, encoding: .utf8)
         _ = try await GitService.run(["add", "--", "tracked file.txt"], at: repository.path)
@@ -59,6 +66,9 @@ enum InspectorTests {
             _ = try await CommandRunner.run(shell, ["-c", noisy], at: root.path, timeout: 10, limit: 1024, readOnly: true)
             throw WorkspaceError(message: "FAIL: oversized read accepted")
         } catch is ReadCommandError {}
+        let endless = try await CommandRunner.run(shell, ["-c", "yes status line; exit 1"], at: root.path, timeout: 10, limit: 1024, readOnly: true, overflow: .truncate)
+        try require(endless.count == 1024 && String(decoding: endless, as: UTF8.self).hasPrefix("status line\n"),
+                    "A truncated read stops the command and keeps the beginning of its output")
         print("PASS write commands discard oversized output instead of stopping")
 
         try await branchComparison(root: root)
@@ -439,8 +449,30 @@ enum InspectorTests {
         try require(local.push == .push && local.tracking?.hasUnpushedCommits == true, "Later commits use a plain push to the same-named upstream")
         _ = try await GitService.run(["push", "-q", "origin", "--delete", "feature"], at: repository.path)
         local = try await InspectorService.localGit(at: repository.path)
-        try require(local.tracking?.goneUpstream == "origin/feature" && local.tracking?.upstream == nil && local.push == nil,
-                    "A deleted upstream is reported as gone and never recreated")
+        try require(local.tracking?.goneUpstream == "origin/feature" && local.tracking?.upstream == nil
+                        && local.push == .publish(remote: "origin", branch: "feature"),
+                    "A deleted upstream with commits outside the main branch can be published again")
+        _ = try await GitService.run(["push", "-q", "origin", "HEAD:refs/heads/main"], at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(local.tracking?.goneUpstream == "origin/feature" && local.push == nil,
+                    "A deleted upstream whose commits are merged into the main branch is never recreated")
+        _ = try await GitService.run(["push", "-q", "origin", "HEAD:refs/heads/bugfix/fix-123"], at: repository.path)
+        _ = try await GitService.run(["checkout", "-q", "-b", "fix", "--track", "origin/bugfix/fix-123"], at: repository.path)
+        try "fix\n".write(to: repository.appendingPathComponent("fix.txt"), atomically: true, encoding: .utf8)
+        try await InspectorService.perform(.stageAll, at: repository.path)
+        try await InspectorService.perform(.commit(title: "Fix", message: ""), at: repository.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        let fixUpstream = GitUpstream(remote: "origin", branch: "bugfix/fix-123")
+        try require(local.tracking?.upstream == "origin/bugfix/fix-123" && local.tracking?.isPublished == true
+                        && local.tracking?.remoteBranch(for: "fix") == "bugfix/fix-123" && local.push == .pushUpstream(fixUpstream),
+                    "A branch tracking a differently named branch that isn't the main branch pushes to its upstream")
+        try await InspectorService.perform(.pushUpstream(fixUpstream), at: repository.path)
+        let remoteFix = try await GitService.run(["rev-parse", "bugfix/fix-123"], at: remote.path)
+        let fixHead = try await GitService.run(["rev-parse", "HEAD"], at: repository.path)
+        let strayFix = try? await GitService.run(["rev-parse", "--verify", "--quiet", "refs/heads/fix"], at: remote.path)
+        local = try await InspectorService.localGit(at: repository.path)
+        try require(remoteFix == fixHead && strayFix == nil && local.tracking?.upstream == "origin/bugfix/fix-123" && local.push == nil,
+                    "Pushing to a differently named upstream keeps it and creates no branch under the local name")
         _ = try await GitService.run(["checkout", "-q", "--detach"], at: repository.path)
         let detachedHead = try await GitService.run(["rev-parse", "HEAD"], at: repository.path)
         local = try await InspectorService.localGit(at: repository.path)

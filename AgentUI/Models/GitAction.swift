@@ -7,6 +7,7 @@ enum GitAction: Equatable, Sendable {
     case unstageAll
     case commit(title: String, message: String)
     case push
+    case pushUpstream(GitUpstream)
     case publish(remote: String, branch: String)
 
     var arguments: [String] {
@@ -18,6 +19,7 @@ enum GitAction: Equatable, Sendable {
         case .commit(let title, let message):
             ["commit", "--message", title] + (message.isEmpty ? [] : ["--message", message])
         case .push: ["push"]
+        case .pushUpstream(let upstream): ["push", upstream.remote, "HEAD:refs/heads/" + upstream.branch]
         case .publish(let remote, let branch): ["push", "--set-upstream", remote, "HEAD:refs/heads/" + branch]
         }
     }
@@ -29,7 +31,7 @@ enum GitAction: Equatable, Sendable {
         case .stageAll: String(localized: "Stage All")
         case .unstageAll: String(localized: "Unstage All")
         case .commit: String(localized: "Commit")
-        case .push, .publish: String(localized: "Push")
+        case .push, .pushUpstream, .publish: String(localized: "Push")
         }
     }
 
@@ -40,7 +42,7 @@ enum GitAction: Equatable, Sendable {
         case .stageAll: String(localized: "Couldn’t stage all changes")
         case .unstageAll: String(localized: "Couldn’t unstage all changes")
         case .commit: String(localized: "Couldn’t commit")
-        case .push: String(localized: "Couldn’t push")
+        case .push, .pushUpstream: String(localized: "Couldn’t push")
         case .publish(_, let branch): String(localized: "Couldn’t publish \(branch)")
         }
     }
@@ -50,29 +52,29 @@ enum GitAction: Equatable, Sendable {
         case .stage, .stageAll: "plus"
         case .unstage, .unstageAll: "minus"
         case .commit: "checkmark"
-        case .push, .publish: "arrow.up"
+        case .push, .pushUpstream, .publish: "arrow.up"
         }
     }
 
     var timeout: TimeInterval {
         switch self {
         case .commit: 3600
-        case .push, .publish: 900
+        case .push, .pushUpstream, .publish: 900
         default: 300
         }
     }
 
     var updatesRemote: Bool {
         switch self {
-        case .push, .publish: true
+        case .push, .pushUpstream, .publish: true
         default: false
         }
     }
 
     func retries(_ failed: GitAction) -> Bool {
         switch (self, failed) {
-        case (.commit, .commit), (.push, .push), (.push, .publish), (.publish, .push), (.publish, .publish): true
-        default: self == failed
+        case (.commit, .commit): true
+        default: (updatesRemote && failed.updatesRemote) || self == failed
         }
     }
 

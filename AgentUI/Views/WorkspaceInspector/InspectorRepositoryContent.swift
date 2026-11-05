@@ -14,7 +14,8 @@ struct InspectorRepositoryContent: View {
                     if tab == .git {
                         if let branch = local.branch { BranchBadge(branch: branch) }
                         WorkingTreeChanges(root: local.root, trees: model.changeTrees, hasChanges: !local.changes.isEmpty,
-                                           omitted: local.omittedChanges, push: local.push, context: context, source: source)
+                                           omission: local.omission, push: local.push, upstreamIsGone: local.tracking?.goneUpstream != nil,
+                                           context: context, source: source)
                         Divider()
                         RemoteSummary(model: model)
                         if model.lacksChangeRequest, let headSHA = local.headSHA {

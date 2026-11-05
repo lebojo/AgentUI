@@ -91,11 +91,21 @@ enum GitService {
         guard !targets.isEmpty else {
             throw WorkspaceError(message: String(localized: "The repository’s main branch couldn’t be found, so the branch “\(branch)” wasn’t deleted. If its commits are no longer needed, delete it with git branch -D \(branch)."))
         }
-        let reference = "refs/heads/" + branch
-        let merged = try await run(["for-each-ref", "--format=%(refname)"] + targets.map { "--merged=" + $0 } + [reference], at: path, timeout: 20)
-        guard merged.split(whereSeparator: \.isNewline).contains(where: { $0 == reference }) else {
+        guard try await isMerged(branch, into: targets, at: path) else {
             throw WorkspaceError(message: String(localized: "The branch “\(branch)” isn’t fully merged. If its commits are no longer needed, delete it with git branch -D \(branch)."))
         }
+    }
+
+    @concurrent static func hasWorkOutsideDefaultBranch(_ branch: String, at path: String) async -> Bool {
+        guard let targets = try? await defaultBranchReferences(at: path), !targets.isEmpty,
+              let merged = try? await isMerged(branch, into: targets, at: path) else { return false }
+        return !merged
+    }
+
+    private static func isMerged(_ branch: String, into targets: [String], at path: String) async throws -> Bool {
+        let reference = "refs/heads/" + branch
+        let merged = try await run(["for-each-ref", "--format=%(refname)"] + targets.map { "--merged=" + $0 } + [reference], at: path, timeout: 20)
+        return merged.split(whereSeparator: \.isNewline).contains { $0 == reference }
     }
 
     private static func defaultBranchReferences(at path: String) async throws -> [String] {

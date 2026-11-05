@@ -162,15 +162,27 @@ struct GitTracking: Codable, Equatable, Sendable {
     var remote: String?
     var tracksSameBranch: Bool?
     var goneUpstream: String?
+    var namedUpstream: GitUpstream?
+    var hasUnmergedWork: Bool?
 
-    var isPublished: Bool { upstream != nil && tracksSameBranch == true }
+    var isPublished: Bool { upstream != nil && (tracksSameBranch == true || namedUpstream != nil) }
     var hasUnpushedCommits: Bool { isPublished && ahead > 0 }
 
     func push(branch: String) -> GitAction? {
-        guard goneUpstream == nil else { return nil }
+        if goneUpstream != nil { return hasUnmergedWork == true ? remote.map { .publish(remote: $0, branch: branch) } : nil }
+        if upstream != nil, let namedUpstream { return ahead > 0 ? .pushUpstream(namedUpstream) : nil }
         guard isPublished else { return remote.map { .publish(remote: $0, branch: branch) } }
         return ahead > 0 ? .push : nil
     }
+
+    func remoteBranch(for branch: String) -> String {
+        namedUpstream?.branch ?? branch
+    }
+}
+
+struct GitUpstream: Codable, Equatable, Sendable {
+    let remote: String
+    let branch: String
 }
 
 struct GitRemote: Equatable, Sendable {
@@ -187,7 +199,18 @@ struct GitRemoteConfiguration: Equatable, Sendable {
     var primaryURL: String? { (remotes.first { $0.name == "origin" } ?? remotes.first)?.url }
 
     func pushURL(for branch: String) -> String? {
-        pushRemote(for: branch).flatMap { name in remotes.first { $0.name == name }?.url }
+        pushRemote(for: branch).flatMap(url(ofRemote:))
+    }
+
+    func url(ofRemote name: String) -> String? {
+        remotes.first { $0.name == name }?.url
+    }
+
+    func upstream(of branch: String) -> GitUpstream? {
+        let prefix = "refs/heads/"
+        guard let remote = values["branch.\(branch).remote"], remotes.contains(where: { $0.name == remote }),
+              let merge = values["branch.\(branch).merge"], merge.hasPrefix(prefix), merge.count > prefix.count else { return nil }
+        return GitUpstream(remote: remote, branch: String(merge.dropFirst(prefix.count)))
     }
 
     init(entries: [(key: String, value: String)] = []) {
@@ -268,10 +291,12 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
     let headSHA: String?
     private(set) var changes: [GitChange]
     var omittedChanges = 0
+    var isTruncated: Bool?
     var tracking: GitTracking?
     var webAddress: RemoteWebAddress?
     var pushWebAddress: RemoteWebAddress?
 
+    var omission: WorkingTreeOmission { WorkingTreeOmission(count: omittedChanges, isTruncated: isTruncated == true) }
     var stagedChanges: [GitChange] { changes.filter(\.isStaged) }
     var unstagedChanges: [GitChange] { changes.filter(\.isUnstaged) }
     var push: GitAction? {
@@ -284,6 +309,17 @@ struct LocalGitSnapshot: Codable, Equatable, Sendable {
         snapshot.changes = changes
         snapshot.omittedChanges += omitted
         return snapshot
+    }
+}
+
+struct WorkingTreeOmission: Equatable, Sendable {
+    let count: Int
+    let isTruncated: Bool
+
+    func message(includingBulkActions: Bool) -> String {
+        let listed = isTruncated ? String(localized: "At least \(count) more changes aren’t listed.") : String(localized: "\(count) more changes aren’t listed.")
+        guard includingBulkActions else { return listed }
+        return listed + " " + String(localized: "Stage All and Unstage All also apply to them.")
     }
 }
 

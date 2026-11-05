@@ -2,15 +2,18 @@ import Foundation
 
 struct GitStatus: Equatable, Sendable {
     static let arguments = ["--literal-pathspecs", "status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all", "--ignore-submodules=dirty"]
+    static let outputLimit = 8_388_608
 
     private static let leadingFieldCounts: [UInt8: Int] = [UInt8(ascii: "1"): 8, UInt8(ascii: "2"): 9, UInt8(ascii: "u"): 10]
 
     var headSHA: String?
     var tracking: GitTracking?
     var changes: [GitChange] = []
+    var isTruncated = false
 
-    static func parse(_ data: Data) -> GitStatus {
-        let fields = data.split(separator: 0, omittingEmptySubsequences: false)
+    static func parse(_ data: Data, isTruncated: Bool = false) -> GitStatus {
+        var fields = data.split(separator: 0, omittingEmptySubsequences: false)
+        if isTruncated { fields.removeLast() }
         var header = Header()
         var changes: [GitChange] = []
         var index = fields.startIndex
@@ -22,13 +25,14 @@ struct GitStatus: Equatable, Sendable {
                 continue
             }
             var original: String?
-            if field.first == UInt8(ascii: "2"), index < fields.endIndex {
+            if field.first == UInt8(ascii: "2") {
+                guard index < fields.endIndex else { break }
                 original = String(decoding: fields[index], as: UTF8.self)
                 index += 1
             }
             if let change = change(field, originalPath: original) { changes.append(change) }
         }
-        return GitStatus(headSHA: header.oid, tracking: header.tracking, changes: changes)
+        return GitStatus(headSHA: header.oid, tracking: header.tracking, changes: changes, isTruncated: isTruncated)
     }
 
     private static func change(_ field: Data, originalPath: String?) -> GitChange? {

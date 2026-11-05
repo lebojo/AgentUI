@@ -45,19 +45,27 @@ enum InspectorService {
         let root = try await root(at: path)
         let configuration = try await GitFilterGuard.shared.configuration(at: root)
         let status = try await status(at: root, paths: paths, configuration: configuration)
-        let branch = GitRepository.containing(root)?.branch
+        let repository = GitRepository.containing(root)
+        let branch = repository?.branch
         let remotes = configuration.remotes
         let publishedBranch = branch.flatMap { $0.isDetached ? nil : $0.name }
         var tracking = status.tracking
         if let publishedBranch, tracking != nil {
             tracking?.tracksSameBranch = remotes.tracksSameBranch(publishedBranch)
+            if tracking?.upstream != nil, tracking?.tracksSameBranch == false, let upstream = remotes.upstream(of: publishedBranch),
+               let repository, !GitBranchProtection.isDefaultBranch(upstream.branch, of: upstream.remote, in: repository.commonDirectory) {
+                tracking?.namedUpstream = upstream
+            }
             if tracking?.isPublished == false { tracking?.remote = remotes.pushRemote(for: publishedBranch) }
+            if tracking?.goneUpstream != nil { tracking?.hasUnmergedWork = await GitService.hasWorkOutsideDefaultBranch(publishedBranch, at: root) }
         }
+        let pushRemoteURL = tracking?.namedUpstream.flatMap { remotes.url(ofRemote: $0.remote) } ?? publishedBranch.flatMap(remotes.pushURL(for:))
         let shown = Array(status.changes.prefix(LocalGitSnapshot.changeLimit))
-        return LocalGitSnapshot(root: root, branch: branch, headSHA: status.headSHA,
-                                changes: shown, omittedChanges: status.changes.count - shown.count, tracking: tracking,
+        return LocalGitSnapshot(root: root, branch: branch, headSHA: status.headSHA, changes: shown,
+                                omittedChanges: status.changes.count - shown.count + (status.isTruncated ? 1 : 0),
+                                isTruncated: status.isTruncated ? true : nil, tracking: tracking,
                                 webAddress: remotes.primaryURL.flatMap(RemoteWebAddress.init(remoteURL:)),
-                                pushWebAddress: publishedBranch.flatMap(remotes.pushURL(for:)).flatMap(RemoteWebAddress.init(remoteURL:)))
+                                pushWebAddress: pushRemoteURL.flatMap(RemoteWebAddress.init(remoteURL:)))
     }
 
     @concurrent private static func status(at root: String, paths: [String]?, configuration: GitFilterGuard.Configuration) async throws -> GitStatus {
@@ -67,7 +75,9 @@ enum InspectorService {
             return GitStatus(headSHA: head.map(trimmed))
         }
         let arguments = GitStatus.arguments + (paths.map { ["--"] + $0 } ?? [])
-        return GitStatus.parse(try await ReadCommand.run(git, arguments, at: root, limit: 8_388_608, gitConfiguration: configuration.overrides))
+        let output = try await ReadCommand.run(git, arguments, at: root, limit: GitStatus.outputLimit, overflow: .truncate,
+                                               gitConfiguration: configuration.overrides)
+        return GitStatus.parse(output, isTruncated: output.count >= GitStatus.outputLimit)
     }
 
     @concurrent static func perform(_ action: GitAction, at root: String) async throws {

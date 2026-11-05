@@ -7,6 +7,7 @@ struct GitCommitComposer: View {
     let hasStagedChanges: Bool
     let hasChanges: Bool
     let push: GitAction?
+    let upstreamIsGone: Bool
     let context: TerminalContext
     let source: any InspectorSource
 
@@ -31,6 +32,10 @@ struct GitCommitComposer: View {
                     GitActionButton(action: push, root: root, source: source)
                         .buttonStyle(.bordered)
                         .disabled(model.pendingAction != nil)
+                } else if upstreamIsGone {
+                    Text("The remote branch was deleted")
+                        .font(Typography.caption).foregroundStyle(Palette.textSecondary)
+                        .lineLimit(1)
                 }
                 Spacer(minLength: Spacing.xs)
                 if model.pendingAction != nil { ProgressView().controlSize(.small) }
