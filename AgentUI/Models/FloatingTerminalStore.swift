@@ -10,7 +10,7 @@ import Observation
     var isPresented = false {
         didSet { if !isPresented { persist() } }
     }
-    let sessions: TerminalSessions
+    private let sessions: TerminalSessions
     @ObservationIgnored private weak var window: NSWindow?
     @ObservationIgnored private let defaults: UserDefaults
 
@@ -38,7 +38,7 @@ import Observation
 
     func title(of id: UUID) -> String {
         let directory = directory(of: id)
-        return directory == Self.homePath ? "~" : URL(fileURLWithPath: directory).lastPathComponent
+        return directory == Self.homePath ? "~" : URL(filePath: directory, directoryHint: .isDirectory).lastPathComponent
     }
 
     func startSession(_ id: UUID) {
@@ -92,7 +92,7 @@ import Observation
         defaults.set(data, forKey: Self.stateKey)
     }
 
-    private static var homePath: String { FileManager.default.homeDirectoryForCurrentUser.path }
+    private static let homePath = FileManager.default.homeDirectoryForCurrentUser.path
 
     private static func existing(_ path: String) -> String {
         var isDirectory: ObjCBool = false

@@ -15,17 +15,20 @@ enum TerminalKeyRoute: Equatable, Sendable {
 
     static let metaKeySetting = "terminalOptionAsMetaKey"
 
-    init?(key: NSEvent.SpecialKey?, modifiers: NSEvent.ModifierFlags, optionAsMeta: Bool, screen: Screen) {
+    init?(key: NSEvent.SpecialKey?, modifiers: NSEvent.ModifierFlags, optionAsMeta: @autoclosure () -> Bool,
+          screen: @autoclosure () -> Screen) {
         let modifiers = modifiers.intersection([.shift, .control, .option, .command])
-        if modifiers == .shift, screen.editsShellLine, let arrow = Self.horizontalArrow(for: key) {
+        if modifiers == .shift, let arrow = Self.horizontalArrow(for: key) {
+            let screen = screen()
+            guard screen.editsShellLine else { return nil }
             self = .sends([0x1B, UInt8(ascii: screen.usesApplicationCursor ? "O" : "["), arrow])
             return
         }
         guard modifiers.contains(.option), !modifiers.contains(.command) else { return nil }
-        if modifiers == .option, screen.editsShellLine, let wordJump = Self.wordJump(for: key) {
+        if modifiers == .option, let wordJump = Self.wordJump(for: key), screen().editsShellLine {
             self = .sends(wordJump)
         } else {
-            self = key != nil || optionAsMeta ? .actsAsMeta : .composesCharacter
+            self = key != nil || optionAsMeta() ? .actsAsMeta : .composesCharacter
         }
     }
 

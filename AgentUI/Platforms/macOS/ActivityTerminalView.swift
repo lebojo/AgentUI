@@ -34,7 +34,7 @@ final class ActivityTerminalView: SharedProcessTerminalView {
 
     override func send(source: TerminalView, data: ArraySlice<UInt8>) {
         super.send(source: source, data: data)
-        guard !answersHost, !forwardsRemoteInput, !data.isTerminalFocusReport else { return }
+        guard remoteGrid != nil, !answersHost, !forwardsRemoteInput, !data.isTerminalFocusReport else { return }
         usedLocally()
     }
 

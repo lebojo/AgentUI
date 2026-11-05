@@ -11,8 +11,8 @@ import AppKit
         self.floating = floating
         super.init()
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, event.charactersIgnoringModifiers?.lowercased() == "w",
-                  event.modifierFlags.intersection([.command, .shift, .control, .option]) == .command,
+            guard let self, event.modifierFlags.intersection([.command, .shift, .control, .option]) == .command,
+                  event.charactersIgnoringModifiers?.lowercased() == "w",
                   self.canCloseFloatingTerminal || (self.canCloseTerminal && event.window == NSApp.mainWindow) else { return event }
             self.close(nil)
             return nil

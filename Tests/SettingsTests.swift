@@ -82,6 +82,21 @@ enum SettingsTests {
         try CoreTests.require(optionKey(.leftArrow, arrow.union(.shift), kitty: true) == nil && optionKey(.leftArrow, arrow.union(.shift), alternate: true) == nil,
                               "Agents and full-screen apps keep Shift-Arrow selection")
         try CoreTests.require(optionKey(.upArrow, arrow.union(.shift)) == nil && optionKey(nil, [.option, .command]) == nil, "Other keys and Command shortcuts are untouched")
+        var stateReads = 0
+        func readState() -> TerminalKeyRoute.Screen {
+            stateReads += 1
+            return TerminalKeyRoute.Screen()
+        }
+        func readSetting() -> Bool {
+            stateReads += 1
+            return false
+        }
+        let plainKeys = [TerminalKeyRoute(key: nil, modifiers: [], optionAsMeta: readSetting(), screen: readState()),
+                         TerminalKeyRoute(key: .leftArrow, modifiers: arrow, optionAsMeta: readSetting(), screen: readState()),
+                         TerminalKeyRoute(key: nil, modifiers: .command, optionAsMeta: readSetting(), screen: readState()),
+                         TerminalKeyRoute(key: .carriageReturn, modifiers: .option, optionAsMeta: readSetting(), screen: readState())]
+        try CoreTests.require(plainKeys == [nil, nil, nil, .actsAsMeta] && stateReads == 0,
+                              "Keys that are not rerouted never read the terminal state or the Option setting")
         print("PASS terminal option key")
 
         var confirmations = RemovalConfirmations()
