@@ -14,15 +14,16 @@ enum GitBranchProtection {
               let heads = remoteHeads(of: repository, in: remoteHeadFiles(in: repository.commonDirectory, remoteNames: configuration.remotes.names))
         else { return .unreadable }
         let gitDirectory = WorkspacePath.canonical(repository.gitDirectory)
-        let elsewhere = checkedOutBranches(in: repository.commonDirectory).filter { $0.key != gitDirectory }.values.joined()
+        let elsewhere = checkedOutBranches(in: repository.commonDirectory, isBare: configuration.isBare).filter { $0.key != gitDirectory }.values.joined()
         let branch = WorktreeBranch(repository.branch, defaultBranches: DefaultBranch.names(remoteHeads: heads.map(\.name)),
                                     checkedOutElsewhere: Set(elsewhere))
         return BranchProtectionReport(branch: branch, mergeCandidates: DefaultBranch.references(remoteHeads: heads))
     }
 
-    static func isCheckedOut(_ branch: String, inRepositoryAt path: String) -> Bool {
+    static func isCheckedOut(_ branch: String, inRepositoryAt path: String) async -> Bool {
         guard let repository = GitRepository.containing(path) else { return false }
-        return checkedOutBranches(in: repository.commonDirectory).values.contains { $0.contains(branch) }
+        let isBare = (try? await GitFilterGuard.shared.configuration(at: path))?.isBare ?? false
+        return checkedOutBranches(in: repository.commonDirectory, isBare: isBare).values.contains { $0.contains(branch) }
     }
 
     static func mergeCandidates(of repository: GitRepository, headFiles: [String]) -> [String]? {
@@ -52,9 +53,9 @@ enum GitBranchProtection {
             && !FileManager.default.fileExists(atPath: repository.commonDirectory.appendingPathComponent("reftable").path)
     }
 
-    private static func checkedOutBranches(in commonDirectory: URL) -> [String: Set<String>] {
+    private static func checkedOutBranches(in commonDirectory: URL, isBare: Bool) -> [String: Set<String>] {
         var gitDirectories = GitRepository.linkedGitDirectories(in: commonDirectory)
-        if !isBare(commonDirectory) { gitDirectories.append(commonDirectory) }
+        if !isBare { gitDirectories.append(commonDirectory) }
         return gitDirectories.reduce(into: [:]) { branches, gitDirectory in
             let names = branchesInUse(in: gitDirectory)
             if !names.isEmpty { branches[WorkspacePath.canonical(gitDirectory)] = names }
@@ -74,11 +75,6 @@ enum GitBranchProtection {
         let prefix = "refs/heads/"
         guard reference.hasPrefix(prefix), reference.count > prefix.count else { return nil }
         return String(reference.dropFirst(prefix.count))
-    }
-
-    private static func isBare(_ commonDirectory: URL) -> Bool {
-        let value = WorktreeFolder.coreSetting("bare", in: commonDirectory)?.lowercased()
-        return value.map(["true", "yes", "on", "1"].contains) ?? false
     }
 
     private static func childNames(of directory: URL) -> [String] {

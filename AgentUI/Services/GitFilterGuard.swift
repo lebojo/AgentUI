@@ -30,12 +30,16 @@ actor GitFilterGuard {
     struct Configuration: Sendable {
         let overrides: [String: String]
         let remotes: GitRemoteConfiguration
+        let isBare: Bool
+        let worktree: String?
 
         init(entries: [GitConfiguration.Entry]) {
             overrides = GitConfiguration.disabling(filterDrivers: GitConfiguration.untrustedFilterDrivers(in: entries))
             remotes = GitRemoteConfiguration(entries: entries.compactMap { entry in
                 entry.value.map { (key: String(entry.key), value: String($0)) }
             })
+            isBare = entries.last { $0.key == "core.bare" }.map { GitConfiguration.isTrue($0.value) } ?? false
+            worktree = entries.last { $0.key == "core.worktree" }?.value.map(String.init)
         }
     }
 

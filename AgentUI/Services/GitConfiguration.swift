@@ -33,6 +33,11 @@ enum GitConfiguration {
         }
     }
 
+    static func isTrue(_ value: Substring?) -> Bool {
+        guard let value = value?.lowercased() else { return true }
+        return ["true", "yes", "on"].contains(value) || (Int(value).map { $0 != 0 } ?? false)
+    }
+
     static func untrustedFilterDrivers(in entries: [Entry]) -> Set<String> {
         var drivers: Set<String> = []
         for entry in entries where !trustedScopes.contains(entry.scope) {

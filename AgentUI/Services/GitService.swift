@@ -65,7 +65,7 @@ enum GitService {
     }
 
     @concurrent static func deleteBranch(_ deletion: BranchDeletion, at path: String) async throws {
-        if case .unchanged(let name, _) = deletion, GitBranchProtection.isCheckedOut(name, inRepositoryAt: path) {
+        if case .unchanged(let name, _) = deletion, await GitBranchProtection.isCheckedOut(name, inRepositoryAt: path) {
             throw WorkspaceError(message: String(localized: "The branch “\(name)” is checked out in another worktree."))
         }
         do {

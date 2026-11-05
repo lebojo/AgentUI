@@ -501,8 +501,25 @@ import Foundation
         _ = try await GitService.run(["worktree", "add", "-q", "-b", "feature", symlinkedWorktree.path], at: symlinkedMain.path)
         _ = try await GitService.run(["config", "--unset", "core.bare"], at: symlinkedMain.path)
         let symlinkedFound = await WorktreeFolder.scan([symlinkedScan], repositories: [symlinkedMain.path])
-        try require(symlinkedFound.map(\.repositoryPath) == [symlinkedMain.path] && GitBranchProtection.isCheckedOut("main", inRepositoryAt: symlinkedWorktree.path),
+        let symlinkedMainCheckedOut = await GitBranchProtection.isCheckedOut("main", inRepositoryAt: symlinkedWorktree.path)
+        try require(symlinkedFound.map(\.repositoryPath) == [symlinkedMain.path] && symlinkedMainCheckedOut,
                     "A main folder whose .git is a symlink keeps its worktrees and its checked out branch")
+        let separatedMain = canonicalRoot.appendingPathComponent("cleanup-separated-main")
+        let separatedStorage = canonicalRoot.appendingPathComponent("cleanup-storage/separated-main")
+        let separatedScan = canonicalRoot.appendingPathComponent("cleanup-separated-worktrees")
+        try FileManager.default.createDirectory(at: separatedMain, withIntermediateDirectories: true)
+        _ = try await GitService.run(["init", "-q", "-b", "main", "--separate-git-dir", separatedStorage.path], at: separatedMain.path)
+        try await commit("Initial", at: separatedMain.path)
+        _ = try await GitService.run(["worktree", "add", "-q", "-b", "separated", separatedScan.appendingPathComponent("feature").path], at: separatedMain.path)
+        _ = try await GitService.run(["config", "core.worktree", separatedMain.path], at: separatedMain.path)
+        let separatedConfig = separatedStorage.appendingPathComponent("config")
+        let separatedText = try String(contentsOf: separatedConfig, encoding: .utf8)
+        try separatedText.replacingOccurrences(of: "[core]", with: "[core] # main folder\n")
+            .replacingOccurrences(of: "worktree = \(separatedMain.path)", with: "worktree = \(separatedMain.path) # set by init")
+            .write(to: separatedConfig, atomically: true, encoding: .utf8)
+        let separatedFound = await WorktreeFolder.scan([separatedScan], repositories: [])
+        try require(separatedFound.map(\.repositoryPath) == [separatedMain.path],
+                    "A worktree of a repository with a separate Git folder finds its main folder from Git's own reading of core.worktree")
 
         let unmerged = try await GitService.createWorktree(project: project, branch: "cleanup/unmerged", root: root)
         _ = try await GitService.run(["-c", "user.name=AgentUI Tests", "-c", "user.email=tests@example.invalid", "commit", "--allow-empty", "-m", "Work"], at: unmerged.path)
@@ -565,14 +582,29 @@ import Foundation
         let sharedRebasing = root.appendingPathComponent("cleanup-rebasing-shared")
         _ = try await GitService.run(["worktree", "add", "-q", "-f", sharedRebasing.path, "rebasing"], at: local.path)
         let rebasingBranch = await GitBranchProtection.report(at: sharedRebasing.path, in: local.path).branch
-        try require(GitRepository.containing(rebasing.path)?.branch.isDetached == true && GitBranchProtection.isCheckedOut("rebasing", inRepositoryAt: local.path)
+        let rebasingCheckedOut = await GitBranchProtection.isCheckedOut("rebasing", inRepositoryAt: local.path)
+        try require(GitRepository.containing(rebasing.path)?.branch.isDetached == true && rebasingCheckedOut
                         && rebasingBranch == .protected("rebasing", .checkedOutElsewhere),
                     "A branch being rebased in another worktree stays protected")
         let bisecting = root.appendingPathComponent("cleanup-bisecting")
         _ = try await GitService.run(["worktree", "add", "-q", "-b", "bisected", bisecting.path, "main"], at: local.path)
         _ = try await GitService.run(["bisect", "start"], at: bisecting.path)
         _ = try await GitService.run(["checkout", "-q", "--detach"], at: bisecting.path)
-        try require(GitBranchProtection.isCheckedOut("bisected", inRepositoryAt: local.path), "A branch being bisected in another worktree stays protected")
+        let bisectedCheckedOut = await GitBranchProtection.isCheckedOut("bisected", inRepositoryAt: local.path)
+        try require(bisectedCheckedOut, "A branch being bisected in another worktree stays protected")
+        let commentedBare = root.appendingPathComponent("cleanup-commented-bare.git")
+        _ = try await GitService.run(["clone", "-q", "--bare", "-b", "main", local.path, commentedBare.path], at: root.path)
+        let commentedConfig = commentedBare.appendingPathComponent("config")
+        let commentedText = try String(contentsOf: commentedConfig, encoding: .utf8)
+        try require(commentedText.contains("bare = true"), "A bare clone records core.bare")
+        try commentedText.replacingOccurrences(of: "bare = true", with: "bare = true ; set by clone")
+            .write(to: commentedConfig, atomically: true, encoding: .utf8)
+        let commentedWorktree = root.appendingPathComponent("cleanup-commented-bare-topic")
+        _ = try await GitService.run(["worktree", "add", "-q", "-b", "commented-topic", commentedWorktree.path, "main"], at: commentedBare.path)
+        let bareHeadCheckedOut = await GitBranchProtection.isCheckedOut("main", inRepositoryAt: commentedWorktree.path)
+        let bareTopicReport = await GitBranchProtection.report(at: commentedWorktree.path, in: commentedWorktree.path).branch
+        try require(!bareHeadCheckedOut && bareTopicReport == .deletable("commented-topic"),
+                    "The HEAD of a bare repository whose core.bare carries a comment isn't a checked out branch")
         _ = try await GitService.run(["rebase", "--abort"], at: rebasing.path)
         _ = try await GitService.run(["bisect", "reset"], at: bisecting.path)
         for worktree in [sharedRebasing, rebasing, bisecting] { _ = try await GitService.run(["worktree", "remove", "--force", worktree.path], at: local.path) }

@@ -196,12 +196,14 @@ enum TerminalProcessDirectory {
 enum WorktreeFolder {
     @concurrent static func scan(_ roots: [URL], repositories: [String]) async -> [DiscoveredWorktree] {
         let known = mainWorktrees(of: repositories)
-        return roots.flatMap { root in
-            ((try? WorkspaceDisk.childDirectories(of: root)) ?? []).compactMap { worktree(at: $0, knownMainWorktrees: known) }
+        var worktrees: [DiscoveredWorktree] = []
+        for directory in roots.flatMap({ (try? WorkspaceDisk.childDirectories(of: $0)) ?? [] }) {
+            if let worktree = await worktree(at: directory, knownMainWorktrees: known) { worktrees.append(worktree) }
         }
+        return worktrees
     }
 
-    private static func worktree(at url: URL, knownMainWorktrees: [String: String]) -> DiscoveredWorktree? {
+    private static func worktree(at url: URL, knownMainWorktrees: [String: String]) async -> DiscoveredWorktree? {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.appendingPathComponent(".git").path, isDirectory: &isDirectory),
               !isDirectory.boolValue else { return nil }
@@ -209,8 +211,8 @@ enum WorktreeFolder {
         guard let repository = GitRepository.atRoot(url) else {
             return DiscoveredWorktree(path: path, branch: nil, repositoryPath: nil)
         }
-        let repositoryPath = knownMainWorktrees[repository.commonDirectory.path]
-            ?? mainWorktree(of: repository.commonDirectory).map(WorkspacePath.canonical)
+        let repositoryPath = if let known = knownMainWorktrees[repository.commonDirectory.path] { known }
+            else { await mainWorktree(of: repository.commonDirectory).map(WorkspacePath.canonical) }
         return DiscoveredWorktree(path: path, branch: repository.branch.name, repositoryPath: repositoryPath)
     }
 
@@ -226,23 +228,11 @@ enum WorktreeFolder {
         return Dictionary(mains) { first, _ in first }
     }
 
-    private static func mainWorktree(of commonDirectory: URL) -> URL? {
+    private static func mainWorktree(of commonDirectory: URL) async -> URL? {
         if commonDirectory.lastPathComponent == ".git" { return commonDirectory.deletingLastPathComponent() }
-        guard let configured = coreSetting("worktree", in: commonDirectory) else { return nil }
+        guard let configured = try? await GitFilterGuard.shared.configuration(at: commonDirectory.path).worktree else { return nil }
         return (configured as NSString).isAbsolutePath
             ? URL(fileURLWithPath: configured)
             : commonDirectory.appendingPathComponent(configured).standardizedFileURL
-    }
-
-    static func coreSetting(_ name: String, in commonDirectory: URL) -> String? {
-        guard let text = try? String(contentsOf: commonDirectory.appendingPathComponent("config"), encoding: .utf8) else { return nil }
-        var inCore = false
-        for line in text.components(separatedBy: .newlines).map({ $0.trimmingCharacters(in: .whitespaces) }) {
-            if line.hasPrefix("[") { inCore = line.lowercased() == "[core]" }
-            guard inCore else { continue }
-            let parts = line.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
-            if parts.count == 2, parts[0].lowercased() == name { return parts[1] }
-        }
-        return nil
     }
 }
