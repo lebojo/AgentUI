@@ -82,5 +82,5 @@ enum Removal: Hashable, Sendable {
 
 struct UnmergedRemoval: Equatable, Sendable {
     let removal: Removal
-    let reason: String
+    let error: UnmergedBranchError
 }

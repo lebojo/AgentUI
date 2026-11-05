@@ -864,22 +864,22 @@
         }
       }
     },
-    "The branch “%@” is checked out in another worktree and won’t be deleted. Nothing was removed." : {
+    "The branch “%@” is checked out in another worktree." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La branche « %@ » est utilisée par un autre worktree et ne sera pas supprimée. Rien n’a été supprimé."
+            "value" : "La branche « %@ » est utilisée par un autre worktree."
           }
         }
       }
     },
-    "The branch “%@” is the repository’s main branch and won’t be deleted. Nothing was removed." : {
+    "The branch “%@” is the repository’s main branch." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La branche « %@ » est la branche principale du dépôt et ne sera pas supprimée. Rien n’a été supprimé."
+            "value" : "La branche « %@ » est la branche principale du dépôt."
           }
         }
       }
@@ -914,6 +914,16 @@
         }
       }
     },
+    "The worktree had left the branch “%@” since you confirmed." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le worktree avait quitté la branche « %@ » depuis votre confirmation."
+          }
+        }
+      }
+    },
     "The worktree was deleted, but its branch couldn’t be checked, so it was kept." : {
       "localizations" : {
         "fr" : {
@@ -944,12 +954,12 @@
         }
       }
     },
-    "The worktree’s branch couldn’t be checked, so it won’t be deleted. Nothing was removed." : {
+    "The worktree’s branch couldn’t be checked." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La branche du worktree n’a pas pu être vérifiée, elle ne sera donc pas supprimée. Rien n’a été supprimé."
+            "value" : "La branche du worktree n’a pas pu être vérifiée."
           }
         }
       }
@@ -1046,26 +1056,6 @@
     },
     "—" : {
       "shouldTranslate" : false
-    },
-    "“%@” is checked out in another worktree." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "« %@ » est utilisée par un autre worktree."
-          }
-        }
-      }
-    },
-    "“%@” is the repository’s main branch." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "« %@ » est la branche principale du dépôt."
-          }
-        }
-      }
     },
     "… and %lld more." : {
       "localizations" : {

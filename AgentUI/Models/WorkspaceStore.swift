@@ -447,7 +447,7 @@ import Observation
         return await GitBranchProtection.report(at: worktree.path, in: project.path, checkedOutElsewhere: Set(elsewhere))
     }
 
-    func remove(_ removal: Removal, branch: BranchRemoval = .keep) {
+    func remove(_ removal: Removal, branch: BranchRemoval = .keep, confirmedBranch: String? = nil) {
         guard !isBusy(removal) else {
             errorMessage = String(localized: "A Git operation is in progress on this project. Try again when it’s finished.")
             return
@@ -458,10 +458,10 @@ import Observation
         case .worktree(let projectID, let worktreeID, _):
             Task {
                 do {
-                    let cleanup = try await deleteWorktree(projectID: projectID, worktreeID: worktreeID, branch: branch, protectedBranch: .keep)
+                    let cleanup = try await deleteWorktree(projectID: projectID, worktreeID: worktreeID, branch: branch, confirmedBranch: confirmedBranch)
                     if let failure = cleanup.failure { errorMessage = failure }
                 } catch let error as UnmergedBranchError {
-                    unmergedRemoval = UnmergedRemoval(removal: removal, reason: error.reason)
+                    unmergedRemoval = UnmergedRemoval(removal: removal, error: error)
                 } catch { errorMessage = error.localizedDescription }
             }
         case .orphanWorktree(let path, _): trashOrphanWorktree(at: path)
@@ -628,12 +628,8 @@ import Observation
         try await GitService.fetchRemotes(project: project)
     }
 
-    enum ProtectedBranchHandling: Sendable {
-        case refuse, keep
-    }
-
     @discardableResult func deleteWorktree(projectID: UUID, worktreeID: UUID, branch removal: BranchRemoval = .keep,
-                                           protectedBranch handling: ProtectedBranchHandling = .refuse) async throws -> BranchCleanup {
+                                           confirmedBranch confirmed: String? = nil) async throws -> BranchCleanup {
         guard !busyProjects.contains(projectID) else { throw WorkspaceError(message: String(localized: "A Git operation is already in progress on this project.")) }
         guard let project = projects.first(where: { $0.id == projectID }),
               let worktree = project.worktrees.first(where: { $0.id == worktreeID }) else {
@@ -648,9 +644,9 @@ import Observation
         }
         let protection = removal == .keep ? BranchProtectionReport(branch: .none, mergeCandidates: [])
             : await branchProtection(of: worktree, in: project)
-        let keptBranch = handling == .keep ? Self.keptCleanup(of: protection.branch) : nil
-        if keptBranch == nil, let refusal = protection.branch.refusal { throw WorkspaceError(message: refusal) }
-        if removal.requiresMerge, let name = protection.branch.deletableName {
+        let keptBranch = removal == .keep ? nil : confirmed.flatMap(protection.branch.cleanup(confirming:))
+        if confirmed == nil, let refusal = protection.branch.refusal { throw WorkspaceError(message: refusal) }
+        if keptBranch == nil, removal.requiresMerge, let name = protection.branch.deletableName {
             try await GitService.requireMerged(name, into: protection.mergeCandidates, at: project.path)
         }
         let started = worktree.terminals.filter { sessions.isRunning($0.id) }
@@ -664,15 +660,6 @@ import Observation
         forgetWorktree(worktreeID, of: projectID)
         if let keptBranch { return keptBranch }
         return await deleteBranch(protection, removal, of: project)
-    }
-
-    private static func keptCleanup(of branch: WorktreeBranch) -> BranchCleanup? {
-        switch branch {
-        case .protected(let name, .defaultBranch): .kept(name, reason: String(localized: "“\(name)” is the repository’s main branch."))
-        case .protected(let name, .checkedOutElsewhere): .kept(name, reason: String(localized: "“\(name)” is checked out in another worktree."))
-        case .unreadable: .unchecked
-        case .deletable, .none: nil
-        }
     }
 
     private func forgetWorktree(_ worktreeID: UUID, of projectID: UUID) {

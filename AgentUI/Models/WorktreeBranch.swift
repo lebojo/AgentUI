@@ -21,15 +21,26 @@ enum WorktreeBranch: Equatable, Sendable {
         if case .deletable(let name) = self { name } else { nil }
     }
 
-    var refusal: String? {
+    var keptReason: LocalizedStringResource? {
         switch self {
         case .deletable, .none: nil
-        case .protected(let name, .defaultBranch):
-            String(localized: "The branch “\(name)” is the repository’s main branch and won’t be deleted. Nothing was removed.")
-        case .protected(let name, .checkedOutElsewhere):
-            String(localized: "The branch “\(name)” is checked out in another worktree and won’t be deleted. Nothing was removed.")
-        case .unreadable:
-            String(localized: "The worktree’s branch couldn’t be checked, so it won’t be deleted. Nothing was removed.")
+        case .protected(let name, .defaultBranch): "The branch “\(name)” is the repository’s main branch."
+        case .protected(let name, .checkedOutElsewhere): "The branch “\(name)” is checked out in another worktree."
+        case .unreadable: "The worktree’s branch couldn’t be checked."
+        }
+    }
+
+    var refusal: String? {
+        keptReason.map { String(localized: "\(String(localized: $0)) Nothing was removed.") }
+    }
+
+    func cleanup(confirming confirmed: String) -> BranchCleanup? {
+        switch self {
+        case .deletable(confirmed): nil
+        case .unreadable: .unchecked
+        case .protected(confirmed, _): keptReason.map { .kept(confirmed, reason: String(localized: $0)) }
+        case .deletable, .protected, .none:
+            .kept(confirmed, reason: String(localized: "The worktree had left the branch “\(confirmed)” since you confirmed."))
         }
     }
 }
@@ -48,12 +59,12 @@ struct UnmergedBranchError: LocalizedError, Equatable, Sendable {
     let branch: String
     let hasMainBranch: Bool
 
-    var reason: String {
-        hasMainBranch ? String(localized: "The branch “\(branch)” isn’t merged into the main branch.")
-            : String(localized: "The repository’s main branch couldn’t be found, so the branch “\(branch)” can’t be checked.")
+    var reason: LocalizedStringResource {
+        hasMainBranch ? "The branch “\(branch)” isn’t merged into the main branch."
+            : "The repository’s main branch couldn’t be found, so the branch “\(branch)” can’t be checked."
     }
 
-    var errorDescription: String? { String(localized: "\(reason) Nothing was removed.") }
+    var errorDescription: String? { String(localized: "\(String(localized: reason)) Nothing was removed.") }
 }
 
 enum BranchCleanup: Equatable, Sendable {

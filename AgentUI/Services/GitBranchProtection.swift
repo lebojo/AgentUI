@@ -9,7 +9,7 @@ struct BranchProtectionReport: Equatable, Sendable {
 
 enum GitBranchProtection {
     @concurrent static func report(at path: String, in repositoryPath: String, checkedOutElsewhere known: Set<String>) async -> BranchProtectionReport {
-        guard let repository = GitRepository.containing(path) ?? GitRepository.registeredWorktree(at: path, in: repositoryPath),
+        guard let repository = GitRepository.atRoot(URL(fileURLWithPath: path)) ?? GitRepository.registeredWorktree(at: path, in: repositoryPath),
               let configuration = try? await GitFilterGuard.shared.configuration(at: repositoryPath),
               let heads = remoteHeads(of: repository, in: remoteHeadFiles(in: repository.commonDirectory, remoteNames: configuration.remotes.names))
         else { return .unreadable }

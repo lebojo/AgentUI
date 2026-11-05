@@ -17,7 +17,7 @@ struct RemovalConfirmation: View {
                 .dialogSuppressionToggle("Don’t ask again", isSuppressed: $skipsConfirmation)
             dialog(allowingSkip: false)
         }
-        .alert(store.unmergedRemoval?.reason ?? "", isPresented: Bindable(store).unmergedRemoval.isPresent, presenting: store.unmergedRemoval) { unmerged in
+        .alert(Text(store.unmergedRemoval?.error.reason ?? ""), isPresented: Bindable(store).unmergedRemoval.isPresent, presenting: store.unmergedRemoval) { unmerged in
             Button("Delete Worktree Only", role: .destructive) { store.remove(unmerged.removal) }
             Button("Cancel", role: .cancel) {}
         } message: { _ in
@@ -35,17 +35,18 @@ struct RemovalConfirmation: View {
 
     private func present(_ removal: Removal) async {
         let store = store
-        await withTaskGroup(of: BranchLookup.self) { group in
-            group.addTask { .found(await store.deletableBranch(for: removal)) }
-            group.addTask {
-                try? await Task.sleep(for: Removal.branchLookupDeadline)
-                return .timedOut
-            }
-            let first = await group.next()
-            group.cancelAll()
-            guard !Task.isCancelled, let first else { return }
-            prompt = Prompt(removal: removal, deletableBranch: first.branch)
+        let (lookups, continuation) = AsyncStream.makeStream(of: BranchLookup.self)
+        Task { continuation.yield(.found(await store.deletableBranch(for: removal))) }
+        let deadline = Task {
+            try? await Task.sleep(for: Removal.branchLookupDeadline)
+            continuation.yield(.timedOut)
         }
+        var iterator = lookups.makeAsyncIterator()
+        let first = await iterator.next()
+        deadline.cancel()
+        continuation.finish()
+        guard !Task.isCancelled, let first else { return }
+        prompt = Prompt(removal: removal, deletableBranch: first.branch)
     }
 
     private func dialog(allowingSkip: Bool) -> some View {
@@ -66,10 +67,10 @@ struct RemovalConfirmation: View {
         }
     }
 
-    private func confirm(_ branch: BranchRemoval) {
+    private func confirm(_ branchRemoval: BranchRemoval) {
         guard let removal else { return }
         if skipsConfirmation { settings.confirmations.skip(removal) }
-        store.remove(removal, branch: branch)
+        store.remove(removal, branch: branchRemoval, confirmedBranch: branch)
         presentation.removal = nil
     }
 

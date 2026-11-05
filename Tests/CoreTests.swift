@@ -376,6 +376,14 @@ import Foundation
                         && BranchCleanup.untouched.notice != nil && BranchCleanup.deleted("x").failure == nil
                         && BranchCleanup.notRequested.notice == nil && BranchCleanup.notRequested.failure == nil && BranchCleanup.notRequested.reportedDeletion == nil
                         && BranchCleanup.untouched.reportedDeletion == false, "Branch cleanup reporting")
+        let switched = WorktreeBranch.deletable("other").cleanup(confirming: "x")
+        try require(WorktreeBranch.deletable("x").cleanup(confirming: "x") == nil && WorktreeBranch.unreadable.cleanup(confirming: "x") == .unchecked
+                        && switched?.branch == "x" && switched?.failure?.hasSuffix("The worktree had left the branch “x” since you confirmed.") == true
+                        && WorktreeBranch.none.cleanup(confirming: "x") == switched
+                        && WorktreeBranch.protected("x", .checkedOutElsewhere).cleanup(confirming: "x")
+                            == .kept("x", reason: "The branch “x” is checked out in another worktree.")
+                        && WorktreeBranch.protected("main", .defaultBranch).refusal == "The branch “main” is the repository’s main branch. Nothing was removed.",
+                    "Only the confirmed branch is deleted, and a protected branch is kept or refused with the same reason")
 
         let shared = root.appendingPathComponent("cleanup-shared-main")
         _ = try await GitService.run(["worktree", "add", "-q", "-f", shared.path, "main"], at: project.path)
@@ -450,6 +458,19 @@ import Foundation
         _ = try await GitService.run(["checkout", "-q", "--detach"], at: topic.path)
         let detachedTopic = await GitBranchProtection.report(at: topic.path, in: local.path, checkedOutElsewhere: []).branch
         try require(detachedTopic == WorktreeBranch.none, "Git reports no branch for a detached worktree")
+        let nested = local.appendingPathComponent("nested-lost")
+        _ = try await GitService.run(["worktree", "add", "-q", "-b", "nested", nested.path], at: local.path)
+        try FileManager.default.removeItem(at: nested.appendingPathComponent(".git"))
+        let lostLink = await GitBranchProtection.report(at: WorkspacePath.canonical(nested), in: local.path, checkedOutElsewhere: []).branch
+        try require(lostLink == .deletable("nested"), "A nested worktree that lost its Git link is judged by its own registration, not the enclosing repository")
+        let plain = local.appendingPathComponent("nested-plain")
+        try FileManager.default.createDirectory(at: plain, withIntermediateDirectories: true)
+        let plainBranch = await GitBranchProtection.report(at: WorkspacePath.canonical(plain), in: local.path, checkedOutElsewhere: []).branch
+        try require(plainBranch == .unreadable, "A folder inside a repository never takes the enclosing repository's branch")
+        try FileManager.default.removeItem(at: plain)
+        try FileManager.default.removeItem(at: nested)
+        _ = try await GitService.run(["worktree", "prune"], at: local.path)
+        _ = try await GitService.run(["branch", "-D", "nested"], at: local.path)
         try require(DefaultBranch.names(remoteHeads: ["develop"]) == ["main", "master", "develop"], "main, master and remote HEADs are default branches")
         let reftable = local.appendingPathComponent(".git/reftable")
         try FileManager.default.createDirectory(at: reftable, withIntermediateDirectories: true)
@@ -550,7 +571,7 @@ import Foundation
             try await deleteBranch("topic", .merged, project: Project(url: trunk))
             throw WorkspaceError(message: "FAIL: branch deleted without a known main branch")
         } catch let error as UnmergedBranchError {
-            try require(!error.hasMainBranch && error.reason.contains("main branch couldn’t be found"),
+            try require(!error.hasMainBranch && String(localized: error.reason).contains("main branch couldn’t be found"),
                         "Without a known main branch, a branch is never considered merged")
         }
         let topicLeft = try await GitService.run(["branch", "--list", "topic"], at: trunk.path)
