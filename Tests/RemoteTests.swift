@@ -205,6 +205,13 @@ import Foundation
                     "Focus-in and focus-out reports are recognised")
         try require(![UInt8]("\u{1b}[Ix".utf8).isTerminalFocusReport && !Data("I".utf8).isTerminalFocusReport && !Data().isTerminalFocusReport,
                     "Typed text is never a focus report")
+        let motions = ["\u{1b}[<35;10;5M", "\u{1b}[<32;1;1M", "\u{1b}[<43;120;40M", "\u{1b}[M\u{43}\u{2a}\u{25}", "\u{1b}[67;10;5M"]
+        try require(motions.allSatisfy { [UInt8]($0.utf8).isTerminalMouseMotionReport },
+                    "Pointer motion reports in SGR, X10 and urxvt encodings are recognised")
+        let presses = ["\u{1b}[<0;10;5M", "\u{1b}[<0;10;5m", "\u{1b}[<64;3;4M", "\u{1b}[M\u{20}\u{2a}\u{25}", "\u{1b}[32;10;5M", "\u{1b}[<35;10M",
+                       "\u{1b}[A", "\u{1b}[200~pasted\u{1b}[201~", "\u{1b}[<35;10;5x", "a"]
+        try require(presses.allSatisfy { ![UInt8]($0.utf8).isTerminalMouseMotionReport },
+                    "Mouse presses, releases, scrolls, keys and pastes aren't motion reports")
         var grids = RemoteGridRequests()
         grids.takeBack()
         try require(grids.isEmpty && grids.size == nil, "Using an unwatched terminal on the Mac leaves no state behind")

@@ -296,9 +296,8 @@ import SystemConfiguration
                     case .streamInput(let requestID, let terminalID, let data, let message) where terminalID == terminal:
                         let failure: String?
                         do {
-                            try requireWritable()
-                            store.sessions.receiveRemoteInput(data, for: terminalID, viewer: viewer)
                             _ = try await handle(.input(id: terminalID, data: data, message: message))
+                            store.sessions.receiveRemoteInput(data, for: terminalID, viewer: viewer)
                             failure = nil
                         } catch { failure = error.localizedDescription }
                         try await RemoteChannel.push(RemoteEvent.inputResult(request: requestID, error: failure), on: connection)
