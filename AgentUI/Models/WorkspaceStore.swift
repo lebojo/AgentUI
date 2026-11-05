@@ -6,6 +6,7 @@ import Observation
     private(set) var projects: [Project] = [] {
         didSet {
             updateSelectedContext()
+            updateTerminalBlocks()
             if !WorkInProgress.listsSameTerminals(oldValue, projects) { updateWorkInProgress() }
         }
     }
@@ -41,6 +42,7 @@ import Observation
     private(set) var orphanWorktrees: [DiscoveredWorktree] = []
     private(set) var workInProgress: [WorkInProgressGroup] = []
     private(set) var workInProgressRows: [WorkInProgressRow] = []
+    private var terminalBlocksByWorktree: [UUID: [SidebarTerminalBlock]] = [:]
     @ObservationIgnored private var orphanScan: UInt64 = 0
     private(set) var isImporting = false
     var pendingImport: RepositoryImport?
@@ -83,6 +85,12 @@ import Observation
         guard workInProgress != groups else { return }
         workInProgress = groups
         workInProgressRows = groups.flatMap(\.rows)
+    }
+
+    private func updateTerminalBlocks() {
+        terminalBlocksByWorktree = projects.flatMap(\.worktrees).reduce(into: [:]) { blocks, worktree in
+            if blocks[worktree.id] == nil { blocks[worktree.id] = worktree.terminalBlocks(showing: worktree.terminals) }
+        }
     }
 
     private func refreshSelectedSubagent() {
@@ -728,6 +736,12 @@ import Observation
     func reorderWorktrees(in projectID: UUID, _ visible: [UUID], from source: IndexSet, to destination: Int) {
         guard let p = projects.firstIndex(where: { $0.id == projectID }) else { return }
         reorder(\.projects[p].worktrees, visible, from: source, to: destination)
+    }
+
+    func terminalBlocks(in worktreeID: UUID, matching query: String) -> [SidebarTerminalBlock] {
+        guard !query.isEmpty else { return terminalBlocksByWorktree[worktreeID] ?? [] }
+        guard let worktree = projects.lazy.flatMap(\.worktrees).first(where: { $0.id == worktreeID }) else { return [] }
+        return worktree.terminalBlocks(showing: worktree.terminals.filter { $0.name.localizedStandardContains(query) })
     }
 
     func reorderTerminalBlocks(in worktreeID: UUID, _ blocks: [SidebarTerminalBlock], from source: IndexSet, to destination: Int) {

@@ -1,9 +1,9 @@
 import Foundation
 
 extension WorkspaceStore {
-    func openTerminal(_ project: Project, _ worktree: Worktree, launch: AgentLaunch) {
+    func openTerminal(projectID: UUID, worktreeID: UUID, launch: AgentLaunch) {
         do {
-            _ = try addTerminal(projectID: project.id, worktreeID: worktree.id, command: launch.command(on: .newTerminal))
+            _ = try addTerminal(projectID: projectID, worktreeID: worktreeID, command: launch.command(on: .newTerminal))
         }
         catch { errorMessage = error.localizedDescription }
     }

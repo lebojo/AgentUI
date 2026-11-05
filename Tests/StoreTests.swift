@@ -266,6 +266,9 @@ private final class ChangeFlag: @unchecked Sendable {
             let filtered = split.worktree(containing: first)!.terminalBlocks(showing: split.worktree(containing: first)!.terminals.filter { [first, c, d].contains($0.id) })
             try require(filtered.map { $0.terminals.map(\.id) } == [[d], [c], [first]] && filtered.allSatisfy { !$0.isSplit && $0.axis == nil },
                         "A split whose other panes are filtered out shows as a single row")
+            try require(split.terminalBlocks(in: worktreeID, matching: "") == blocks() && split.terminalBlocks(in: worktreeID, matching: "b").map(\.terminalIDs) == [[b]]
+                            && split.terminalBlocks(in: UUID(), matching: "").isEmpty,
+                        "The store keeps each worktree's blocks and filters them only for a search")
             let leadingRoot = root.appendingPathComponent("blocks-leading")
             try fm.createDirectory(at: leadingRoot, withIntermediateDirectories: true)
             let leadingProject = try split.addProject(leadingRoot)

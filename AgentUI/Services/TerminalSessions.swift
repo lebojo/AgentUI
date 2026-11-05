@@ -273,9 +273,16 @@ import Observation
 }
 
 @MainActor @Observable final class TerminalSessions {
+    @MainActor @Observable final class BranchState {
+        var branch: GitBranch?
+
+        init(branch: GitBranch?) { self.branch = branch }
+    }
+
     private var entries: [UUID: TerminalSession] = [:]
     var environment: [String: String] = [:]
-    private(set) var branchesByPath: [String: GitBranch] = [:]
+    @ObservationIgnored private var branchesByPath: [String: GitBranch] = [:]
+    @ObservationIgnored private var branchStates: [String: BranchState] = [:]
     private(set) var runningAgents: [UUID: ConversationAgent] = [:]
     private(set) var agentStatuses: [UUID: AgentStatus] = [:]
     @ObservationIgnored weak var delegate: TerminalSessionsDelegate?
@@ -288,7 +295,14 @@ import Observation
 
     func branch(for terminalID: UUID, initialPath: String) -> GitBranch? {
         if let session = entries[terminalID] { return session.branch }
-        return branchesByPath[initialPath]
+        return branch(at: initialPath)
+    }
+
+    func branch(at path: String) -> GitBranch? {
+        if let state = branchStates[path] { return state.branch }
+        let state = BranchState(branch: branchesByPath[path])
+        branchStates[path] = state
+        return state.branch
     }
 
     func refreshRepositories(worktreePaths: [String]) async {
@@ -301,7 +315,8 @@ import Observation
         }
         let result = await Self.inspect(worktreePaths: worktreePaths, locations: locations)
         guard !Task.isCancelled else { return }
-        if branchesByPath != result.branches { branchesByPath = result.branches }
+        branchesByPath = result.branches
+        for (path, state) in branchStates where state.branch != result.branches[path] { state.branch = result.branches[path] }
         for value in result.sessions {
             guard let session = entries[value.id], session.identity == value.identity else { continue }
             session.updateRepository(directory: value.directory, branch: value.branch, divergentBranch: value.divergentBranch)

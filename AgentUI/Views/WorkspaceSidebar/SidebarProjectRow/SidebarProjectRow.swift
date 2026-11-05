@@ -19,9 +19,9 @@ struct SidebarProjectRow: View {
     var body: some View {
         DisclosureGroup(isExpanded: isExpanded) {
             ForEach(project.worktrees.filter(\.isPrimary)) { worktree in
-                SidebarTerminalList(worktree: worktree, terminals: worktree.terminals.filter { showsEverything || matches($0.name) })
+                SidebarTerminalList(worktreeID: worktree.id, query: showsEverything ? "" : query)
                 if worktree.terminals.isEmpty {
-                    Button("Open Terminal") { store.openTerminal(project, worktree, launch: settings.agentLaunch) }
+                    Button("Open Terminal") { store.openTerminal(projectID: project.id, worktreeID: worktree.id, launch: settings.agentLaunch) }
                         .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
                 }
             }
@@ -31,7 +31,7 @@ struct SidebarProjectRow: View {
             .onMove(perform: store.isReadOnly ? nil : { store.reorderWorktreeGroups(in: project.id, visibleGroups.map(\.id), from: $0, to: $1) })
             let ungrouped = visibleWorktrees(in: nil)
             ForEach(ungrouped) { worktree in
-                SidebarWorktreeRow(project: project, worktree: worktree, query: query, showAll: showsEverything)
+                SidebarWorktreeRow(projectID: project.id, worktreeGroups: project.worktreeGroups, worktree: worktree, query: query, showAll: showsEverything)
             }
             .onMove(perform: store.isReadOnly ? nil : { store.reorderWorktrees(in: project.id, ungrouped.map(\.id), from: $0, to: $1) })
         } label: {

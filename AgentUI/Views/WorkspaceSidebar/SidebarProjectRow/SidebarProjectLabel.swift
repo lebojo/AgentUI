@@ -8,7 +8,7 @@ struct SidebarProjectLabel: View {
 
     private var isIdle: Bool { project.worktrees.allSatisfy { $0.terminals.isEmpty } }
     private var primaryBranch: GitBranch? {
-        project.worktrees.first(where: \.isPrimary).flatMap { store.sessions.branchesByPath[$0.path] }
+        project.worktrees.first(where: \.isPrimary).flatMap { store.sessions.branch(at: $0.path) }
     }
 
     var body: some View {

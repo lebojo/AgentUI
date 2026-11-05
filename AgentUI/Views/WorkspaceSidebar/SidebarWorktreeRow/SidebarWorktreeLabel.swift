@@ -6,11 +6,12 @@ struct SidebarWorktreeLabel: View {
     @Environment(WorkspaceStore.self) private var store
     @Environment(WorkspacePresentation.self) private var presentation
 
-    let project: Project
+    let projectID: UUID
+    let worktreeGroups: [WorktreeGroup]
     let worktree: Worktree
 
-    private var branch: GitBranch? { store.sessions.branchesByPath[worktree.path] }
-    private var worktreeRemoval: Removal { .worktree(projectID: project.id, worktreeID: worktree.id, name: worktree.displayName) }
+    private var branch: GitBranch? { store.sessions.branch(at: worktree.path) }
+    private var worktreeRemoval: Removal { .worktree(projectID: projectID, worktreeID: worktree.id, name: worktree.displayName) }
 
     var body: some View {
         HStack(spacing: Spacing.s) {
@@ -32,12 +33,12 @@ struct SidebarWorktreeLabel: View {
             Menu("Group", systemImage: "rectangle.stack") {
                 Button("No Group") { store.moveWorktree(worktree.id, to: nil) }
                     .disabled(worktree.groupID == nil)
-                ForEach(project.worktreeGroups) { group in
+                ForEach(worktreeGroups) { group in
                     Button(group.name) { store.moveWorktree(worktree.id, to: group.id) }
                         .disabled(worktree.groupID == group.id)
                 }
                 Divider()
-                Button("New Group…") { presentation.sheet = .worktreeGroup(projectID: project.id, worktreeID: worktree.id) }
+                Button("New Group…") { presentation.sheet = .worktreeGroup(projectID: projectID, worktreeID: worktree.id) }
             }
             Divider()
             RemovalButton(removal: worktreeRemoval, placement: .menu)
@@ -47,5 +48,5 @@ struct SidebarWorktreeLabel: View {
         }
     }
 
-    private func openTerminal() { store.openTerminal(project, worktree, launch: settings.agentLaunch) }
+    private func openTerminal() { store.openTerminal(projectID: projectID, worktreeID: worktree.id, launch: settings.agentLaunch) }
 }

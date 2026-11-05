@@ -6,13 +6,14 @@ struct SidebarWorktreeRow: View {
 
     @State private var isInserted = false
 
-    let project: Project
+    let projectID: UUID
+    let worktreeGroups: [WorktreeGroup]
     let worktree: Worktree
     let query: String
     let showAll: Bool
 
-    private var terminals: [TerminalRecord] {
-        worktree.terminals.filter { showAll || matches(worktree.displayName) || matches($0.name) }
+    private var terminalQuery: String {
+        showAll || matches(worktree.displayName) ? "" : query
     }
     private var isExpanded: Binding<Bool> {
         guard isInserted else { return .constant(false) }
@@ -21,13 +22,13 @@ struct SidebarWorktreeRow: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: isExpanded) {
-            SidebarTerminalList(worktree: worktree, terminals: terminals)
+            SidebarTerminalList(worktreeID: worktree.id, query: terminalQuery)
             if worktree.terminals.isEmpty {
-                Button("Open Terminal") { store.openTerminal(project, worktree, launch: settings.agentLaunch) }
+                Button("Open Terminal") { store.openTerminal(projectID: projectID, worktreeID: worktree.id, launch: settings.agentLaunch) }
                     .buttonStyle(.plain).font(Typography.caption).foregroundStyle(Palette.textSecondary)
             }
         } label: {
-            SidebarWorktreeLabel(project: project, worktree: worktree)
+            SidebarWorktreeLabel(projectID: projectID, worktreeGroups: worktreeGroups, worktree: worktree)
         }
         .task { isInserted = true }
     }

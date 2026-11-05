@@ -12,7 +12,7 @@ struct SidebarProjectMenu: View {
 
     var body: some View {
         Button("New Terminal", systemImage: "terminal") {
-            if let main = project.worktrees.first(where: \.isPrimary) { store.openTerminal(project, main, launch: settings.agentLaunch) }
+            if let main = project.worktrees.first(where: \.isPrimary) { store.openTerminal(projectID: project.id, worktreeID: main.id, launch: settings.agentLaunch) }
         }
         Button("New Worktree…", systemImage: "arrow.triangle.branch") { presentation.sheet = .worktree(project.id, project.name) }
             .disabled(isBusy)

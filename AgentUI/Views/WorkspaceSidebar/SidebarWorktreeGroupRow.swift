@@ -20,7 +20,7 @@ struct SidebarWorktreeGroupRow: View {
     var body: some View {
         DisclosureGroup(isExpanded: query.isEmpty ? Bindable(store)[expanded: group.id] : .constant(true)) {
             ForEach(worktrees) { worktree in
-                SidebarWorktreeRow(project: project, worktree: worktree, query: query, showAll: showAll)
+                SidebarWorktreeRow(projectID: project.id, worktreeGroups: project.worktreeGroups, worktree: worktree, query: query, showAll: showAll)
             }
             .onMove(perform: store.isReadOnly ? nil : { store.reorderWorktrees(in: project.id, worktrees.map(\.id), from: $0, to: $1) })
             if project.worktrees(in: group.id).isEmpty {
