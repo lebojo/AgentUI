@@ -282,6 +282,14 @@ private final class ChangeFlag: @unchecked Sendable {
             let worktreeBlocks = split.worktree(containing: paneA)!
             split.reorderTerminalBlocks(in: leadingWorktree, worktreeBlocks.terminalBlocks(showing: worktreeBlocks.terminals), from: [1], to: 0)
             try require(leadingBlocks() == [[paneB], [paneC, paneA]], "A terminal moves above a block whose pane order differs from the terminal order")
+            func leadingBlockIDs() -> [UUID] {
+                let worktree = split.worktree(containing: paneA)!
+                return worktree.terminalBlocks(showing: worktree.terminals).map(\.id)
+            }
+            try require(leadingBlockIDs() == [paneB, paneA], "A block keeps the id of its first terminal in the sidebar after another block moves")
+            try require(split.moveTerminal(paneC, beside: paneA, edge: .trailing) && leadingBlocks() == [[paneB], [paneA, paneC]]
+                            && leadingBlockIDs() == [paneB, paneA], "Reordering the panes of a split keeps its block id")
+            try require(split.moveTerminal(paneC, beside: paneA, edge: .leading), "Restore the leading pane order")
             let terminals = split.worktree(containing: first)!.terminals
             try require(blocks().reordering(terminals, moving: c, to: 0)?.map(\.id) == [b, c, d, first, e],
                         "Inserting a split member moves its whole block")

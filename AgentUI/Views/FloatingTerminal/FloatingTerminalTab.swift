@@ -5,14 +5,14 @@ struct FloatingTerminalTab: View {
 
     @State private var isHovered = false
 
-    let tab: TerminalLayout
+    let tab: FloatingTerminal.Tab
     let title: String
     let directory: String
     let isSelected: Bool
 
     var body: some View {
         HStack(spacing: Spacing.xs) {
-            Image(systemName: tab.isSplit ? "rectangle.split.2x1" : "terminal")
+            Image(systemName: tab.layout.isSplit ? "rectangle.split.2x1" : "terminal")
                 .font(Typography.xs)
                 .foregroundStyle(isSelected ? Palette.accent : Palette.textSecondary)
             Text(title).lineLimit(1).truncationMode(.middle)

@@ -6,18 +6,39 @@ struct FloatingTerminal: Codable, Equatable, Sendable {
         var path: String
     }
 
+    struct Tab: Identifiable, Codable, Equatable, Sendable {
+        private enum CodingKeys: String, CodingKey { case id, layout }
+
+        var id: UUID
+        var layout: TerminalLayout
+
+        init(id: UUID = UUID(), layout: TerminalLayout) {
+            self.id = id
+            self.layout = layout
+        }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            if let id = try container.decodeIfPresent(UUID.self, forKey: .id) {
+                self.init(id: id, layout: try container.decode(TerminalLayout.self, forKey: .layout))
+            } else {
+                self.init(layout: try TerminalLayout(from: decoder))
+            }
+        }
+    }
+
     static let projectID = UUID(uuidString: "6F1D2C8E-4B7A-4E0F-9C55-0A3B7E2D9F10")!
     static let worktreeID = UUID(uuidString: "B84E1A27-93C6-4D58-8F02-61E5C9A7D3B4")!
 
     private(set) var panes: [Pane] = []
-    private(set) var tabs: [TerminalLayout] = []
+    private(set) var tabs: [Tab] = []
     private(set) var focusHistory: [UUID] = []
 
     var isEmpty: Bool { tabs.isEmpty }
-    var focusedID: UUID? { focusHistory.first { pane($0) != nil } ?? tabs.first?.id }
-    var selectedTab: TerminalLayout? {
+    var focusedID: UUID? { focusHistory.first { pane($0) != nil } ?? tabs.first?.layout.id }
+    var selectedTab: Tab? {
         guard let focusedID else { return nil }
-        return tabs.first { $0.contains(focusedID) }
+        return tabs.first { $0.layout.contains(focusedID) }
     }
 
     func pane(_ id: UUID) -> Pane? { panes.first { $0.id == id } }
@@ -26,23 +47,23 @@ struct FloatingTerminal: Codable, Equatable, Sendable {
         panes == other.panes && tabs == other.tabs
     }
 
-    func focusedID(in tab: TerminalLayout) -> UUID {
-        focusHistory.first(where: tab.contains) ?? tab.id
+    func focusedID(in tab: Tab) -> UUID {
+        focusHistory.first(where: tab.layout.contains) ?? tab.layout.id
     }
 
     @discardableResult mutating func addTab(path: String) -> Pane {
         let pane = Pane(path: path)
         panes.append(pane)
-        tabs.append(.terminal(pane.id))
+        tabs.append(Tab(layout: .terminal(pane.id)))
         focus(pane.id)
         return pane
     }
 
     @discardableResult mutating func split(_ id: UUID, axis: SplitAxis, path: String) -> Pane? {
-        guard let index = tabs.firstIndex(where: { $0.contains(id) }) else { return nil }
+        guard let index = tabs.firstIndex(where: { $0.layout.contains(id) }) else { return nil }
         let pane = Pane(path: path)
         panes.append(pane)
-        tabs[index] = tabs[index].splitting(id, with: pane.id, axis: axis)
+        tabs[index].layout = tabs[index].layout.splitting(id, with: pane.id, axis: axis)
         focus(pane.id)
         return pane
     }
@@ -53,7 +74,7 @@ struct FloatingTerminal: Codable, Equatable, Sendable {
         focusHistory.insert(id, at: 0)
     }
 
-    mutating func select(_ tab: TerminalLayout) {
+    mutating func select(_ tab: Tab) {
         focus(focusedID(in: tab))
     }
 
@@ -64,10 +85,10 @@ struct FloatingTerminal: Codable, Equatable, Sendable {
     }
 
     mutating func close(_ id: UUID) {
-        let neighbour = tabs.first { $0.contains(id) }?.neighbour(of: id)
+        let neighbour = tabs.first { $0.layout.contains(id) }?.layout.neighbour(of: id)
         let wasFocused = focusedID == id
         panes.removeAll { $0.id == id }
-        tabs = tabs.compactMap { $0.removing(id) }
+        tabs = tabs.compactMap { tab in tab.layout.removing(id).map { Tab(id: tab.id, layout: $0) } }
         focusHistory.removeAll { $0 == id }
         if wasFocused, let neighbour { focus(neighbour) }
     }

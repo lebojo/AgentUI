@@ -8,8 +8,8 @@ struct FloatingTerminalView: View {
             FloatingTerminalTabBar()
             Divider()
             if let tab = floating.state.selectedTab, let focusedID = floating.state.focusedID {
-                TerminalLayoutView(layout: tab) { id in
-                    FloatingTerminalPane(id: id, isFocused: id == focusedID, isSplit: tab.isSplit)
+                TerminalLayoutView(layout: tab.layout) { id in
+                    FloatingTerminalPane(id: id, isFocused: id == focusedID, isSplit: tab.layout.isSplit)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 Divider()

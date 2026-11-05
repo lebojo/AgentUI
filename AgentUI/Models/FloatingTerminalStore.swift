@@ -60,7 +60,7 @@ import Observation
         state.focus(id)
     }
 
-    func select(_ tab: TerminalLayout) {
+    func select(_ tab: FloatingTerminal.Tab) {
         state.select(tab)
     }
 
@@ -79,8 +79,8 @@ import Observation
         if state.isEmpty { isPresented = false }
     }
 
-    func close(_ tab: TerminalLayout) {
-        for id in tab.terminalIDs { close(id) }
+    func close(_ tab: FloatingTerminal.Tab) {
+        for id in tab.layout.terminalIDs { close(id) }
     }
 
     func closeFocused() {

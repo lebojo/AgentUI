@@ -42,14 +42,14 @@ import Foundation
         let second = floating.addTab(path: "/two")
         try require(floating.tabs.count == 2 && floating.focusedID == second.id, "A new floating tab gets the focus")
         let right = try floating.split(second.id, axis: .horizontal, path: "/two").unwrapped()
-        try require(floating.selectedTab?.terminalIDs == [second.id, right.id] && floating.focusedID == right.id, "Splitting focuses the new pane in the same tab")
+        try require(floating.selectedTab?.layout.terminalIDs == [second.id, right.id] && floating.focusedID == right.id, "Splitting focuses the new pane in the same tab")
         floating.selectTab(offset: 1)
         try require(floating.focusedID == first.id, "Next tab wraps around")
         floating.selectTab(offset: -1)
         try require(floating.focusedID == right.id, "Selecting a tab restores its last focused pane")
         let beforeFocusChange = floating
         floating.focus(second.id)
-        floating.select(.terminal(first.id))
+        floating.select(floating.tabs[0])
         try require(floating.hasSameLayout(as: beforeFocusChange) && floating != beforeFocusChange, "Focus and tab changes keep the persisted layout")
         var restructured = floating
         restructured.addTab(path: "/three")
@@ -66,14 +66,29 @@ import Foundation
         try require(Set(persistedKeys) == ["panes", "tabs", "focusHistory"], "The floating terminal persists its panes, tabs and focus order")
         let decodedFloating = try JSONDecoder().decode(FloatingTerminal.self, from: encodedFloating)
         try require(decodedFloating == floating && decodedFloating.focusedID == second.id && decodedFloating.selectedTab == floating.selectedTab, "Floating tabs, splits and focus round-trip")
+        var reshaped = floating
+        let splitTab = try reshaped.selectedTab.unwrapped()
+        reshaped.close(second.id)
+        try require(reshaped.tabs.map(\.id) == floating.tabs.map(\.id) && reshaped.tabs.last?.id == splitTab.id
+                        && reshaped.tabs.last?.layout == .terminal(right.id), "A tab keeps its identity when its first pane closes")
+        struct LegacyFloating: Encodable {
+            let panes: [FloatingTerminal.Pane]
+            let tabs: [TerminalLayout]
+            let focusHistory: [UUID]
+        }
+        let legacyTabs = floating.tabs.map(\.layout)
+        let legacy = try JSONDecoder().decode(FloatingTerminal.self, from: JSONEncoder().encode(LegacyFloating(panes: floating.panes, tabs: legacyTabs,
+                                                                                                                 focusHistory: [second.id])))
+        try require(legacy.tabs.map(\.layout) == legacyTabs && Set(legacy.tabs.map(\.id)).count == legacyTabs.count && legacy.focusedID == second.id,
+                    "A floating terminal saved before tab ids still opens, each tab getting its own id")
         let floatingContext = TerminalContext(floating: FloatingTerminal.Pane(path: "/one"))
         try require(floatingContext.isFloating && floatingContext.worktree.path == "/one", "Floating terminals are told apart from workspace terminals")
         let floatingRequest = try AgentCLI.parse(["terminal", "create"], environment: [:], currentDirectory: "/one")
         try require(floatingRequest.projectID == nil && floatingRequest.worktreeID == nil && floatingRequest.directory == "/one", "Without exported IDs the CLI infers the project from the current folder")
         floating.close(right.id)
-        try require(floating.selectedTab == .terminal(second.id) && floating.focusedID == second.id, "Closing a pane focuses its neighbour")
+        try require(floating.selectedTab?.layout == .terminal(second.id) && floating.focusedID == second.id, "Closing a pane focuses its neighbour")
         floating.close(second.id)
-        try require(floating.tabs == [.terminal(first.id)] && floating.focusedID == first.id, "Closing a tab falls back to the last used one")
+        try require(floating.tabs.map(\.layout) == [.terminal(first.id)] && floating.focusedID == first.id, "Closing a tab falls back to the last used one")
         floating.close(first.id)
         try require(floating.isEmpty && floating.focusedID == nil && floating.panes.isEmpty, "Closing the last pane empties the floating terminal")
         print("PASS floating terminal tabs, splits and focus")

@@ -1,12 +1,13 @@
 import Foundation
 
 struct SidebarTerminalBlock: Identifiable, Equatable, Sendable {
+    let id: UUID
     let terminals: [TerminalRecord]
     var axis: SplitAxis? = nil
 
-    var id: UUID { terminals[0].id }
     var isSplit: Bool { terminals.count > 1 }
     var terminalIDs: [UUID] { terminals.map(\.id) }
+    var sidebarOrder: [UUID] { [id] + terminalIDs.filter { $0 != id } }
     var singleTerminal: TerminalRecord? { isSplit ? nil : terminals[0] }
 
     func contains(_ id: UUID?) -> Bool { terminals.contains { $0.id == id } }
@@ -23,12 +24,12 @@ extension Worktree {
         for terminal in visible where !placed.contains(terminal.id) {
             guard let layout = layoutByTerminal[terminal.id], layout.isSplit else {
                 placed.insert(terminal.id)
-                blocks.append(SidebarTerminalBlock(terminals: [terminal]))
+                blocks.append(SidebarTerminalBlock(id: terminal.id, terminals: [terminal]))
                 continue
             }
             let members = layout.terminalIDs.compactMap { placed.contains($0) ? nil : records[$0] }
             placed.formUnion(members.map(\.id))
-            blocks.append(SidebarTerminalBlock(terminals: members, axis: members.count > 1 ? layout.axis : nil))
+            blocks.append(SidebarTerminalBlock(id: terminal.id, terminals: members, axis: members.count > 1 ? layout.axis : nil))
         }
         return blocks
     }
@@ -43,10 +44,10 @@ extension Worktree {
 }
 
 extension [SidebarTerminalBlock] {
-    var terminalIDs: [UUID] { flatMap(\.terminalIDs) }
+    var sidebarOrder: [UUID] { flatMap(\.sidebarOrder) }
 
     func reordering(_ terminals: [TerminalRecord], from source: IndexSet, to destination: Int) -> [TerminalRecord]? {
-        guard let order = moving(map(\.id), from: source, to: destination)?.terminalIDs, order != terminalIDs else { return nil }
+        guard let order = moving(map(\.id), from: source, to: destination)?.sidebarOrder, order != sidebarOrder else { return nil }
         let visible = Set(order)
         let records = Dictionary(terminals.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         var slots = order.compactMap { records[$0] }.makeIterator()
