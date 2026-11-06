@@ -198,7 +198,7 @@ h1 {
 
 /* Screenshots */
 
-.shots, .install {
+.shots, .cli, .install {
   max-width: calc(var(--max) + 2 * var(--gutter));
   margin: 0 auto;
   padding: clamp(72px, 9vw, 128px) var(--gutter);
@@ -239,6 +239,34 @@ h2 {
   color: var(--text-2);
   text-transform: uppercase;
 }
+
+/* CLI */
+
+.cli-grid {
+  margin-top: clamp(40px, 5vw, 56px);
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: start;
+}
+.cli-copy p { margin: 0; max-width: 46ch; color: var(--text-2); }
+.cli-copy p:first-child { color: var(--text); font-size: 1.1875rem; line-height: 1.55; }
+.cli-copy .cli-name { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 0.9375rem; }
+
+.cli-code {
+  margin: 0;
+  padding: 22px 24px;
+  overflow-x: auto;
+  background: var(--ground-deep);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: 400 0.8125rem/1.75 var(--mono);
+  color: var(--text);
+  tab-size: 2;
+}
+.cli-code code { font: inherit; background: none; padding: 0; border-radius: 0; }
+.cli-code b { font-weight: 500; color: var(--accent-hi); }
+.cli-code .c { color: var(--text-2); }
 
 /* Install */
 
@@ -326,6 +354,7 @@ h2 {
 
 @media (max-width: 900px) {
   .shot-grid { grid-template-columns: minmax(0, 1fr); }
+  .cli-grid { grid-template-columns: minmax(0, 1fr); }
   .steps { grid-template-columns: minmax(0, 1fr); max-width: 560px; }
 }
 
@@ -334,6 +363,8 @@ h2 {
   .top { gap: 12px; padding-top: 16px; padding-bottom: 16px; }
   .top-nav span { display: none; }
   .lede { font-size: 1.125rem; }
+  .cli-copy p:first-child { font-size: 1.0625rem; }
+  .cli-code { padding: 18px; font-size: 0.75rem; }
   .pull-tab-label { font-size: 1.25rem; }
   .meta-arch { display: none; }
   .window img { border-radius: 8px; }

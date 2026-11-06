@@ -4,11 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Heka — your coding agents in one native window</title>
-  <meta name="description" content="A native macOS app that organizes your projects, Git worktrees and coding agents (Claude, Codex) in real terminals. SwiftUI, no WebView, no Electron.">
+  <meta name="description" content="A native macOS app that organizes your projects, Git worktrees and coding agents (Claude, Codex, Copilot, OpenCode) in real terminals, with a heka command agents use to open terminals and branches of their own. SwiftUI, no WebView, no Electron.">
   <meta name="theme-color" content="#121016">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://lebojo.github.io/Heka/">
   <meta property="og:title" content="Heka — your coding agents in one native window">
-  <meta property="og:description" content="Projects, Git worktrees and Claude or Codex terminals, organized in one native macOS window.">
-  <meta property="og:image" content="assets/window.webp">
+  <meta property="og:description" content="Projects, Git worktrees and coding agent terminals, organized in one native macOS window. Agents open new terminals and branches with a single command.">
+  <meta property="og:image" content="https://lebojo.github.io/Heka/assets/window.webp">
   <link rel="icon" type="image/png" href="assets/favicon-64.png">
   <link rel="apple-touch-icon" href="assets/icon-256.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,6 +27,7 @@
     <span class="mark-name">Heka</span>
   </a>
   <nav class="top-nav" aria-label="Primary">
+    <a href="#cli">CLI</a>
     <a href="#install">Install</a>
     <a href="https://github.com/lebojo/Heka">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.7 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>
@@ -37,7 +40,7 @@
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero-copy">
       <h1 id="hero-title">All your coding agents. One native window.</h1>
-      <p class="lede">Heka keeps your projects, Git worktrees and Claude or Codex terminals organized in a fast macOS app.</p>
+      <p class="lede">Heka keeps your projects, Git worktrees and agent terminals organized in one fast, native macOS app. Claude, Codex, Copilot, OpenCode: bring the ones you use.</p>
       <div class="actions">
         <a class="pull-tab" href="https://github.com/lebojo/Heka/releases/latest/download/Heka.zip" data-download>
           <span class="pull-tab-grip" aria-hidden="true"></span>
@@ -76,6 +79,25 @@
     <p class="shots-note">Real app, sample projects.</p>
   </section>
 
+  <section class="cli" id="cli" aria-labelledby="cli-title">
+    <h2 id="cli-title">Say the word.</h2>
+    <div class="cli-grid">
+      <div class="cli-copy">
+        <p>Every Heka terminal comes with the <code>heka</code> command. One line from an agent opens a terminal beside it for a review, or starts another agent on its own branch and worktree. It can then send that agent a message, wait for it and read its reply, while you watch each one appear in the sidebar.</p>
+        <p class="cli-name">Heka is named after the <a href="https://en.wikipedia.org/wiki/Heka_(god)">Egyptian god of magic</a>, whose spoken word brought things into being. Here, the word is a command.</p>
+      </div>
+      <pre class="cli-code" tabindex="0" aria-label="Example heka commands"><code><span class="c"># Another agent, on its own branch</span>
+<b>heka</b> worktree create --branch feature/tests -- codex "Add the tests"
+
+<span class="c"># A second opinion, in the same worktree</span>
+<b>heka</b> terminal create --name Review -- claude "Review the changes"
+
+<span class="c"># Wait for it, then read its answer</span>
+<b>heka</b> terminal wait --terminal "$REVIEW"
+<b>heka</b> terminal read --terminal "$REVIEW" --reply</code></pre>
+    </div>
+  </section>
+
   <section class="install" id="install" aria-labelledby="install-title">
     <h2 id="install-title">Install in a minute.</h2>
     <ol class="steps">
@@ -92,7 +114,7 @@
         <p>Signed and notarized by Apple. Add your first project with the <b>+</b> above the list.</p>
       </li>
     </ol>
-    <p class="install-extra">Claude Code or Codex must be installed on your Mac. For GitHub data in the inspector, install <a href="https://cli.github.com">gh</a> and run <code>gh auth login</code>.</p>
+    <p class="install-extra">Heka runs the agents you already have: install Claude Code, Codex, Copilot or OpenCode on your Mac. For pull requests and checks in the inspector, install <a href="https://cli.github.com">gh</a> and run <code>gh auth login</code>, or <a href="https://gitlab.com/gitlab-org/cli">glab</a> and <code>glab auth login</code> for GitLab.</p>
   </section>
 </main>
 
