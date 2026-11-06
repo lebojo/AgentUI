@@ -1,6 +1,6 @@
 # Heka
 
-[![CI](https://github.com/lebojo/AgentUI/actions/workflows/ci.yml/badge.svg)](https://github.com/lebojo/AgentUI/actions/workflows/ci.yml)
+[![CI](https://github.com/lebojo/Heka/actions/workflows/ci.yml/badge.svg)](https://github.com/lebojo/Heka/actions/workflows/ci.yml)
 [![Swift](https://img.shields.io/badge/Swift-6.4-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey?logo=apple)](https://www.apple.com/macos/)
 [![Xcode](https://img.shields.io/badge/Xcode-27.1-147EFB?logo=xcode&logoColor=white)](https://developer.apple.com/xcode/)
@@ -31,14 +31,14 @@ A native macOS app to organize your projects, Git worktrees and coding agents (C
 
 ## Download
 
-Download `Heka.zip` from the [latest release](https://github.com/lebojo/AgentUI/releases/latest), unzip it and move `Heka.app` to `/Applications`. The app is a universal build (Apple silicon and Intel), signed with a Developer ID and notarized by Apple.
+Download `Heka.zip` from the [latest release](https://github.com/lebojo/Heka/releases/latest), unzip it and move `Heka.app` to `/Applications`. The app is a universal build (Apple silicon and Intel), signed with a Developer ID and notarized by Apple.
 
 To build from source instead, see below.
 
 ## Installation
 
 ```sh
-git clone git@github.com:lebojo/AgentUI.git Heka
+git clone git@github.com:lebojo/Heka.git
 cd Heka
 open Heka.xcodeproj
 ```
@@ -187,7 +187,7 @@ To teach agents when and how to use these commands, install the `heka` skill fro
 The skill lives in [`skills/heka`](skills/heka/SKILL.md), so it can also be installed and updated without a new app release:
 
 ```sh
-npx skills add LeBojo/AgentUI --skill heka --global
+npx skills add LeBojo/Heka --skill heka --global
 npx skills update
 ```
 

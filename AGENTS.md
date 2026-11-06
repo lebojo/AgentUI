@@ -31,8 +31,6 @@ The app was renamed from AgentUI to Heka in November 2026. The migration code on
 
 Also remind the user that they can delete by hand, once Heka holds everything: AgentUI.app, `~/Library/Application Support/AgentUI` (only instance registrations or items listed by the migration message are left there), the `ch.jordanchap.agentui` defaults (`defaults delete ch.jordanchap.agentui`), the `ch.jordanchap.agentui.pairing` keychain item, and the `~/agentui` and `~/.agentui` folders once their worktrees are no longer needed.
 
-`lebojo/AgentUI` links stay until the GitHub repository is renamed.
-
 ## Lint
 
 SwiftUI views must declare their members in this order, with one blank line between sections and `private` where shown:

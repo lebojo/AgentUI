@@ -1,4 +1,4 @@
-fetch("https://api.github.com/repos/lebojo/AgentUI/releases/latest")
+fetch("https://api.github.com/repos/lebojo/Heka/releases/latest")
   .then((response) => (response.ok ? response.json() : null))
   .then((release) => {
     if (!release || !release.tag_name) return;

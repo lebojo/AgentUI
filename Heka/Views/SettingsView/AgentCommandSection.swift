@@ -8,7 +8,7 @@ struct AgentCommandSection: View {
         } header: {
             Text("heka Command")
         } footer: {
-            Text("The command is linked in ~/.local/bin; add it to your PATH if it isn’t there. Outside a Heka terminal, it acts on the project of the current folder. The skill teaches Claude, Codex, Copilot and OpenCode when to use it; it can also be installed with npx skills add LeBojo/AgentUI.")
+            Text("The command is linked in ~/.local/bin; add it to your PATH if it isn’t there. Outside a Heka terminal, it acts on the project of the current folder. The skill teaches Claude, Codex, Copilot and OpenCode when to use it; it can also be installed with npx skills add LeBojo/Heka.")
                 .font(Typography.caption).foregroundStyle(Palette.textSecondary)
         }
     }
