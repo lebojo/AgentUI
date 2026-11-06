@@ -225,7 +225,7 @@ enum CommandRunner {
             var unblocked = sigset_t(), defaulted = sigset_t()
             sigemptyset(&unblocked)
             sigemptyset(&defaulted)
-            [SIGTERM, SIGINT, SIGHUP, SIGQUIT].forEach { sigaddset(&defaulted, $0) }
+            [SIGTERM, SIGINT, SIGHUP, SIGQUIT, SIGPIPE].forEach { sigaddset(&defaulted, $0) }
             try checked(posix_spawnattr_setsigmask(&attributes, &unblocked))
             try checked(posix_spawnattr_setsigdefault(&attributes, &defaulted))
             try checked(posix_spawnattr_setflags(&attributes, Int16(POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF
